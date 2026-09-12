@@ -31,13 +31,20 @@ export interface Settings {
   sendWithEnter: boolean
   notifications: boolean
   sounds: boolean
+  // privacy: whether we announce typing, receipts and read markers
+  sendChatStates: boolean
+  sendReceipts: boolean
+  sendReadMarkers: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
   keybindings: { ...DEFAULT_KEYBINDINGS },
   sendWithEnter: true,
   notifications: true,
-  sounds: false
+  sounds: false,
+  sendChatStates: true,
+  sendReceipts: true,
+  sendReadMarkers: true
 }
 
 class SettingsStore {

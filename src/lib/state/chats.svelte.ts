@@ -3,10 +3,18 @@ import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 import { MESSAGE_PAGE_SIZE } from '$lib/constants'
 import { idb } from '$lib/core/storage/idb'
 import { scopedKey } from '$lib/core/storage/keys'
-import type { ChatState, IncomingMessage } from '$lib/core/xmpp/stanzas'
+import type { Attachment, ChatState, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 
+export type { Attachment }
+
 export type ConversationKind = 'dm' | 'muc'
+
+export interface ReplyRef {
+  id: string
+  from: string
+  quote?: string | undefined
+}
 
 export interface ChatMessage {
   // dedup key: stanza-id when present, else origin-id, else a fallback
@@ -21,6 +29,13 @@ export interface ChatMessage {
   delivered: boolean
   read: boolean
   nick?: string | undefined
+  replyTo?: ReplyRef | undefined
+  attachments?: Attachment[] | undefined
+  // emoji -> list of senders (bare jids for dms, nicks for muc)
+  reactions: Record<string, string[]>
+  edited?: boolean
+  // signing state placeholder: 'signed' once verification lands
+  signed?: boolean
 }
 
 export interface RoomOccupant {
@@ -47,6 +62,20 @@ export interface Conversation {
 
 const RETAINED_MESSAGES = MESSAGE_PAGE_SIZE * 4
 const DEDUP_CAP = 500
+
+export function emptyMessage(peerJid: string): ChatMessage {
+  return {
+    id: '',
+    peerJid,
+    body: '',
+    outgoing: true,
+    timestamp: Date.now(),
+    encrypted: false,
+    delivered: false,
+    read: false,
+    reactions: {}
+  }
+}
 
 export class ChatStore {
   conversations = new SvelteMap<string, Conversation>()
@@ -100,6 +129,46 @@ export class ChatStore {
     return true
   }
 
+  // find a stored message by wire id (what remote references in
+  // reply/replace/reactions) or by our dedup id
+  findMessage(peer: string, ref: string): ChatMessage | undefined {
+    const messages = this.conversations.get(bareJid(peer))?.messages
+    return messages?.find((m) => m.wireId === ref || m.id === ref)
+  }
+
+  applyReaction(peer: string, sender: string, targetId: string, emojis: string[]): void {
+    const target = this.findMessage(peer, targetId)
+    if (!target) return
+    // each sender's new reaction set replaces their previous one
+    for (const [emoji, senders] of Object.entries(target.reactions)) {
+      const next = senders.filter((s) => s !== sender)
+      target.reactions[emoji] = next
+    }
+    // drop empty sets afterwards to keep reactions reactive
+    for (const [emoji, senders] of Object.entries(target.reactions)) {
+      if (senders.length === 0) {
+        const { [emoji]: _gone, ...rest } = target.reactions
+        void _gone
+        target.reactions = rest
+      }
+    }
+    for (const emoji of emojis) {
+      const senders = target.reactions[emoji] ?? []
+      if (!senders.includes(sender)) senders.push(sender)
+      target.reactions[emoji] = senders
+    }
+  }
+
+  applyCorrection(peer: string, replaceId: string, body: string, timestamp: number): boolean {
+    const target = this.findMessage(peer, replaceId)
+    if (!target) return false
+    target.body = body
+    target.edited = true
+    // keep original position but reflect the correction time for ordering
+    void timestamp
+    return true
+  }
+
   ingest(message: IncomingMessage, activePeer: string | null): void {
     // Work out which conversation this stanza belongs to and whether it is ours.
     let peer: string
@@ -121,13 +190,15 @@ export class ChatStore {
     const conversation = this.open(peer)
     if (message.type === 'groupchat') conversation.kind = 'muc'
 
+    const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
+
     // stanza-level metadata first so empty stanzas still update state
     if (message.receiptFor) {
       this.markDelivered(peer, message.receiptFor)
     }
     const marker = message.marker
     if (marker) {
-      const target = conversation.messages.find((m) => m.id === marker.id)
+      const target = this.findMessage(peer, marker.id)
       if (target) {
         if (marker.type === 'received' || marker.type === 'acknowledged') {
           target.delivered = true
@@ -138,36 +209,47 @@ export class ChatStore {
         }
       }
     }
+    if (message.reactionTo) {
+      this.applyReaction(peer, sender, message.reactionTo.id, message.reactionTo.emojis)
+    }
     if (message.chatState !== undefined && !outgoing) {
       conversation.peerState = message.chatState
     }
     if (message.subject !== undefined) {
       conversation.subject = message.subject || undefined
     }
-    if (!message.body) return
+    // corrections replace an existing message instead of appending
+    if (message.replaceId && message.body) {
+      if (
+        this.applyCorrection(peer, message.replaceId, message.body, message.delay ?? Date.now())
+      ) {
+        return
+      }
+      // target unknown: fall through and show it as a normal message
+    }
+    if (!message.body && !message.attachments?.length) return
 
     const id =
       message.stanzaId ?? message.originId ?? `${peer}:${message.delay ?? ''}:${message.body}`
-    this.push(
-      peer,
-      {
-        id,
-        wireId: message.id,
-        peerJid: peer,
-        body: message.body,
-        outgoing,
-        timestamp: message.delay ?? Date.now(),
-        encrypted: false,
-        delivered: outgoing ? message.carbon === 'sent' : false,
-        read: false,
-        nick: message.type === 'groupchat' ? message.nick : undefined
-      },
-      activePeer === peer
-    )
+    const stored: ChatMessage = {
+      ...emptyMessage(peer),
+      id,
+      wireId: message.id,
+      body: message.body,
+      outgoing,
+      timestamp: message.delay ?? Date.now(),
+      delivered: outgoing ? message.carbon === 'sent' : false,
+      nick: message.type === 'groupchat' ? message.nick : undefined
+    }
+    if (message.replyTo) stored.replyTo = message.replyTo
+    if (message.attachments?.length) stored.attachments = message.attachments
+    if (message.signed) stored.signed = true
+    if (message.encrypted) stored.encrypted = true
+    this.push(peer, stored, activePeer === peer)
   }
 
   markDelivered(peerJid: string, id: string): void {
-    const message = this.conversations.get(bareJid(peerJid))?.messages.find((m) => m.id === id)
+    const message = this.findMessage(peerJid, id)
     if (message) message.delivered = true
   }
 
@@ -203,14 +285,16 @@ export class ChatStore {
   private async hydrate(conversation: Conversation): Promise<void> {
     const stored = await idb.get<ChatMessage[]>('messages', this.storageKey(conversation.peerJid))
     if (!stored || conversation.messages.length > 0) return
-    conversation.messages.push(...stored)
-    for (const message of stored.slice(-DEDUP_CAP)) {
+    for (const raw of stored) {
+      // older caches lack newer fields
+      raw.reactions ??= {}
+      conversation.messages.push(raw)
       let list = this.seen.get(conversation.peerJid)
       if (!list) {
         list = []
         this.seen.set(conversation.peerJid, list)
       }
-      list.push(message.id)
+      if (list.length < DEDUP_CAP) list.push(raw.id)
     }
   }
 

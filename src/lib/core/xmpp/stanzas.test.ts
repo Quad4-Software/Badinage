@@ -146,6 +146,95 @@ describe('parseMessage', () => {
     expect(subject?.subject).toBe('topic here')
   })
 
+  it('parses a reply and strips the quote fallback from the body', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <reply xmlns="urn:xmpp:reply:0" id="orig-1" to="a@b.c"/>
+        <body>&gt; original text
+&gt; second quoted line
+my answer</body>
+      </message>`)
+    )
+    expect(m?.replyTo).toEqual({
+      id: 'orig-1',
+      from: 'a@b.c',
+      quote: 'original text\nsecond quoted line'
+    })
+    expect(m?.body).toBe('my answer')
+  })
+
+  it('leaves a plain quoted body alone without a reply element', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>&gt; not a reply fallback</body>
+      </message>`)
+    )
+    expect(m?.replyTo).toBeUndefined()
+    expect(m?.body).toBe('> not a reply fallback')
+  })
+
+  it('parses reactions with and without a body', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <reactions xmlns="urn:xmpp:reactions:0" id="target-1">
+          <reaction>&#128077;</reaction>
+          <reaction>&#10084;</reaction>
+        </reactions>
+      </message>`)
+    )
+    expect(m?.reactionTo).toEqual({ id: 'target-1', emojis: ['\u{1F44D}', '\u2764'] })
+
+    const retract = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <reactions xmlns="urn:xmpp:reactions:0" id="target-1"/>
+      </message>`)
+    )
+    expect(retract?.reactionTo).toEqual({ id: 'target-1', emojis: [] })
+  })
+
+  it('parses a last message correction', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>fixed text</body>
+        <replace xmlns="urn:xmpp:message-correct:0" id="orig-1"/>
+      </message>`)
+    )
+    expect(m?.replaceId).toBe('orig-1')
+    expect(m?.body).toBe('fixed text')
+  })
+
+  it('parses an OOB attachment with file metadata', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>https://files.example.net/pic.jpg</body>
+        <x xmlns="jabber:x:oob"><url>https://files.example.net/pic.jpg</url></x>
+        <file xmlns="urn:xmpp:file:metadata:0">
+          <media-type>image/jpeg</media-type>
+          <name>pic.jpg</name>
+          <size>12345</size>
+        </file>
+      </message>`)
+    )
+    expect(m?.attachments).toEqual([
+      {
+        url: 'https://files.example.net/pic.jpg',
+        mediaType: 'image/jpeg',
+        name: 'pic.jpg',
+        size: 12345
+      }
+    ])
+  })
+
+  it('uses the OOB url as the body when no body is present', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <x xmlns="jabber:x:oob"><url>https://files.example.net/doc.pdf</url></x>
+      </message>`)
+    )
+    expect(m?.body).toBe('https://files.example.net/doc.pdf')
+    expect(m?.attachments?.[0]?.url).toBe('https://files.example.net/doc.pdf')
+  })
+
   it('returns null for empty stanzas', () => {
     const m = parseMessage(xml(`<message from="a@b.c" to="x@y.z" type="chat"/>`))
     expect(m).toBeNull()

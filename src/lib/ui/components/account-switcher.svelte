@@ -22,6 +22,18 @@
 
   const active = $derived(accounts.active)
   let confirmRemove = $state<string | null>(null)
+  let ownPresence = $state('online')
+
+  const presenceOptions = [
+    { value: 'online', label: () => $LL.online() },
+    { value: 'away', label: () => $LL.away() },
+    { value: 'dnd', label: () => $LL.busy() }
+  ]
+
+  function setPresence(show: string) {
+    ownPresence = show
+    active?.connection.sendPresence(show === 'online' ? undefined : show)
+  }
 </script>
 
 <div class="flex items-center gap-2">
@@ -36,7 +48,7 @@
     </DropdownMenu.Trigger>
     <DropdownMenu.Portal>
       <DropdownMenu.Content
-        class="bg-popover text-popover-foreground z-50 min-w-56 rounded-md border p-1 shadow-md"
+        class="bg-popover text-popover-foreground z-50 w-(--bits-dropdown-menu-anchor-width) min-w-0 rounded-md border p-1 shadow-md"
         sideOffset={4}
         align="start"
       >
@@ -49,12 +61,27 @@
             onSelect={() => (accounts.activeJid = account.jid)}
           >
             <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
-            <span class="flex-1 truncate">{account.jid}</span>
+            <span class="min-w-0 flex-1 truncate">{account.jid}</span>
             {#if account.jid === active?.jid}
-              <Check class="size-4" />
+              <Check class="size-4 shrink-0" />
             {/if}
           </DropdownMenu.Item>
         {/each}
+        {#if active}
+          <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
+          {#each presenceOptions as option (option.value)}
+            <DropdownMenu.Item
+              class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+              onSelect={() => setPresence(option.value)}
+            >
+              <PresenceDot presence={option.value} />
+              {option.label()}
+              {#if ownPresence === option.value}
+                <Check class="ml-auto size-4 shrink-0" />
+              {/if}
+            </DropdownMenu.Item>
+          {/each}
+        {/if}
         <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
         <DropdownMenu.Item
           class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"

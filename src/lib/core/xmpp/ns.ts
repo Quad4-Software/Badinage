@@ -24,7 +24,14 @@ export const NS = {
   BOOKMARKS: 'urn:xmpp:bookmarks:1',
   PUBSUB: 'http://jabber.org/protocol/pubsub',
   RECEIPTS: 'urn:xmpp:receipts',
-  MARKERS: 'urn:xmpp:chat-markers:0'
+  MARKERS: 'urn:xmpp:chat-markers:0',
+  REPLY: 'urn:xmpp:reply:0',
+  REACTIONS: 'urn:xmpp:reactions:0',
+  CORRECT: 'urn:xmpp:message-correct:0',
+  OOB: 'jabber:x:oob',
+  FILE_METADATA: 'urn:xmpp:file:metadata:0',
+  SIMS: 'urn:xmpp:sims:0',
+  REFERENCE: 'urn:xmpp:reference:0'
 } as const
 
 export type Namespace = (typeof NS)[keyof typeof NS]

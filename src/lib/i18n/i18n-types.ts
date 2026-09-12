@@ -238,6 +238,143 @@ type RootTranslation = {
 	 */
 	sent: string
 	/**
+	 * S​e​a​r​c​h​ ​c​o​n​v​e​r​s​a​t​i​o​n​s​ ​a​n​d​ ​c​o​n​t​a​c​t​s
+	 */
+	search: string
+	/**
+	 * E​x​p​a​n​d​ ​s​e​c​t​i​o​n
+	 */
+	expandSection: string
+	/**
+	 * C​o​l​l​a​p​s​e​ ​s​e​c​t​i​o​n
+	 */
+	collapseSection: string
+	/**
+	 * R​e​p​l​y
+	 */
+	reply: string
+	/**
+	 * R​e​p​l​y​i​n​g​ ​t​o​ ​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	replyingTo: RequiredParams<'name'>
+	/**
+	 * E​d​i​t​ ​m​e​s​s​a​g​e
+	 */
+	editMessage: string
+	/**
+	 * E​d​i​t​i​n​g​ ​m​e​s​s​a​g​e
+	 */
+	editingMessage: string
+	/**
+	 * e​d​i​t​e​d
+	 */
+	edited: string
+	/**
+	 * A​d​d​ ​r​e​a​c​t​i​o​n
+	 */
+	react: string
+	/**
+	 * C​o​p​y​ ​m​e​s​s​a​g​e​ ​t​e​x​t
+	 */
+	copyMessage: string
+	/**
+	 * A​t​t​a​c​h​ ​f​i​l​e
+	 */
+	attachFile: string
+	/**
+	 * R​e​c​o​r​d​ ​v​o​i​c​e​ ​m​e​s​s​a​g​e
+	 */
+	recordVoice: string
+	/**
+	 * S​t​o​p​ ​a​n​d​ ​s​e​n​d
+	 */
+	stopRecording: string
+	/**
+	 * C​a​n​c​e​l​ ​r​e​c​o​r​d​i​n​g
+	 */
+	cancelRecording: string
+	/**
+	 * V​o​i​c​e​ ​m​e​s​s​a​g​e
+	 */
+	voiceMessage: string
+	/**
+	 * I​m​a​g​e​ ​a​t​t​a​c​h​m​e​n​t
+	 */
+	imageAttachment: string
+	/**
+	 * F​i​l​e​ ​a​t​t​a​c​h​m​e​n​t
+	 */
+	fileAttachment: string
+	/**
+	 * U​p​l​o​a​d​ ​f​a​i​l​e​d
+	 */
+	uploadFailed: string
+	/**
+	 * S​i​g​n​e​d
+	 */
+	signed: string
+	/**
+	 * V​e​r​i​f​i​e​d​ ​s​e​n​d​e​r
+	 */
+	verified: string
+	/**
+	 * C​a​n​c​e​l
+	 */
+	cancelEdit: string
+	/**
+	 * Y​o​u
+	 */
+	you: string
+	/**
+	 * P​r​i​v​a​c​y
+	 */
+	privacy: string
+	/**
+	 * S​e​n​d​ ​t​y​p​i​n​g​ ​n​o​t​i​f​i​c​a​t​i​o​n​s
+	 */
+	sendTyping: string
+	/**
+	 * S​e​n​d​ ​d​e​l​i​v​e​r​y​ ​r​e​c​e​i​p​t​s
+	 */
+	sendReceipts: string
+	/**
+	 * S​e​n​d​ ​r​e​a​d​ ​m​a​r​k​e​r​s
+	 */
+	sendReadMarkers: string
+	/**
+	 * S​p​l​i​t​ ​v​i​e​w
+	 */
+	splitView: string
+	/**
+	 * C​l​o​s​e​ ​p​a​n​e
+	 */
+	closePane: string
+	/**
+	 * O​p​e​n​ ​i​n​ ​s​p​l​i​t​ ​v​i​e​w
+	 */
+	openInSplit: string
+	/**
+	 * C​h​o​o​s​e​ ​a​ ​c​o​n​v​e​r​s​a​t​i​o​n
+	 */
+	pickConversation: string
+	/**
+	 * P​l​a​y
+	 */
+	play: string
+	/**
+	 * P​a​u​s​e
+	 */
+	pause: string
+	/**
+	 * P​i​c​k​ ​a​n​ ​e​m​o​j​i
+	 */
+	addReactionEmoji: string
+	/**
+	 * M​e​s​s​a​g​e​ ​s​i​g​n​e​d
+	 */
+	messageSigned: string
+	/**
 	 * S​e​t​t​i​n​g​s
 	 */
 	settings: string
@@ -622,6 +759,142 @@ export type TranslationFunctions = {
 	 * Sent
 	 */
 	sent: () => LocalizedString
+	/**
+	 * Search conversations and contacts
+	 */
+	search: () => LocalizedString
+	/**
+	 * Expand section
+	 */
+	expandSection: () => LocalizedString
+	/**
+	 * Collapse section
+	 */
+	collapseSection: () => LocalizedString
+	/**
+	 * Reply
+	 */
+	reply: () => LocalizedString
+	/**
+	 * Replying to {name}
+	 */
+	replyingTo: (arg: { name: string }) => LocalizedString
+	/**
+	 * Edit message
+	 */
+	editMessage: () => LocalizedString
+	/**
+	 * Editing message
+	 */
+	editingMessage: () => LocalizedString
+	/**
+	 * edited
+	 */
+	edited: () => LocalizedString
+	/**
+	 * Add reaction
+	 */
+	react: () => LocalizedString
+	/**
+	 * Copy message text
+	 */
+	copyMessage: () => LocalizedString
+	/**
+	 * Attach file
+	 */
+	attachFile: () => LocalizedString
+	/**
+	 * Record voice message
+	 */
+	recordVoice: () => LocalizedString
+	/**
+	 * Stop and send
+	 */
+	stopRecording: () => LocalizedString
+	/**
+	 * Cancel recording
+	 */
+	cancelRecording: () => LocalizedString
+	/**
+	 * Voice message
+	 */
+	voiceMessage: () => LocalizedString
+	/**
+	 * Image attachment
+	 */
+	imageAttachment: () => LocalizedString
+	/**
+	 * File attachment
+	 */
+	fileAttachment: () => LocalizedString
+	/**
+	 * Upload failed
+	 */
+	uploadFailed: () => LocalizedString
+	/**
+	 * Signed
+	 */
+	signed: () => LocalizedString
+	/**
+	 * Verified sender
+	 */
+	verified: () => LocalizedString
+	/**
+	 * Cancel
+	 */
+	cancelEdit: () => LocalizedString
+	/**
+	 * You
+	 */
+	you: () => LocalizedString
+	/**
+	 * Privacy
+	 */
+	privacy: () => LocalizedString
+	/**
+	 * Send typing notifications
+	 */
+	sendTyping: () => LocalizedString
+	/**
+	 * Send delivery receipts
+	 */
+	sendReceipts: () => LocalizedString
+	/**
+	 * Send read markers
+	 */
+	sendReadMarkers: () => LocalizedString
+	/**
+	 * Split view
+	 */
+	splitView: () => LocalizedString
+	/**
+	 * Close pane
+	 */
+	closePane: () => LocalizedString
+	/**
+	 * Open in split view
+	 */
+	openInSplit: () => LocalizedString
+	/**
+	 * Choose a conversation
+	 */
+	pickConversation: () => LocalizedString
+	/**
+	 * Play
+	 */
+	play: () => LocalizedString
+	/**
+	 * Pause
+	 */
+	pause: () => LocalizedString
+	/**
+	 * Pick an emoji
+	 */
+	addReactionEmoji: () => LocalizedString
+	/**
+	 * Message signed
+	 */
+	messageSigned: () => LocalizedString
 	/**
 	 * Settings
 	 */

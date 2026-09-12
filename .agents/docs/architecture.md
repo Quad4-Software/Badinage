@@ -31,7 +31,12 @@ not depend on init order; use the events emitter for cross-module signals.
 ## Connection
 
 XmppConnection wraps Strophe.Connection and emits typed events through
-Emitter: status, message, presence, roster. Endpoint resolution order:
+Emitter: status, message, presence, roster, occupant, subscriptionRequest.
+All message-shape parsing lives in core/xmpp/stanzas.ts so transports and
+tests share one schema. core/xmpp/demo.ts implements the same
+ChatConnection interface with fake data for demo mode and screenshots.
+
+Endpoint resolution order:
 
 1. explicit websocketUrl or boshUrl from the login form
 2. XEP-0156 host-meta / XEP-0487 host-meta.json discovery on the JID domain
@@ -45,6 +50,14 @@ Roster and conversations are $state objects inside class instances
 (Account, ChatStore). Reactive collections use SvelteMap. Components derive
 view data with $derived. Long message lists need virtualization before real
 use; ConverseJS hits the same wall.
+
+Conversation objects inside ChatStore.conversations are $state proxies so
+field writes (unread, peerState, subject) stay reactive. Snapshot with
+$state.snapshot before writing to IndexedDB.
+
+The shell uses paneforge PaneGroup on desktop (autoSaveId persists sizes)
+with a matchMedia-driven mobile swap. Mounting both layouts at once leaves
+hidden duplicates in the DOM, so only the matching tree renders.
 
 ## Settings and keybindings
 

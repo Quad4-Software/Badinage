@@ -121,6 +121,33 @@
 
     <Separator />
 
+    <section class="flex flex-col gap-3" aria-label={$LL.privacy()}>
+      <h3 class="text-sm font-medium">{$LL.privacy()}</h3>
+      <label class="flex items-center justify-between gap-4 text-sm">
+        {$LL.sendTyping()}
+        <Switch
+          checked={settings.current.sendChatStates}
+          onCheckedChange={(v) => settings.set('sendChatStates', v)}
+        />
+      </label>
+      <label class="flex items-center justify-between gap-4 text-sm">
+        {$LL.sendReceipts()}
+        <Switch
+          checked={settings.current.sendReceipts}
+          onCheckedChange={(v) => settings.set('sendReceipts', v)}
+        />
+      </label>
+      <label class="flex items-center justify-between gap-4 text-sm">
+        {$LL.sendReadMarkers()}
+        <Switch
+          checked={settings.current.sendReadMarkers}
+          onCheckedChange={(v) => settings.set('sendReadMarkers', v)}
+        />
+      </label>
+    </section>
+
+    <Separator />
+
     <section class="flex flex-col gap-3" aria-label={$LL.keyboard()}>
       <h3 class="text-sm font-medium">{$LL.keyboard()}</h3>
       <p class="text-muted-foreground text-xs">{$LL.keyboardHint()}</p>

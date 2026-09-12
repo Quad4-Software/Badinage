@@ -6,6 +6,7 @@ import { $iq, $msg, $pres, Strophe } from 'strophe.js'
 
 import { RECONNECT_DELAY_MAX_MS, RECONNECT_DELAY_MS } from '$lib/constants'
 import { Emitter } from '$lib/core/events'
+import { jidDomain } from '$lib/utils/jid'
 
 import { NS } from './ns'
 import {
@@ -31,6 +32,31 @@ export interface SubscriptionRequest {
 export interface MamPageResult {
   complete: boolean
   last?: string | undefined
+}
+
+// XEP-0461 reply target: id is the replied-to stanza id, plus its author
+// jid. The author can be named to (wire attribute style) or from (the
+// field name used by the parsed IncomingMessage replyTo shape).
+export type ReplyRef =
+  { id: string; to: string } | { id: string; from: string; quote?: string | undefined }
+
+export interface SendMessageOptions {
+  replyTo?: ReplyRef | undefined
+  // XEP-0308: id of the stanza this message corrects
+  replaceId?: string | undefined
+}
+
+// XEP-0446 file metadata, all fields optional on the wire.
+export interface AttachmentMeta {
+  name?: string | undefined
+  mediaType?: string | undefined
+  size?: number | undefined
+  duration?: number | undefined
+}
+
+export interface UploadSlot {
+  putUrl: string
+  getUrl: string
 }
 
 type ConnectionEvents = {
@@ -60,7 +86,34 @@ export interface ChatConnection {
   connect(jid: string, password: string): void
   disconnect(): void
   uniqueId(prefix: string): string
-  sendChatMessage(to: string, body: string, type?: 'chat' | 'groupchat'): string
+  sendChatMessage(
+    to: string,
+    body: string,
+    type?: 'chat' | 'groupchat',
+    opts?: SendMessageOptions
+  ): string
+  sendReaction(to: string, targetId: string, emojis: string[], type?: 'chat' | 'groupchat'): void
+  sendAttachment(
+    to: string,
+    url: string,
+    type?: 'chat' | 'groupchat',
+    meta?: AttachmentMeta
+  ): string
+  // Optional on the interface because demo mode has no upload service to
+  // discover; requestUploadSlot covers the whole flow.
+  discoverUploadService?(onDone: (serviceJid: string | null) => void): void
+  requestUploadSlot(
+    name: string,
+    size: number,
+    mediaType: string,
+    onDone: (slot: UploadSlot | null) => void
+  ): void
+  uploadFile(
+    putUrl: string,
+    file: Blob,
+    headers?: Record<string, string>,
+    onProgress?: (fraction: number) => void
+  ): Promise<void>
   sendChatState(to: string, state: ChatState, type?: 'chat' | 'groupchat'): void
   sendReceipt(to: string, id: string): void
   sendMarker(to: string, id: string, marker: MarkerType): void
@@ -123,18 +176,80 @@ export class XmppConnection implements ChatConnection {
 
   // ---- messaging ----------------------------------------------------------
 
-  sendChatMessage(to: string, body: string, type: 'chat' | 'groupchat' = 'chat'): string {
+  sendChatMessage(
+    to: string,
+    body: string,
+    type: 'chat' | 'groupchat' = 'chat',
+    opts?: SendMessageOptions
+  ): string {
     const id = this.conn.getUniqueId('msg')
     const originId = this.conn.getUniqueId('origin')
-    this.conn.send(
-      $msg({ to, type, id })
-        .c('body')
-        .t(body)
-        .up()
-        .c('origin-id', { xmlns: NS.STANZA_IDS, id: originId })
-        .up()
-        .c('request', { xmlns: NS.RECEIPTS })
-    )
+    const stanza = $msg({ to, type, id })
+      .c('body')
+      .t(body)
+      .up()
+      .c('origin-id', { xmlns: NS.STANZA_IDS, id: originId })
+      .up()
+    if (opts?.replyTo) {
+      const author = 'to' in opts.replyTo ? opts.replyTo.to : opts.replyTo.from
+      stanza.c('reply', { xmlns: NS.REPLY, id: opts.replyTo.id, to: author }).up()
+    }
+    if (opts?.replaceId) {
+      stanza.c('replace', { xmlns: NS.CORRECT, id: opts.replaceId }).up()
+    }
+    // a correction is already acked by the round trip it replies to
+    if (!opts?.replaceId) stanza.c('request', { xmlns: NS.RECEIPTS })
+    this.conn.send(stanza)
+    return id
+  }
+
+  // XEP-0444. An empty emojis list sends a bare reactions element, which
+  // retracts all reactions this sender previously set on the target.
+  sendReaction(
+    to: string,
+    targetId: string,
+    emojis: string[],
+    type: 'chat' | 'groupchat' = 'chat'
+  ): void {
+    const stanza = $msg({ to, type, id: this.conn.getUniqueId('react') }).c('reactions', {
+      xmlns: NS.REACTIONS,
+      id: targetId
+    })
+    for (const emoji of emojis) stanza.c('reaction').t(emoji).up()
+    this.conn.send(stanza)
+  }
+
+  // XEP-0066 plus optional XEP-0446 metadata. The url is duplicated into
+  // the body so plain clients still show something clickable.
+  sendAttachment(
+    to: string,
+    url: string,
+    type: 'chat' | 'groupchat' = 'chat',
+    meta?: AttachmentMeta
+  ): string {
+    const id = this.conn.getUniqueId('msg')
+    const originId = this.conn.getUniqueId('origin')
+    const stanza = $msg({ to, type, id })
+      .c('body')
+      .t(url)
+      .up()
+      .c('origin-id', { xmlns: NS.STANZA_IDS, id: originId })
+      .up()
+      .c('x', { xmlns: NS.OOB })
+      .c('url')
+      .t(url)
+      .up()
+      .up()
+    if (meta) {
+      const file = stanza.c('file', { xmlns: NS.FILE_METADATA })
+      if (meta.mediaType) file.c('media-type').t(meta.mediaType).up()
+      if (meta.name) file.c('name').t(meta.name).up()
+      if (meta.size !== undefined) file.c('size').t(String(meta.size)).up()
+      if (meta.duration !== undefined) file.c('duration').t(String(meta.duration)).up()
+      file.up()
+    }
+    stanza.c('request', { xmlns: NS.RECEIPTS })
+    this.conn.send(stanza)
     return id
   }
 
@@ -148,6 +263,123 @@ export class XmppConnection implements ChatConnection {
 
   sendMarker(to: string, id: string, marker: MarkerType): void {
     this.conn.send($msg({ to, type: 'chat' }).c(marker, { xmlns: NS.MARKERS, id }))
+  }
+
+  // ---- HTTP upload (XEP-0363) ----------------------------------------------
+
+  // Finds the upload service: items disco on our server domain, then info
+  // disco on each item until one advertises the http upload feature.
+  discoverUploadService(onDone: (serviceJid: string | null) => void): void {
+    const domain = jidDomain(this.jid)
+    if (!domain) {
+      onDone(null)
+      return
+    }
+    this.sendIq(
+      $iq({ type: 'get', to: domain, id: this.conn.getUniqueId('disco-items') }).c('query', {
+        xmlns: NS.DISCO_ITEMS
+      }),
+      (stanza) => {
+        const items = stanza.getElementsByTagNameNS(NS.DISCO_ITEMS, 'item')
+        const jids: string[] = []
+        for (let i = 0; i < items.length; i++) {
+          const jid = items.item(i)?.getAttribute('jid')
+          if (jid) jids.push(jid)
+        }
+        this.probeUploadServices(jids, onDone)
+      },
+      () => onDone(null)
+    )
+  }
+
+  private probeUploadServices(jids: string[], onDone: (serviceJid: string | null) => void): void {
+    const [next, ...rest] = jids
+    if (!next) {
+      onDone(null)
+      return
+    }
+    this.sendIq(
+      $iq({ type: 'get', to: next, id: this.conn.getUniqueId('disco-info') }).c('query', {
+        xmlns: NS.DISCO_INFO
+      }),
+      (stanza) => {
+        const features = stanza.getElementsByTagNameNS(NS.DISCO_INFO, 'feature')
+        for (let i = 0; i < features.length; i++) {
+          if (features.item(i)?.getAttribute('var') === NS.HTTP_UPLOAD) {
+            onDone(next)
+            return
+          }
+        }
+        this.probeUploadServices(rest, onDone)
+      },
+      () => this.probeUploadServices(rest, onDone)
+    )
+  }
+
+  requestUploadSlot(
+    name: string,
+    size: number,
+    mediaType: string,
+    onDone: (slot: UploadSlot | null) => void
+  ): void {
+    this.discoverUploadService((serviceJid) => {
+      if (!serviceJid) {
+        onDone(null)
+        return
+      }
+      this.sendIq(
+        $iq({ type: 'get', to: serviceJid, id: this.conn.getUniqueId('upload') })
+          .c('request', { xmlns: NS.HTTP_UPLOAD })
+          .c('filename')
+          .t(name)
+          .up()
+          .c('size')
+          .t(String(size))
+          .up()
+          .c('content-type')
+          .t(mediaType),
+        (stanza) => {
+          const slot = stanza.getElementsByTagNameNS(NS.HTTP_UPLOAD, 'slot').item(0)
+          const put = slot?.getElementsByTagName('put').item(0) ?? null
+          const get = slot?.getElementsByTagName('get').item(0) ?? null
+          // url is an attribute in urn:xmpp:http:upload:0 and text content
+          // in the newer namespace, so accept both
+          const putUrl = put?.getAttribute('url') ?? put?.textContent?.trim() ?? null
+          const getUrl = get?.getAttribute('url') ?? get?.textContent?.trim() ?? null
+          onDone(putUrl && getUrl ? { putUrl, getUrl } : null)
+        },
+        () => onDone(null)
+      )
+    })
+  }
+
+  // Plain PUT of the blob to the slot url. fetch cannot report upload
+  // progress, so a progress callback switches to XMLHttpRequest.
+  uploadFile(
+    putUrl: string,
+    file: Blob,
+    headers: Record<string, string> = {},
+    onProgress?: (fraction: number) => void
+  ): Promise<void> {
+    if (!onProgress) {
+      return fetch(putUrl, { method: 'PUT', headers, body: file }).then((res) => {
+        if (!res.ok) throw new Error(`upload failed: ${res.status}`)
+      })
+    }
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total)
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve()
+        else reject(new Error(`upload failed: ${xhr.status}`))
+      }
+      xhr.onerror = () => reject(new Error('upload failed'))
+      xhr.open('PUT', putUrl)
+      for (const [key, value] of Object.entries(headers)) xhr.setRequestHeader(key, value)
+      xhr.send(file)
+    })
   }
 
   // ---- presence / subscription -------------------------------------------

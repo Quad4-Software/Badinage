@@ -1,17 +1,29 @@
+import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
 import { accounts } from './accounts.svelte'
-import { ChatStore } from './chats.svelte'
+import { ChatStore, type ChatMessage } from './chats.svelte'
+
+export interface ComposerContext {
+  // replying to this message
+  replyTo?: ChatMessage | undefined
+  // editing our own message
+  editing?: ChatMessage | undefined
+}
 
 class AppStore {
   chats = new Map<string, ChatStore>()
   activePeer = $state<string | null>(null)
+  // optional second chat pane (paneforge split view)
+  splitPeer = $state<string | null>(null)
   sidebarOpen = $state(false)
   settingsOpen = $state(false)
   loginOpen = $state(false)
   joinRoomOpen = $state(false)
   addContactOpen = $state(false)
   composerFocus: (() => void) | undefined
+  composer = $state<ComposerContext>({})
+  drafts = new Map<string, string>()
 
   private handlers = new Map<string, () => void>()
   private bound = new Set<string>()
@@ -49,8 +61,29 @@ class AppStore {
     this.activePeer = peers[next] ?? null
   }
 
+  draftKey(peer: string): string {
+    return `${accounts.active?.jid ?? ''}:${bareJid(peer)}`
+  }
+
+  getDraft(peer: string): string {
+    return this.drafts.get(this.draftKey(peer)) ?? ''
+  }
+
+  setDraft(peer: string, value: string): void {
+    const key = this.draftKey(peer)
+    if (value) this.drafts.set(key, value)
+    else this.drafts.delete(key)
+  }
+
   selectPeer(peer: string | null): void {
-    this.activePeer = peer ? bareJid(peer) : null
+    const bare = peer ? bareJid(peer) : null
+    // if the picked conversation lives in the split pane, swap the panes
+    // instead of showing the same conversation twice
+    if (bare && bare === this.splitPeer) {
+      this.splitPeer = this.activePeer
+    }
+    this.activePeer = bare
+    this.composer = {}
     if (!peer) return
     const account = accounts.active
     if (!account) return
@@ -68,6 +101,7 @@ class AppStore {
       )
     }
     // tell the sender the latest incoming message was displayed
+    if (!settings.current.sendReadMarkers) return
     const messages = conversation.messages
     for (let i = messages.length - 1; i >= 0; i--) {
       const message = messages[i]
@@ -91,7 +125,13 @@ class AppStore {
     account.connection.events.on('message', (message) => {
       store.ingest(message, this.activePeer)
       // auto-receipt for chat messages that asked for one
-      if (message.receiptRequest && message.body && message.type === 'chat' && message.id) {
+      if (
+        settings.current.sendReceipts &&
+        message.receiptRequest &&
+        message.body &&
+        message.type === 'chat' &&
+        message.id
+      ) {
         account.connection.sendReceipt(bareJid(message.from), message.id)
       }
     })

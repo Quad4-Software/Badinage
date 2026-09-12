@@ -48,7 +48,23 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       and replies, reachable from the login screen
 - [x] Pixel-art logo, favicons, PWA icons, og card (pnpm icons)
 - [x] Screenshot tool (pnpm screenshot) + README demo image
-- [x] Stanza parsing unit tests (carbons, MAM, MUC presence, receipts)
+- [x] Stanza parsing unit tests (carbons, MAM, MUC presence, receipts,
+      replies, reactions, corrections, attachments)
+- [x] XEP-0461 replies with quote block + fallback stripping, click-to-jump
+- [x] XEP-0444 reactions: emoji picker, per-sender replace, retraction,
+      grouped pills
+- [x] XEP-0308 message correction: edit own message, edited marker
+- [x] XEP-0363 HTTP upload: service discovery, slot request, PUT, data-URI
+      fallback for small files, image preview and file chips
+- [x] Voice messages: MediaRecorder capture (ogg/opus), waveform player
+- [x] Sidebar: search, collapsible sections, circular unread badges
+- [x] Resizable layout via paneforge: sidebar drag handle + split view for
+      a second conversation
+- [x] Composer: friendly placeholder, drafts per conversation, emoji
+      picker, reply/edit context bars, attach + voice buttons
+- [x] Privacy settings: typing notifications, receipts, read markers
+- [x] Presence status picker (online/away/busy) in account switcher
+- [x] Demo screenshot script captures light + dark variants
 
 ## Decisions to make
 
@@ -71,12 +87,11 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## One-to-one chat
 
-- [ ] XEP-0308 correction, XEP-0424 retraction, XEP-0461 replies,
-      XEP-0444 reactions, XEP-0382 spoilers, XEP-0393 styling, XEP-0245 /me
-- [ ] XEP-0363 HTTP upload: slot request, PUT with progress, Cookie header
-      gotcha, image preview, aesgcm later for OMEMO
-- [ ] Draft persistence per conversation
+- [ ] XEP-0424 retraction, XEP-0382 spoilers, XEP-0393 styling,
+      XEP-0245 /me
+- [ ] Upload progress UI, aesgcm for OMEMO later
 - [ ] Link preview policy decision (privacy vs convenience)
+- [ ] Reaction aggregation edge cases (same emoji from many senders list)
 
 ## Groupchat (XEP-0045)
 
@@ -87,6 +102,7 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] XEP-0425 moderation actions (retract, kick, ban)
 - [ ] MUC MAM history paging, occupants-can-see-real-jids handling
 - [ ] Self-ping and rejoin on kick/disconnect, join error surface
+- [ ] Per-sender MUC reaction ids need occupant-id or stable nick mapping
 
 ## OMEMO (own library, packages/omemo, 0BSD)
 

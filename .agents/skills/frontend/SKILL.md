@@ -8,7 +8,10 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
 - ui/primitives/ holds shadcn-style Bits UI wrappers with index.ts barrels:
   avatar, alert-dialog, button, checkbox, dialog, input, kbd, label,
   scroll-area, separator, skeleton, sonner, switch, tooltip
-- ui/components/ holds app components, one file each
+- ui/components/ holds app components, one file each. Shared building
+  blocks: avatar (initials), presence-dot, unread-badge snippet in
+  chat-sidebar, emoji-picker, reaction-picker, voice-player,
+  message-attachments
 - state/ holds runes stores in .svelte.ts files
 - app.css holds the theme tokens, Tailwind v4 CSS-first config
 
@@ -33,3 +36,17 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
   KEYBINDING_ACTIONS, never fire global shortcuts while typing in inputs.
 - a11y is enforced: svelte-check fails on warnings, axe runs in e2e, and
   e2e/ui.test.ts measures target sizes, overflow and dialog z-index.
+- Overflow traps: always add min-w-0 to flex children that must shrink,
+  truncate long JIDs with truncate, break-all for user text like
+  subscription reasons, shrink-0 on icons/badges.
+- Unread badges and count chips are fixed-size circles: size-5 rounded-full
+  flex items-center justify-center, never padding-shaped ovals.
+- $state objects cannot be structured-cloned into IndexedDB; call
+  $state.snapshot() before idb.set.
+- $state() is only legal in a variable declaration or class field
+  initializer, not inside methods. Wrap object literals by declaring a
+  const first.
+- Resizable layouts use paneforge PaneGroup/Pane/PaneResizer with
+  autoSaveId; the mobile shell keeps the hidden/swap pattern instead.
+- Dropdown content that should match its trigger width uses
+  w-(--bits-dropdown-menu-anchor-width).

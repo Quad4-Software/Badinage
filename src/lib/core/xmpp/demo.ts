@@ -4,7 +4,14 @@
 
 import { Emitter } from '$lib/core/events'
 
-import type { ConnectionStatus, SubscriptionRequest } from './connection'
+import type {
+  AttachmentMeta,
+  ConnectionStatus,
+  MamPageResult,
+  SendMessageOptions,
+  SubscriptionRequest,
+  UploadSlot
+} from './connection'
 import type {
   ChatState,
   IncomingMessage,
@@ -42,32 +49,164 @@ const ROOM_OCCUPANTS = [
   { nick: 'wren', affiliation: 'none', role: 'visitor' }
 ]
 
-const DM_HISTORY: Record<string, { who: 'them' | 'me'; body: string; agoMin: number }[]> = {
+type DmHistoryEntry = {
+  who: 'them' | 'me'
+  body: string
+  agoMin: number
+  stanzaId: string
+  replyTo?: IncomingMessage['replyTo']
+  replaceId?: IncomingMessage['replaceId']
+  attachments?: IncomingMessage['attachments']
+  signed?: boolean
+}
+
+// A one second 8-bit mono PCM sine blip, built at module load so the demo
+// voice message has playable audio without shipping a binary asset.
+function demoVoiceDataUri(): string {
+  const rate = 8000
+  const n = rate
+  const bytes = new Uint8Array(44 + n)
+  const v = new DataView(bytes.buffer)
+  const tag = (offset: number, s: string) => {
+    for (let i = 0; i < s.length; i++) v.setUint8(offset + i, s.charCodeAt(i))
+  }
+  tag(0, 'RIFF')
+  v.setUint32(4, 36 + n, true)
+  tag(8, 'WAVE')
+  tag(12, 'fmt ')
+  v.setUint32(16, 16, true)
+  v.setUint16(20, 1, true)
+  v.setUint16(22, 1, true)
+  v.setUint32(24, rate, true)
+  v.setUint32(28, rate, true)
+  v.setUint16(32, 1, true)
+  v.setUint16(34, 8, true)
+  tag(36, 'data')
+  v.setUint32(40, n, true)
+  for (let i = 0; i < n; i++) {
+    const fade = Math.min(1, (n - i) / 2000)
+    bytes[44 + i] = 128 + Math.round(80 * fade * Math.sin((i / rate) * 440 * 2 * Math.PI))
+  }
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return `data:audio/wav;base64,${btoa(bin)}`
+}
+
+const VOICE_WAV = demoVoiceDataUri()
+
+const DM_HISTORY: Record<string, DmHistoryEntry[]> = {
   'aria@badinage.local': [
-    { who: 'them', body: 'did the deploy land?', agoMin: 190 },
-    { who: 'me', body: 'yes, about an hour ago. watching metrics now', agoMin: 185 },
-    { who: 'them', body: 'error rate looks flat. ship it', agoMin: 120 },
-    { who: 'me', body: 'badinage release notes drafted too', agoMin: 118 },
-    { who: 'them', body: 'nice. review tomorrow?', agoMin: 14 }
+    { who: 'them', body: 'did the deploy land?', agoMin: 190, stanzaId: 'd-hist-aria-1' },
+    {
+      who: 'me',
+      body: 'yes, about an hour ago. watching metrics now',
+      agoMin: 185,
+      stanzaId: 'd-hist-aria-2'
+    },
+    {
+      who: 'them',
+      body: 'error rate looks flat. ship it',
+      agoMin: 120,
+      stanzaId: 'd-hist-aria-3'
+    },
+    {
+      who: 'me',
+      body: 'badinage release notes drafted too',
+      agoMin: 118,
+      stanzaId: 'd-hist-aria-4'
+    },
+    { who: 'them', body: 'nice. review tomorrow?', agoMin: 14, stanzaId: 'd-hist-aria-5' },
+    // aria corrects her previous message
+    {
+      who: 'them',
+      body: 'review at 10?',
+      agoMin: 13,
+      stanzaId: 'd-hist-aria-6',
+      replaceId: 'd-hist-aria-5'
+    },
+    {
+      who: 'them',
+      body: 'quick voice note',
+      agoMin: 12,
+      stanzaId: 'd-hist-aria-7',
+      attachments: [{ url: VOICE_WAV, mediaType: 'audio/ogg', name: 'voice.ogg', duration: 7 }]
+    }
   ],
   'cleo@badinage.local': [
-    { who: 'them', body: 'the MUC history sync works!', agoMin: 60 },
-    { who: 'me', body: 'told you the scrollback would land', agoMin: 58 },
-    { who: 'them', body: 'screenshots look great too', agoMin: 5 }
+    {
+      who: 'them',
+      body: 'the MUC history sync works!',
+      agoMin: 60,
+      stanzaId: 'd-hist-cleo-1',
+      signed: true
+    },
+    {
+      who: 'me',
+      body: 'told you the scrollback would land',
+      agoMin: 58,
+      stanzaId: 'd-hist-cleo-2'
+    },
+    // cleo replies to her own earlier message
+    {
+      who: 'them',
+      body: 'it really does, finally',
+      agoMin: 57,
+      stanzaId: 'd-hist-cleo-3',
+      replyTo: {
+        id: 'd-hist-cleo-1',
+        from: 'cleo@badinage.local',
+        quote: 'the MUC history sync works!'
+      }
+    },
+    { who: 'them', body: 'screenshots look great too', agoMin: 5, stanzaId: 'd-hist-cleo-4' },
+    {
+      who: 'them',
+      body: 'the logo export',
+      agoMin: 4,
+      stanzaId: 'd-hist-cleo-5',
+      attachments: [
+        { url: '/icons/icon-192.png', mediaType: 'image/png', name: 'logo.png', size: 7264 }
+      ]
+    }
   ],
   'dmitri@badinage.local': [
-    { who: 'me', body: 'can you check the nginx conf?', agoMin: 400 },
-    { who: 'them', body: 'after standup', agoMin: 390 }
+    { who: 'me', body: 'can you check the nginx conf?', agoMin: 400, stanzaId: 'd-hist-dmitri-1' },
+    { who: 'them', body: 'after standup', agoMin: 390, stanzaId: 'd-hist-dmitri-2' }
   ]
 }
 
-const ROOM_HISTORY: { nick: string; body: string; agoMin: number }[] = [
-  { nick: 'cleo', body: 'morning all', agoMin: 95 },
-  { nick: 'dmitri', body: 'morning. anyone seen the prosody logs?', agoMin: 90 },
-  { nick: 'aria', body: 'rotate at midnight filled the disk again', agoMin: 88 },
-  { nick: 'wren', body: 'I put a fix in the dev compose file', agoMin: 40 },
-  { nick: 'cleo', body: 'merged, thanks', agoMin: 35 },
-  { nick: 'wren', body: 'badinage demo mode looks cute btw', agoMin: 6 }
+const ROOM_HISTORY: {
+  nick: string
+  body: string
+  agoMin: number
+  stanzaId: string
+  attachments?: IncomingMessage['attachments']
+}[] = [
+  { nick: 'cleo', body: 'morning all', agoMin: 95, stanzaId: 'room-1' },
+  {
+    nick: 'dmitri',
+    body: 'morning. anyone seen the prosody logs?',
+    agoMin: 90,
+    stanzaId: 'room-2'
+  },
+  {
+    nick: 'aria',
+    body: 'rotate at midnight filled the disk again',
+    agoMin: 88,
+    stanzaId: 'room-3'
+  },
+  { nick: 'wren', body: 'I put a fix in the dev compose file', agoMin: 40, stanzaId: 'room-4' },
+  { nick: 'cleo', body: 'merged, thanks', agoMin: 35, stanzaId: 'room-5' },
+  {
+    nick: 'aria',
+    body: 'rough mockup for the profile pane',
+    agoMin: 20,
+    stanzaId: 'room-6',
+    attachments: [
+      { url: '/icons/icon-192.png', mediaType: 'image/png', name: 'mockup.png', size: 7264 }
+    ]
+  },
+  { nick: 'wren', body: 'badinage demo mode looks cute btw', agoMin: 6, stanzaId: 'room-7' }
 ]
 
 const REPLIES = [
@@ -116,11 +255,86 @@ export class DemoConnection {
     return `demo-${prefix}-${Math.random().toString(36).slice(2, 10)}`
   }
 
-  sendChatMessage(to: string, body: string): string {
+  sendChatMessage(
+    to: string,
+    body: string,
+    type: 'chat' | 'groupchat' = 'chat',
+    opts?: SendMessageOptions
+  ): string {
     const id = this.uniqueId('msg')
-    this.timers.push(setTimeout(() => this.simulateReply(to), 1200 + Math.random() * 2400))
+    this.timers.push(setTimeout(() => this.simulateReply(to, type), 1200 + Math.random() * 2400))
     void body
+    void opts
     return id
+  }
+
+  sendReaction(
+    to: string,
+    targetId: string,
+    emojis: string[],
+    type: 'chat' | 'groupchat' = 'chat'
+  ): void {
+    // echo the reaction back from a peer so the demo shows a live update
+    const isRoom = type === 'groupchat' || to === ROOM || to.includes('@conference.')
+    this.timers.push(
+      setTimeout(() => {
+        this.events.emit('message', {
+          from: isRoom ? `${ROOM}/aria` : to,
+          to: this.jid,
+          body: '',
+          type: isRoom ? 'groupchat' : 'chat',
+          nick: isRoom ? 'aria' : undefined,
+          stanzaId: this.uniqueId('react'),
+          reactionTo: { id: targetId, emojis }
+        })
+      }, 800)
+    )
+  }
+
+  sendAttachment(
+    to: string,
+    url: string,
+    type: 'chat' | 'groupchat' = 'chat',
+    meta?: AttachmentMeta
+  ): string {
+    // pretend the file went out and let the peer respond as usual
+    const id = this.uniqueId('att')
+    this.timers.push(setTimeout(() => this.simulateReply(to, type), 1200 + Math.random() * 2400))
+    void url
+    void meta
+    return id
+  }
+
+  discoverUploadService(onDone: (serviceJid: string | null) => void): void {
+    // pretend a service exists; slot requests still fall back to data uris
+    onDone('upload.badinage.local')
+  }
+
+  requestUploadSlot(
+    name: string,
+    size: number,
+    mediaType: string,
+    onDone: (slot: UploadSlot | null) => void
+  ): void {
+    // never grant a slot so the ui exercises its data uri fallback
+    void name
+    void size
+    void mediaType
+    onDone(null)
+  }
+
+  uploadFile(
+    putUrl: string,
+    file: Blob,
+    headers?: Record<string, string>,
+    onProgress?: (fraction: number) => void
+  ): Promise<void> {
+    // nothing is really uploaded; report completion anyway
+    void putUrl
+    void file
+    void headers
+    onProgress?.(1)
+    return Promise.resolve()
   }
 
   sendChatState(to: string, state: ChatState, type: 'chat' | 'groupchat' = 'chat'): void {
@@ -238,8 +452,15 @@ export class DemoConnection {
     void subject
   }
 
-  queryArchive(): void {
-    // demo data is seeded eagerly, no archive to page
+  queryArchive(
+    peerJid: string,
+    opts: { max?: number; before?: string | undefined; room?: boolean | undefined },
+    onDone: (result: MamPageResult) => void
+  ): void {
+    // demo data is seeded eagerly; report the archive as exhausted
+    void peerJid
+    void opts
+    onDone({ complete: true })
   }
 
   enableCarbons(): void {
@@ -262,9 +483,13 @@ export class DemoConnection {
           to: m.who === 'me' ? peer : this.jid,
           body: m.body,
           type: 'chat',
-          stanzaId: this.uniqueId('hist'),
+          stanzaId: m.stanzaId,
           delay: ago(m.agoMin),
-          carbon: m.who === 'me' ? 'sent' : undefined
+          carbon: m.who === 'me' ? 'sent' : undefined,
+          replyTo: m.replyTo,
+          replaceId: m.replaceId,
+          attachments: m.attachments,
+          signed: m.signed
         })
       }
     }
@@ -276,10 +501,22 @@ export class DemoConnection {
         body: m.body,
         type: 'groupchat',
         nick: m.nick,
-        stanzaId: this.uniqueId('room'),
-        delay: ago(m.agoMin)
+        stanzaId: m.stanzaId,
+        delay: ago(m.agoMin),
+        attachments: m.attachments
       })
     }
+    // cleo reacts to wren's last room message
+    this.events.emit('message', {
+      from: `${ROOM}/cleo`,
+      to: this.jid,
+      body: '',
+      type: 'groupchat',
+      nick: 'cleo',
+      stanzaId: 'room-8',
+      delay: ago(5),
+      reactionTo: { id: 'room-7', emojis: ['❤️'] }
+    })
     // a fresh unread + a pending subscription request for realism
     this.timers.push(
       setTimeout(() => {
@@ -300,10 +537,35 @@ export class DemoConnection {
         })
       }, 4000)
     )
+    // aria reacts to our release notes message a few seconds in
+    this.timers.push(
+      setTimeout(() => {
+        this.events.emit('message', {
+          from: 'aria@badinage.local',
+          to: this.jid,
+          body: '',
+          type: 'chat',
+          stanzaId: this.uniqueId('live'),
+          reactionTo: { id: 'd-hist-aria-4', emojis: ['🎉'] }
+        })
+      }, 5000)
+    )
+    // a second live dm from a different contact shortly after esme's
+    this.timers.push(
+      setTimeout(() => {
+        this.events.emit('message', {
+          from: 'benedikt@badinage.local',
+          to: this.jid,
+          body: 'back from lunch, the deploy looks clean',
+          type: 'chat',
+          stanzaId: this.uniqueId('live')
+        })
+      }, 5500)
+    )
   }
 
-  private simulateReply(to: string): void {
-    const isRoom = to === ROOM || to.startsWith('conference.')
+  private simulateReply(to: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    const isRoom = type === 'groupchat' || to === ROOM || to.includes('@conference.')
     const from = isRoom ? `${ROOM}/aria` : to
     this.events.emit('message', {
       from,

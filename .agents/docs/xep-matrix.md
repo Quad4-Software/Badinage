@@ -16,7 +16,7 @@ Status: done | partial | planned | deferred
 | XEP-0050      | Ad-hoc commands            | deferred |                                                              |
 | XEP-0054      | vCard                      | planned  | avatars via vCard4 + PEP                                     |
 | XEP-0059      | Result set management      | partial  | max/before in MAM queries, fin parsing                       |
-| XEP-0066      | Out of band data           | planned  | URL in messages                                              |
+| XEP-0066      | Out of band data           | done     | parsed on incoming attachments                               |
 | XEP-0077      | In-band registration       | planned  | account creation on the login screen                         |
 | XEP-0085      | Chat states                | partial  | composing/paused sent for DMs, all states parsed             |
 | XEP-0153      | vCard avatars              | planned  |                                                              |
@@ -29,13 +29,13 @@ Status: done | partial | planned | deferred
 | XEP-0249      | Direct MUC invitations     | planned  |                                                              |
 | XEP-0280      | Message carbons            | done     | enabled on connect, sent/received unwrapped                  |
 | XEP-0297      | Stanza forwarding          | done     | used by carbons and MAM                                      |
-| XEP-0308      | Message correction         | planned  |                                                              |
+| XEP-0308      | Message correction         | done     | edit own message, replace by id                              |
 | XEP-0313      | Message archive management | partial  | fetched per conversation on open, RSM paging                 |
 | XEP-0333      | Chat markers               | done     | displayed sent on view, all three parsed                     |
 | XEP-0352      | Client state indication    | planned  | mobile tab backgrounding                                     |
 | XEP-0357      | Push notifications         | deferred | needs app server                                             |
 | XEP-0359      | Stanza IDs                 | done     | stanza-id/origin-id dedup in chat store                      |
-| XEP-0363      | HTTP file upload           | planned  | slot request + PUT, Cookie gotcha documented                 |
+| XEP-0363      | HTTP file upload           | done     | disco + slot + PUT, data-uri fallback                        |
 | XEP-0382      | Spoilers                   | planned  |                                                              |
 | XEP-0384      | OMEMO                      | library  | own impl in packages/omemo, interop vectors vs python-omemo  |
 | XEP-0385      | Stateless IM               | deferred |                                                              |
@@ -46,7 +46,9 @@ Status: done | partial | planned | deferred
 | XEP-0421      | Occupant IDs               | planned  | required for MUC OMEMO                                       |
 | XEP-0424      | Message retraction         | planned  |                                                              |
 | XEP-0425      | Message moderation         | planned  | MUC moderator removal                                        |
-| XEP-0444      | Reactions                  | planned  |                                                              |
+| XEP-0444      | Reactions                  | done     | picker, per-sender replace, retract                          |
+| XEP-0446      | File metadata element      | partial  | media-type/name/size/duration on attachments                 |
+| XEP-0447      | Stateless file sharing     | partial  | SIMS sources parsed as fallback, not sent                    |
 | XEP-0454      | OMEMO media sharing        | planned  | aesgcm URLs                                                  |
-| XEP-0461      | Replies                    | planned  |                                                              |
+| XEP-0461      | Replies                    | done     | quote block + fallback strip, jump                           |
 | XEP-0484      | FAST auth                  | deferred | needs SASL2 first                                            |

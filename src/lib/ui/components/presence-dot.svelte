@@ -5,11 +5,11 @@
 
   const color = $derived(
     presence === 'chat' || presence === 'online'
-      ? 'bg-green-500'
+      ? 'bg-success'
       : presence === 'away' || presence === 'xa'
-        ? 'bg-yellow-500'
+        ? 'bg-warning'
         : presence === 'dnd'
-          ? 'bg-red-500'
+          ? 'bg-destructive'
           : 'bg-muted-foreground/40'
   )
 </script>

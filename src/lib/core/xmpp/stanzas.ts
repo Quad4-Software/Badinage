@@ -18,6 +18,14 @@ export interface RosterItem {
 export type ChatState = 'active' | 'composing' | 'paused' | 'inactive' | 'gone'
 export type MarkerType = 'received' | 'displayed' | 'acknowledged'
 
+export interface Attachment {
+  url: string
+  mediaType: string
+  name?: string | undefined
+  size?: number | undefined
+  duration?: number | undefined
+}
+
 export interface IncomingMessage {
   from: string
   to: string
@@ -38,6 +46,19 @@ export interface IncomingMessage {
   marker?: { id: string; type: MarkerType } | undefined
   nick?: string | undefined
   subject?: string | undefined
+  // XEP-0461: this message replies to the stanza with this id, sent by the
+  // jid in from. quote is the text recovered from the body fallback.
+  replyTo?: { id: string; from: string; quote?: string | undefined } | undefined
+  // XEP-0444: reactions targeting the stanza with this id. An empty emojis
+  // list retracts all previous reactions from this sender.
+  reactionTo?: { id: string; emojis: string[] } | undefined
+  // XEP-0308: this body replaces the stanza with this id.
+  replaceId?: string | undefined
+  attachments?: Attachment[] | undefined
+  // signature state for the UI: set by transports that can prove it
+  // (OMEMO once verification lands, OpenPGP later). Not parsed here.
+  signed?: boolean | undefined
+  encrypted?: boolean | undefined
 }
 
 export interface PresenceUpdate {
@@ -79,6 +100,64 @@ function findText(el: Element, local: string): string | null {
 function firstTag(el: Element, local: string): Element | null {
   const found = el.getElementsByTagName(local)
   return found.length > 0 ? (found.item(0) as Element) : null
+}
+
+// XEP-0461 senders add a XEP-0393 style quote fallback at the top of the
+// body: one leading line per quoted line, each prefixed with '> '. Strip
+// those lines from the body and return the quoted text on its own.
+function stripReplyFallback(body: string): { rest: string; quote?: string | undefined } {
+  const lines = body.split('\n')
+  const quoteLines: string[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i] ?? ''
+    if (line === '>' || line.startsWith('> ')) {
+      quoteLines.push(line.slice(1).replace(/^ /, ''))
+      i++
+    } else {
+      break
+    }
+  }
+  if (i === 0) return { rest: body }
+  return { rest: lines.slice(i).join('\n'), quote: quoteLines.join('\n') }
+}
+
+// XEP-0066 out-of-band data, optionally enriched by XEP-0446 file metadata.
+// The metadata element also matches when it sits inside a XEP-0447 SIMS
+// media-sharing wrapper, in which case the url comes from a data reference
+// in the sources element. Returns at most one attachment.
+function parseAttachments(inner: Element): Attachment[] {
+  const oob = find(inner, NS.OOB, 'x')
+  const oobUrl = oob ? (find(oob, NS.OOB, 'url')?.textContent?.trim() ?? '') : ''
+  const file = find(inner, NS.FILE_METADATA, 'file')
+  let url = oobUrl
+  if (!url && file) {
+    for (const ref of findAll(inner, NS.REFERENCE, 'reference')) {
+      const uri = ref.getAttribute('uri')
+      if (uri) {
+        url = uri
+        break
+      }
+    }
+  }
+  if (!url && !file) return []
+  const attachment: Attachment = { url, mediaType: '' }
+  if (file) {
+    attachment.mediaType = find(file, NS.FILE_METADATA, 'media-type')?.textContent?.trim() ?? ''
+    const name = find(file, NS.FILE_METADATA, 'name')?.textContent?.trim()
+    if (name) attachment.name = name
+    const size = Number.parseInt(
+      find(file, NS.FILE_METADATA, 'size')?.textContent?.trim() ?? '',
+      10
+    )
+    if (Number.isFinite(size)) attachment.size = size
+    const duration = Number.parseInt(
+      find(file, NS.FILE_METADATA, 'duration')?.textContent?.trim() ?? '',
+      10
+    )
+    if (Number.isFinite(duration)) attachment.duration = duration
+  }
+  return [attachment]
 }
 
 export function parseRosterItems(stanza: Element): RosterItem[] {
@@ -172,6 +251,25 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     message.receiptRequest = true
   }
 
+  const reply = find(inner, NS.REPLY, 'reply')
+  if (reply) {
+    message.replyTo = {
+      id: reply.getAttribute('id') ?? '',
+      from: reply.getAttribute('to') ?? ''
+    }
+  }
+  const reactions = find(inner, NS.REACTIONS, 'reactions')
+  if (reactions) {
+    message.reactionTo = {
+      id: reactions.getAttribute('id') ?? '',
+      emojis: findAll(reactions, NS.REACTIONS, 'reaction').map((r) => r.textContent ?? '')
+    }
+  }
+  const replace = find(inner, NS.CORRECT, 'replace')
+  if (replace) message.replaceId = replace.getAttribute('id') ?? undefined
+  const attachments = parseAttachments(inner)
+  if (attachments.length > 0) message.attachments = attachments
+
   if (type === 'groupchat') {
     message.nick = jidResource(message.from) ?? undefined
     const subject = findText(inner, 'subject')
@@ -180,12 +278,23 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
 
   const body = findText(inner, 'body')
   if (body) message.body = body
+  if (message.replyTo && message.body) {
+    const stripped = stripReplyFallback(message.body)
+    if (stripped.quote !== undefined) message.replyTo.quote = stripped.quote
+    message.body = stripped.rest
+  }
+  // file transfers often carry no body at all; the oob url doubles as one
+  if (!message.body && message.attachments?.[0]?.url) {
+    message.body = message.attachments[0].url
+  }
 
   if (
     !message.body &&
     !message.chatState &&
     !message.receiptFor &&
     !message.marker &&
+    !message.reactionTo &&
+    !message.attachments?.length &&
     message.subject === undefined
   ) {
     return null
