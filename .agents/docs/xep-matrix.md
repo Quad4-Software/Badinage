@@ -1,0 +1,52 @@
+# XEP implementation matrix
+
+Status: done | partial | planned | deferred
+
+| XEP           | Name                       | Status   | Notes                                            |
+| ------------- | -------------------------- | -------- | ------------------------------------------------ |
+| RFC 6120/6121 | Core, roster, presence     | partial  | connect, roster fetch, presence broadcast        |
+| RFC 7395      | WebSocket transport        | done     | via strophe.js                                   |
+| XEP-0124/0206 | BOSH                       | partial  | supported via strophe.js, untested               |
+| XEP-0156      | Alt connection discovery   | partial  | host-meta XML fetch                              |
+| XEP-0487      | host-meta.json             | partial  | discovery.ts reads JRD first                     |
+| XEP-0030      | Service discovery          | planned  | needed by upload, MUC, OMEMO                     |
+| XEP-0115      | Entity capabilities        | planned  | publish own caps hash                            |
+| XEP-0004      | Data forms                 | planned  | MUC config, registration                         |
+| XEP-0045      | Multi-user chat            | planned  | join, occupants, roles, subject, invites         |
+| XEP-0050      | Ad-hoc commands            | deferred |                                                  |
+| XEP-0054      | vCard                      | planned  | avatars via vCard4 + PEP                         |
+| XEP-0059      | Result set management      | planned  | required by MAM                                  |
+| XEP-0066      | Out of band data           | planned  | URL in messages                                  |
+| XEP-0077      | In-band registration       | planned  | account creation on the login screen             |
+| XEP-0085      | Chat states                | planned  | composing, paused, active                        |
+| XEP-0153      | vCard avatars              | planned  |                                                  |
+| XEP-0184      | Message receipts           | planned  |                                                  |
+| XEP-0191      | Blocking                   | planned  |                                                  |
+| XEP-0198      | Stream management          | planned  | session resume, ack tracking                     |
+| XEP-0199      | Ping                       | planned  | keepalive + latency display                      |
+| XEP-0203      | Delayed delivery           | partial  | delay stamp parsed on messages                   |
+| XEP-0245      | /me command                | planned  |                                                  |
+| XEP-0249      | Direct MUC invitations     | planned  |                                                  |
+| XEP-0280      | Message carbons            | planned  | multi-device sync                                |
+| XEP-0297      | Stanza forwarding          | planned  | used by carbons and MAM                          |
+| XEP-0308      | Message correction         | planned  |                                                  |
+| XEP-0313      | Message archive management | planned  | RSM pagination, IndexedDB cache                  |
+| XEP-0333      | Chat markers               | planned  | displayed/read markers                           |
+| XEP-0352      | Client state indication    | planned  | mobile tab backgrounding                         |
+| XEP-0357      | Push notifications         | deferred | needs app server                                 |
+| XEP-0359      | Stanza IDs                 | partial  | parsed, not yet used for dedup                   |
+| XEP-0363      | HTTP file upload           | planned  | slot request + PUT, Cookie gotcha documented     |
+| XEP-0382      | Spoilers                   | planned  |                                                  |
+| XEP-0384      | OMEMO                      | planned  | blocked on license decision, see architecture.md |
+| XEP-0385      | Stateless IM               | deferred |                                                  |
+| XEP-0388      | SASL2                      | deferred | strophe.js lacks support                         |
+| XEP-0393      | Message styling            | planned  |                                                  |
+| XEP-0402      | PEP bookmarks              | planned  | replaces XEP-0048                                |
+| XEP-0420      | Stanza content encryption  | planned  | required by OMEMO:2                              |
+| XEP-0421      | Occupant IDs               | planned  | required for MUC OMEMO                           |
+| XEP-0424      | Message retraction         | planned  |                                                  |
+| XEP-0425      | Message moderation         | planned  | MUC moderator removal                            |
+| XEP-0444      | Reactions                  | planned  |                                                  |
+| XEP-0454      | OMEMO media sharing        | planned  | aesgcm URLs                                      |
+| XEP-0461      | Replies                    | planned  |                                                  |
+| XEP-0484      | FAST auth                  | deferred | needs SASL2 first                                |

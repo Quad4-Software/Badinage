@@ -1,0 +1,26 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: badinage:latest
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+
+  # Optional XMPP server for local testing. Run with:
+  #   docker compose -f docker/compose.yaml --profile xmpp up
+  prosody:
+    image: prosody/prosody:latest
+    profiles: ['xmpp']
+    ports:
+      - '5222:5222'
+      - '5280:5280'
+      - '5281:5281'
+    volumes:
+      - prosody_data:/var/lib/prosody
+      - ./prosody.cfg.lua:/etc/prosody/prosody.cfg.lua:ro
+    restart: unless-stopped
+
+volumes:
+  prosody_data:

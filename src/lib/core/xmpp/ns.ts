@@ -1,0 +1,24 @@
+export const NS = {
+  CLIENT: 'jabber:client',
+  ROSTER: 'jabber:iq:roster',
+  DISCO_INFO: 'http://jabber.org/protocol/disco#info',
+  DISCO_ITEMS: 'http://jabber.org/protocol/disco#items',
+  MUC: 'http://jabber.org/protocol/muc',
+  MAM: 'urn:xmpp:mam:2',
+  RSM: 'http://jabber.org/protocol/rsm',
+  STANZA_IDS: 'urn:xmpp:sid:0',
+  CHAT_STATES: 'http://jabber.org/protocol/chatstates',
+  CARBONS: 'urn:xmpp:carbons:2',
+  SM: 'urn:xmpp:sm:3',
+  DELAY: 'urn:xmpp:delay',
+  HTTP_UPLOAD: 'urn:xmpp:http:upload:0',
+  VCARD_AVATAR: 'urn:xmpp:avatar:metadata',
+  BLOCKING: 'urn:xmpp:blocking',
+  OMEMO: 'urn:xmpp:omemo:2',
+  OMEMO_LEGACY: 'eu.siacs.conversations.axolotl',
+  SCE: 'urn:xmpp:sce:1',
+  BOOKMARKS: 'urn:xmpp:bookmarks:1',
+  PUBSUB: 'http://jabber.org/protocol/pubsub'
+} as const
+
+export type Namespace = (typeof NS)[keyof typeof NS]
