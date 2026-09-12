@@ -1,5 +1,7 @@
 # Badinage
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Quad4-Software/Badinage/badge)](https://scorecard.dev/viewer/?uri=github.com/Quad4-Software/Badinage)
+
 A self-hostable web XMPP client. Connects to any existing
 XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 

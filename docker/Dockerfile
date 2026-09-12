@@ -10,6 +10,7 @@ WORKDIR /app
 RUN npm install -g pnpm@11.24.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/omemo/package.json packages/omemo/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
