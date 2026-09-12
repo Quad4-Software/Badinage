@@ -1,0 +1,42 @@
+name: Bug report
+description: Something is broken
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to ...
+        2. Open ...
+        3. ...
+  - type: input
+    id: server
+    attributes:
+      label: XMPP server and version
+      placeholder: e.g. Prosody 0.12.4, ejabberd 24.x, unknown
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant console output or stanza logs
+      description: Browser console errors or redacted XMPP stanzas. Strip credentials and JIDs you do not want public.
+      render: text
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: Browser
+      options:
+        - Firefox
+        - Chromium based
+        - Safari
+        - Other

@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a feature or XEP
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like
+      description: If it is a XEP, name the number (e.g. XEP-0454).
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The use case it solves for you.
+  - type: checkboxes
+    id: omemo
+    attributes:
+      label: Area
+      options:
+        - label: packages/omemo (the OMEMO library, not the client UI)
