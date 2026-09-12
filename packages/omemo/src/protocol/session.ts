@@ -25,7 +25,7 @@ import {
   x25519SharedSecret
 } from '../crypto/keys'
 import type { KeyPair } from '../crypto/keys'
-import { PROFILES, marshalMessage, unmarshalMessage } from './profiles'
+import { marshalMessage, unmarshalMessage } from './profiles'
 import type { WireProfile } from './profiles'
 import { decodeOmemoMessage, encodeOmemoMessage } from './messages'
 

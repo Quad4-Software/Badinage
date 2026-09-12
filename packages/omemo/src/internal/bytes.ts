@@ -70,7 +70,10 @@ export function base64Encode(data: Uint8Array): string {
 }
 
 export function base64Decode(text: string): Uint8Array {
-  const clean = text.replace(/[\s]+/g, '').replace(/=+$/, '')
+  const stripped = text.replace(/\s/g, '')
+  let end = stripped.length
+  while (end > 0 && stripped.charCodeAt(end - 1) === 61) end -= 1
+  const clean = stripped.slice(0, end)
   const out = new Uint8Array(Math.floor((clean.length * 3) / 4))
   let written = 0
   for (let i = 0; i < clean.length; i += 4) {

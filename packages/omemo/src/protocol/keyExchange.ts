@@ -9,8 +9,8 @@ import type { Namespace } from '../constants'
 import { ParseError } from '../errors'
 import { concatBytes } from '../internal/bytes'
 import { readFields, requireBytes, requireVarint } from '../internal/protobuf'
-import { decodeKeyExchange, encodeKeyExchange } from './messages'
-import { decodeCurveKeyWire, encodeCurveKeyWire } from '../crypto/keys'
+import { encodeKeyExchange } from './messages'
+import { decodeCurveKeyWire } from '../crypto/keys'
 import type { PendingKeyExchange } from './session'
 
 export interface ParsedKeyExchange {

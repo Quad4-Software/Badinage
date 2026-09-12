@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { bytesEqual, hexToBytes, randomBytes, utf8ToBytes } from '../src/internal/bytes'
-import { el, parseXml } from '../src/internal/xml'
+import { randomBytes, utf8ToBytes } from '../src/internal/bytes'
+import { parseXml } from '../src/internal/xml'
 import {
   curveSecretSignBit,
   encodeCurveKeyWire,

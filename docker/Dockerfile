@@ -4,10 +4,32 @@
 ARG NODE_IMAGE=docker.io/library/node:26-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868
 ARG NGINX_IMAGE=docker.io/nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
 
+# pnpm is pinned by sha256 against the upstream release tarball. Bump the
+# version and both sums together.
+ARG PNPM_VERSION=11.24.0
+ARG PNPM_SHA256_X64=2fce00e10729d0c1f3836d499b908697fd3cd0832332651fbcee79c0a7442dcb
+ARG PNPM_SHA256_ARM64=950160e3d1d039e0bd1f234da5a307fdc9c1d6b9c030683adfcb85f607c7d500
+
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 
-RUN npm install -g pnpm@11.24.0
+ARG PNPM_VERSION
+ARG PNPM_SHA256_X64
+ARG PNPM_SHA256_ARM64
+ARG TARGETARCH
+
+RUN set -eu; \
+    case "${TARGETARCH:-$(uname -m)}" in \
+      amd64|x86_64) pnpm_arch=x64; pnpm_sum="$PNPM_SHA256_X64" ;; \
+      arm64|aarch64) pnpm_arch=arm64; pnpm_sum="$PNPM_SHA256_ARM64" ;; \
+      *) echo "unsupported arch" >&2; exit 1 ;; \
+    esac; \
+    wget -qO /tmp/pnpm.tgz "https://github.com/pnpm/pnpm/releases/download/v${PNPM_VERSION}/pnpm-linux-${pnpm_arch}-musl.tar.gz"; \
+    echo "$pnpm_sum  /tmp/pnpm.tgz" | sha256sum -c -; \
+    mkdir -p /usr/local/lib/pnpm; \
+    tar -xzf /tmp/pnpm.tgz -C /usr/local/lib/pnpm; \
+    ln -s /usr/local/lib/pnpm/pnpm /usr/local/bin/pnpm; \
+    rm /tmp/pnpm.tgz
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/omemo/package.json packages/omemo/
