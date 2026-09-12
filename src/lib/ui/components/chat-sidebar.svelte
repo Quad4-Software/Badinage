@@ -4,7 +4,7 @@
   import { app } from '$lib/state/app.svelte'
   import { ChevronDown, ChevronRight, Hash, Search, Settings, UserPlus } from '@lucide/svelte'
 
-  import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
+  import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { Input } from '$lib/ui/primitives/input'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
@@ -51,8 +51,11 @@
   let showRooms = $state(true)
   let showContacts = $state(true)
 
+  // roster names keyed by jid so list rendering is not O(conv x roster)
+  const rosterNames = $derived(new Map(roster.map((c) => [c.jid, c.name])))
+
   function displayName(peerJid: string): string {
-    return roster.find((c) => c.jid === peerJid)?.name || peerJid
+    return rosterNames.get(peerJid) || peerJid
   }
 
   function initials(name: string): string {
@@ -214,6 +217,9 @@
             onclick={() => open(room.peerJid)}
           >
             <Avatar class="shrink-0">
+              {#if room.avatar}
+                <AvatarImage src={room.avatar} alt="" />
+              {/if}
               <AvatarFallback>#</AvatarFallback>
             </Avatar>
             <span class="min-w-0 flex-1">

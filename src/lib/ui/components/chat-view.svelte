@@ -4,7 +4,7 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
-  import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
+  import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { Separator } from '$lib/ui/primitives/separator'
 
@@ -59,6 +59,9 @@
             </Button>
           {/if}
           <Avatar>
+            {#if isRoom && conversation.avatar}
+              <AvatarImage src={conversation.avatar} alt="" />
+            {/if}
             <AvatarFallback>
               {(isRoom ? '#' : '') + (contact?.name || conversation.peerJid).slice(0, 2)}
             </AvatarFallback>
@@ -69,7 +72,13 @@
             </h2>
             <p class="text-muted-foreground flex items-center gap-1.5 text-xs">
               {#if isRoom}
-                <span class="truncate">{conversation.subject ?? ''}</span>
+                {#if conversation.peerState === 'composing' && conversation.peerStateNick}
+                  <span class="text-primary truncate"
+                    >{$LL.typingNick({ name: conversation.peerStateNick })}</span
+                  >
+                {:else}
+                  <span class="truncate">{conversation.subject ?? ''}</span>
+                {/if}
               {:else if conversation.peerState === 'composing'}
                 <span class="text-primary">{$LL.typing()}</span>
               {:else if contact}
@@ -117,13 +126,13 @@
             document.getElementById(`m-${id}`)?.scrollIntoView({ block: 'center' })
           }}
           onReply={(message) => {
-            app.composer = { replyTo: message }
-            app.composerFocus?.()
+            app.setComposer(conversation.peerJid, { replyTo: message })
+            app.focusComposer(conversation.peerJid)
           }}
           onEdit={(message) => {
             if (message.outgoing) {
-              app.composer = { editing: message }
-              app.composerFocus?.()
+              app.setComposer(conversation.peerJid, { editing: message })
+              app.focusComposer(conversation.peerJid)
             }
           }}
           onReact={(message, emoji) => {

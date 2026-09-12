@@ -13,7 +13,7 @@
     'nav.nextConversation': () => app.cycleConversation(1),
     'nav.prevConversation': () => app.cycleConversation(-1),
     'nav.closeConversation': () => (app.activePeer = null),
-    'chat.focusComposer': () => app.composerFocus?.()
+    'chat.focusComposer': () => app.focusComposer(app.activePeer)
   }
 
   for (let i = 1; i <= 3; i++) {
@@ -38,6 +38,8 @@
     'keydown',
     (event: KeyboardEvent) => {
       if (isEditable(event.target) && event.key !== 'Escape') return
+      // let open dialogs/pickers consume Escape themselves
+      if (event.key === 'Escape' && document.querySelector('[role="dialog"]')) return
       const bindings = settings.keybindings
       for (const [id, handler] of Object.entries(actions)) {
         const binding = bindings[id]

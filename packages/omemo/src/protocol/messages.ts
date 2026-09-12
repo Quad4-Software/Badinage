@@ -16,10 +16,12 @@ import { ParseError } from '../errors'
 import {
   ProtoWriter,
   getBytes,
+  getVarint,
   readFields,
   requireBytes,
   requireVarint
 } from '../internal/protobuf'
+import type { ProtoField } from '../internal/protobuf'
 
 export interface OmemoMessage {
   n: number
@@ -93,12 +95,14 @@ export interface OmemoKeyExchange {
 
 // The legacy profile keeps the Signal PreKeyWhisperMessage layout:
 // pk_id=1, ek=2, ik=3, message=4, unused=5, spk_id=6. omemo:2 renumbers
-// to pk_id=1, spk_id=2, ik=3, ek=4, message=5.
+// to pk_id=1, spk_id=2, ik=3, ek=4, message=5. A negative pkId means the
+// key exchange did not use a one-time pre key; the field is omitted then.
 export function encodeKeyExchange(
   kex: OmemoKeyExchange,
   namespace: 'omemo2' | 'legacy' = 'omemo2'
 ): Uint8Array {
-  const writer = new ProtoWriter().fieldVarint(1, kex.pkId)
+  const writer = new ProtoWriter()
+  if (kex.pkId >= 0) writer.fieldVarint(1, kex.pkId)
   if (namespace === 'legacy') {
     return writer
       .fieldBytes(2, kex.ek)
@@ -115,6 +119,16 @@ export function encodeKeyExchange(
     .finish()
 }
 
+// pk_id is -1 when the field is absent (no one-time pre key was used).
+function decodePkId(fields: ProtoField[]): number {
+  const raw = getVarint(fields, 1)
+  if (raw === undefined) return -1
+  if (raw < 0n || raw > 0xffffffffn) {
+    throw new ParseError('OMEMOKeyExchange: missing or invalid field 1')
+  }
+  return Number(raw)
+}
+
 export function decodeKeyExchange(
   data: Uint8Array,
   namespace: 'omemo2' | 'legacy' = 'omemo2'
@@ -122,7 +136,7 @@ export function decodeKeyExchange(
   const fields = readFields(data)
   if (namespace === 'legacy') {
     return {
-      pkId: requireVarint(fields, 1, 'OMEMOKeyExchange'),
+      pkId: decodePkId(fields),
       ek: requireBytes(fields, 2, 'OMEMOKeyExchange'),
       ik: requireBytes(fields, 3, 'OMEMOKeyExchange'),
       message: requireBytes(fields, 4, 'OMEMOKeyExchange'),
@@ -130,7 +144,7 @@ export function decodeKeyExchange(
     }
   }
   return {
-    pkId: requireVarint(fields, 1, 'OMEMOKeyExchange'),
+    pkId: decodePkId(fields),
     spkId: requireVarint(fields, 2, 'OMEMOKeyExchange'),
     ik: requireBytes(fields, 3, 'OMEMOKeyExchange'),
     ek: requireBytes(fields, 4, 'OMEMOKeyExchange'),

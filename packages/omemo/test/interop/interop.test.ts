@@ -5,14 +5,14 @@
 // output produced by this implementation; those tests are skipped when the
 // venv is not available.
 
-import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { spawn, type ChildProcess } from 'node:child_process'
+import { existsSync, readFileSync, readSync, writeSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 
-import { x25519 } from '@noble/curves/ed25519.js'
+import { ed25519, x25519 } from '@noble/curves/ed25519.js'
 
 import {
   aes128GcmDecrypt,
@@ -31,8 +31,9 @@ import {
   x25519SharedSecret
 } from '../../src/crypto/keys'
 import { xed25519Sign, xed25519Verify } from '../../src/crypto/xed25519'
-import { bytesToHex, hexToBytes } from '../../src/internal/bytes'
-import { parseXml } from '../../src/internal/xml'
+import { bytesToHex, hexToBytes, utf8ToBytes } from '../../src/internal/bytes'
+import { parseXml, serializeXml } from '../../src/internal/xml'
+import { OmemoManager } from '../../src/manager'
 import {
   decodeAuthenticatedMessage,
   decodeKeyExchange,
@@ -41,15 +42,17 @@ import {
   encodeKeyExchange,
   encodeOmemoMessage
 } from '../../src/protocol/messages'
-import { PROFILES } from '../../src/protocol/profiles'
+import { PROFILES, unmarshalMessage } from '../../src/protocol/profiles'
 import { Session } from '../../src/protocol/session'
 import type { SessionState } from '../../src/protocol/session'
-import { sessionResponder } from '../../src/protocol/sessionInit'
+import { sessionInitiator, sessionResponder } from '../../src/protocol/sessionInit'
+import { serializeSceEnvelope, textEnvelope } from '../../src/protocol/sce'
 import { x3dhInitiate, x3dhRespond } from '../../src/protocol/x3dh'
-import type { ParsedBundle } from '../../src/protocol/bundle'
-import { parseBundle } from '../../src/protocol/bundle'
+import type { OwnBundle, ParsedBundle } from '../../src/protocol/bundle'
+import { parseBundle, serializeBundle } from '../../src/protocol/bundle'
 import { decodeKeyExchangeWire, encodeKeyExchangeWire } from '../../src/protocol/keyExchange'
-import { parseEncryptedElement } from '../../src/protocol/wire'
+import { parseEncryptedElement, serializeEncrypted } from '../../src/protocol/wire'
+import { InMemoryOmemoStore } from '../../src/store/memory'
 import type { Namespace } from '../../src/constants'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -74,13 +77,58 @@ interface PyResult {
   [key: string]: unknown
 }
 
-function py(request: Record<string, unknown>): PyResult {
-  const out = execFileSync(PYTHON, [BRIDGE], {
-    input: JSON.stringify(request),
-    timeout: 30000
-  })
-  return JSON.parse(out.toString('utf8')) as PyResult
+// The bridge speaks one JSON request per stdin line and answers with one
+// JSON response per stdout line. A single python process is kept alive for
+// the whole test file so we do not pay interpreter and dependency startup
+// cost per call. fs.writeSync and fs.readSync on the pipe file descriptors
+// keep the interface synchronous.
+let bridgeProc: ChildProcess | undefined
+let bridgeBuf = Buffer.alloc(0)
+
+// Short blocking sleep used while polling the non-blocking child pipe.
+const waitCell = new Int32Array(new SharedArrayBuffer(4))
+
+interface PipeHandle {
+  _handle?: { fd?: number }
 }
+
+function py(request: Record<string, unknown>): PyResult {
+  if (!bridgeProc || bridgeProc.exitCode !== null || bridgeProc.killed) {
+    bridgeBuf = Buffer.alloc(0)
+    bridgeProc = spawn(PYTHON, [BRIDGE], { stdio: ['pipe', 'pipe', 'inherit'] })
+  }
+  const stdinFd = (bridgeProc.stdin as PipeHandle)._handle?.fd
+  const stdoutFd = (bridgeProc.stdout as PipeHandle)._handle?.fd
+  if (stdinFd === undefined || stdoutFd === undefined) {
+    throw new Error('python bridge pipes unavailable')
+  }
+  writeSync(stdinFd, `${JSON.stringify(request)}\n`)
+  const chunk = Buffer.alloc(1 << 16)
+  const deadline = Date.now() + 120_000
+  for (;;) {
+    const nl = bridgeBuf.indexOf(0x0a)
+    if (nl >= 0) {
+      const line = bridgeBuf.subarray(0, nl)
+      bridgeBuf = bridgeBuf.subarray(nl + 1)
+      return JSON.parse(line.toString('utf8')) as PyResult
+    }
+    try {
+      const n = readSync(stdoutFd, chunk, 0, chunk.length, null)
+      if (n <= 0) throw new Error('python bridge terminated unexpectedly')
+      bridgeBuf = Buffer.concat([bridgeBuf, chunk.subarray(0, n)])
+    } catch (e) {
+      // the child pipe is non-blocking; EAGAIN just means no output yet
+      if ((e as NodeJS.ErrnoException).code !== 'EAGAIN') throw e
+      if (Date.now() > deadline) throw new Error('python bridge timed out')
+      Atomics.wait(waitCell, 0, 0, 1)
+    }
+  }
+}
+
+afterAll(() => {
+  bridgeProc?.kill()
+  bridgeProc = undefined
+})
 
 // Map a reference DoubleRatchetModel dump (as emitted by gen_vectors.py) to
 // our SessionState. own ratchet public key is rederived from the private key.
@@ -630,4 +678,642 @@ describe('reference key exchange end to end', () => {
     // key material = 16 byte payload key || 16 byte GCM tag
     expectBytes(km, `${w.payloadKey}${w.payloadTag}`)
   })
+})
+
+// --------------------------------------------------------------------------
+// live bidirectional interop through the python bridge
+// --------------------------------------------------------------------------
+
+const ALICE_JID = 'alice@example.org'
+const BOB_JID = 'bob@example.org'
+const ALICE_DEVICE = 0x00c0ffee
+const BOB_DEVICE = 0x0badcafe
+
+describe('python reference bridge', () => {
+  it('is available and answers a trivial request', () => {
+    // This test intentionally does not skip: without the venv the whole
+    // bidirectional interop coverage below would be silently absent.
+    expect(HAS_PYTHON).toBe(true)
+    const res = py({
+      op: 'x25519',
+      priv: vectors.x25519.privs[0],
+      pub: vectors.x25519.pubs[1]
+    })
+    expect(res.ok).toBe(true)
+    console.log('python-backed interop tests are running against packages/omemo/.venv')
+  })
+})
+
+interface IdentityVectors {
+  seed: string
+  priv: string
+  edPub: string
+  curvePub: string
+}
+
+// Identity material for our side, derived from the vector sets so that the
+// same identities appear on both sides of the bridge.
+function identityMaterial(ns: Namespace, identity: IdentityVectors) {
+  return ns === 'legacy'
+    ? {
+        privateKey: hex(identity.priv),
+        publicKey: hex(identity.curvePub),
+        wirePublicKey: encodeCurveKeyWire(hex(identity.curvePub))
+      }
+    : {
+        privateKey: hex(identity.seed),
+        publicKey: hex(identity.edPub),
+        wirePublicKey: hex(identity.edPub)
+      }
+}
+
+// The Ed25519 sign bit a legacy identity smuggles into signatures. The
+// reference responder needs it to reconstruct the initiator identity key.
+function signBitOf(identity: IdentityVectors): number {
+  return (hex(identity.edPub)[31] ?? 0) >> 7
+}
+
+// Associated data in the order the reference sender uses it. For the legacy
+// profile the sender identity always comes first, so a passive (responder)
+// sender sees the swapped form.
+function adForSender(ns: Namespace, initiation: 'active' | 'passive', adHex: string): string {
+  return bytesToHex(PROFILES[ns].adForSender(initiation, hex(adHex)))
+}
+
+// Extract the ratchet header fields the bridge needs from a sealed wire
+// message produced by Session.encrypt.
+function wireToBridge(ns: Namespace, wire: Uint8Array) {
+  const { messageBytes } = PROFILES[ns].open(wire)
+  const parsed = decodeOmemoMessage(unmarshalMessage(PROFILES[ns], messageBytes), ns)
+  return {
+    ratchetPub: bytesToHex(PROFILES[ns].decodeHeaderKey(parsed.dhPub)),
+    pn: parsed.pn,
+    n: parsed.n,
+    ciphertext: bytesToHex(wire)
+  }
+}
+
+// A responder bundle built by our serializer from vector material, consumed
+// by the reference parser on the python side.
+function ownBundle(ns: Namespace): OwnBundle {
+  const x3dh = vectors.x3dh[ns]
+  const bundle: OwnBundle = {
+    namespace: ns,
+    deviceId: BOB_DEVICE,
+    signedPreKeyId: x3dh.signedPreKey.id,
+    signedPreKeyPublic: hex(x3dh.signedPreKey.pub),
+    signedPreKeySignature:
+      ns === 'omemo2'
+        ? ed25519.sign(hex(x3dh.signedPreKey.pub), hex(x3dh.identityB.seed))
+        : xed25519Sign(hex(x3dh.identityB.priv), encodeCurveKeyWire(hex(x3dh.signedPreKey.pub))),
+    identityKeyWire: wireIdentity(ns, x3dh.identityB),
+    preKeys: [{ pkId: x3dh.preKey.id, pk: hex(x3dh.preKey.pub) }]
+  }
+  if (ns === 'legacy') {
+    bundle.identityKeyCurve = hex(x3dh.identityB.curvePub)
+    bundle.identityKeyEdSign = signBitOf(x3dh.identityB) as 0 | 1
+  }
+  return bundle
+}
+
+// A reference-produced responder bundle for the TS initiator side.
+function pyBundle(ns: Namespace): { xml: string; parsed: ParsedBundle } {
+  const x3dh = vectors.x3dh[ns]
+  const res = py({
+    op: 'bundle_serialize',
+    profile: ns,
+    ikPriv: x3dh.identityB.priv,
+    spkPriv: x3dh.signedPreKey.priv,
+    spkId: x3dh.signedPreKey.id,
+    pkPrivs: [x3dh.preKey.priv],
+    pkIds: [x3dh.preKey.id],
+    jid: BOB_JID,
+    deviceId: BOB_DEVICE
+  })
+  expect(res.ok).toBe(true)
+  return { xml: res.xml as string, parsed: parseBundle(parseXml(res.xml as string), ns) }
+}
+
+async function managerFor(
+  ns: Namespace,
+  identity: IdentityVectors,
+  jid: string,
+  deviceId: number
+): Promise<OmemoManager> {
+  const store = new InMemoryOmemoStore()
+  await store.putIdentity(identityMaterial(ns, identity))
+  return OmemoManager.create({ namespace: ns, store, ownJid: jid, deviceId, preKeyCount: 1 })
+}
+
+function envelope(ns: Namespace, body: string): Uint8Array {
+  return ns === 'omemo2' ? utf8ToBytes(serializeSceEnvelope(textEnvelope(body))) : utf8ToBytes(body)
+}
+
+describe.skipIf(!HAS_PYTHON)('key exchange interop through the bridge', () => {
+  for (const ns of ['omemo2', 'legacy'] as const) {
+    const profile = PROFILES[ns]
+    const x3dh = vectors.x3dh[ns]
+    const dr = vectors.ratchet[ns]
+
+    it(
+      `${ns}: our initiator session is accepted by the reference responder`,
+      { timeout: 60_000 },
+      () => {
+        // reference-produced responder bundle, parsed by our parseBundle
+        const bundle = pyBundle(ns)
+        expectBytes(bundle.parsed.signedPreKey, x3dh.signedPreKey.pub)
+        expectBytes(bundle.parsed.preKeys[0]?.pk ?? new Uint8Array(0), x3dh.preKey.pub)
+
+        const alice = identityMaterial(ns, x3dh.identityA)
+        const init = x3dhInitiate(profile, alice, bundle.parsed, { random: () => 0 })
+        const keyExchange = {
+          pkId: init.preKeyId,
+          spkId: init.signedPreKeyId,
+          ik: alice.wirePublicKey,
+          ek:
+            ns === 'legacy'
+              ? encodeCurveKeyWire(init.ephemeral.publicKey)
+              : init.ephemeral.publicKey
+        }
+        const session = sessionInitiator(profile, {
+          sharedSecret: init.sharedSecret,
+          associatedData: init.associatedData,
+          responderRatchetPublic: init.signedPreKeyPublic,
+          localIdentity: alice.wirePublicKey,
+          remoteIdentity: bundle.parsed.identityKeyWire,
+          keyExchange
+        })
+
+        const keyMaterial = hex(vectors.wire[ns].payloadKey + vectors.wire[ns].payloadTag)
+        const encrypted = session.encrypt(keyMaterial)
+        expect(encrypted.keyExchange).not.toBeNull()
+        const kexData = encodeKeyExchangeWire(ns, encrypted.keyExchange!, encrypted.wire)
+
+        // the reference responder parses our kex wire bytes, runs passive
+        // X3DH and decrypts the wrapped ratchet message
+        const acc = py({
+          op: 'kex_accept',
+          profile: ns,
+          kexData: bytesToHex(kexData),
+          ikPriv: x3dh.identityB.priv,
+          spkPriv: x3dh.signedPreKey.priv,
+          pkPriv: x3dh.preKey.priv,
+          ikSignBit: signBitOf(x3dh.identityA),
+          ratchetPriv: dr.bobRatchet.priv
+        })
+        expect(acc.ok).toBe(true)
+        expect(acc.plaintext).toBe(bytesToHex(keyMaterial))
+        expect(acc.sharedSecret).toBe(bytesToHex(init.sharedSecret))
+        expect(acc.associatedData).toBe(bytesToHex(init.associatedData))
+        expect(acc.spkId).toBe(x3dh.signedPreKey.id)
+        expect(acc.pkId).toBe(x3dh.preKey.id)
+      }
+    )
+
+    it(
+      `${ns}: a reference-initiated key exchange drives our responder session`,
+      { timeout: 60_000 },
+      () => {
+        // our responder bundle, serialized by our code and parsed by the
+        // reference stack during its active X3DH (which also verifies the
+        // signed pre key signature)
+        const bundleXml = serializeBundle(ownBundle(ns))
+        const km = hex(vectors.protos.fields.ciphertext)
+        const built = py({
+          op: 'kex_build',
+          profile: ns,
+          ikPriv: x3dh.identityA.priv,
+          bundleXml,
+          bundleJid: BOB_JID,
+          bundleDeviceId: BOB_DEVICE,
+          plaintext: bytesToHex(km),
+          ekPriv: x3dh.ephemeral.priv,
+          ratchetPriv: dr.aliceRatchet.priv
+        })
+        expect(built.ok).toBe(true)
+        // with the same ephemeral key the reference reproduces the golden
+        // shared secret and associated data
+        expect(built.sharedSecret).toBe(x3dh.sharedSecret)
+        expect(built.associatedData).toBe(x3dh.associatedData)
+
+        const kex = decodeKeyExchangeWire(ns, hex(built.kexData as string))
+        expect(kex.pkId).toBe(x3dh.preKey.id)
+        expect(kex.spkId).toBe(x3dh.signedPreKey.id)
+
+        const bob = identityMaterial(ns, x3dh.identityB)
+        const respond = x3dhRespond(profile, bob, {
+          ik: kex.ik,
+          ek: kex.ek,
+          spkId: kex.spkId,
+          pkId: kex.pkId,
+          signedPreKey: {
+            privateKey: hex(x3dh.signedPreKey.priv),
+            publicKey: hex(x3dh.signedPreKey.pub)
+          },
+          preKey: { privateKey: hex(x3dh.preKey.priv), publicKey: hex(x3dh.preKey.pub) }
+        })
+        expectBytes(respond.sharedSecret, built.sharedSecret as string)
+        expectBytes(respond.associatedData, built.associatedData as string)
+
+        const session = sessionResponder(profile, {
+          sharedSecret: respond.sharedSecret,
+          associatedData: respond.associatedData,
+          ownRatchet: respond.signedPreKey,
+          localIdentity: bob.wirePublicKey,
+          remoteIdentity: kex.ik,
+          keyExchange: { pkId: kex.pkId, spkId: kex.spkId, ik: kex.ik, ek: kex.ek }
+        })
+        expectBytes(session.decrypt(kex.message), bytesToHex(km))
+
+        // and our reply decrypts on the reference side
+        const reply = utf8ToBytes('responder reply')
+        const out = session.encrypt(reply)
+        const res = py({
+          op: 'dr_decrypt',
+          profile: ns,
+          model: built.model,
+          wire: wireToBridge(ns, out.wire),
+          ad: adForSender(ns, 'passive', built.associatedData as string)
+        })
+        expect(res.ok).toBe(true)
+        expect(res.plaintext).toBe(bytesToHex(reply))
+      }
+    )
+
+    it(`${ns}: alternating exchange with out-of-order delivery`, { timeout: 120_000 }, () => {
+      // TS initiator against the reference-produced bundle
+      const bundle = pyBundle(ns)
+      const alice = identityMaterial(ns, x3dh.identityA)
+      const init = x3dhInitiate(profile, alice, bundle.parsed, { random: () => 0 })
+      const session = sessionInitiator(profile, {
+        sharedSecret: init.sharedSecret,
+        associatedData: init.associatedData,
+        responderRatchetPublic: init.signedPreKeyPublic,
+        localIdentity: alice.wirePublicKey,
+        remoteIdentity: bundle.parsed.identityKeyWire,
+        keyExchange: {
+          pkId: init.preKeyId,
+          spkId: init.signedPreKeyId,
+          ik: alice.wirePublicKey,
+          ek:
+            ns === 'legacy'
+              ? encodeCurveKeyWire(init.ephemeral.publicKey)
+              : init.ephemeral.publicKey
+        }
+      })
+      const ad = bytesToHex(init.associatedData)
+
+      // TS -> py: first message, accepted as a key exchange
+      const m1 = session.encrypt(utf8ToBytes('exchange m1'))
+      const acc = py({
+        op: 'kex_accept',
+        profile: ns,
+        kexData: bytesToHex(encodeKeyExchangeWire(ns, m1.keyExchange!, m1.wire)),
+        ikPriv: x3dh.identityB.priv,
+        spkPriv: x3dh.signedPreKey.priv,
+        pkPriv: x3dh.preKey.priv,
+        ikSignBit: signBitOf(x3dh.identityA),
+        ratchetPriv: dr.bobRatchet.priv
+      })
+      expect(acc.ok).toBe(true)
+      expect(acc.plaintext).toBe(bytesToHex(utf8ToBytes('exchange m1')))
+      let model = acc.model
+
+      // py -> TS: reply
+      const r1 = py({
+        op: 'dr_encrypt',
+        profile: ns,
+        model,
+        plaintext: bytesToHex(utf8ToBytes('exchange r1')),
+        ad: adForSender(ns, 'passive', ad)
+      })
+      expect(r1.ok).toBe(true)
+      model = r1.model
+      expectBytes(
+        session.decrypt(hex((r1.wire as { ciphertext: string }).ciphertext)),
+        bytesToHex(utf8ToBytes('exchange r1'))
+      )
+
+      // TS -> py twice, delivered out of order on the reference side
+      const m2 = session.encrypt(utf8ToBytes('exchange m2'))
+      const m3 = session.encrypt(utf8ToBytes('exchange m3'))
+      const d3 = py({
+        op: 'dr_decrypt',
+        profile: ns,
+        model,
+        wire: wireToBridge(ns, m3.wire),
+        ad
+      })
+      expect(d3.ok).toBe(true)
+      expect(d3.plaintext).toBe(bytesToHex(utf8ToBytes('exchange m3')))
+      const d2 = py({
+        op: 'dr_decrypt',
+        profile: ns,
+        model: d3.model,
+        wire: wireToBridge(ns, m2.wire),
+        ad
+      })
+      expect(d2.ok).toBe(true)
+      expect(d2.plaintext).toBe(bytesToHex(utf8ToBytes('exchange m2')))
+      model = d2.model
+
+      // py -> TS twice, delivered out of order on our side
+      const r2 = py({
+        op: 'dr_encrypt',
+        profile: ns,
+        model,
+        plaintext: bytesToHex(utf8ToBytes('exchange r2')),
+        ad: adForSender(ns, 'passive', ad)
+      })
+      const r3 = py({
+        op: 'dr_encrypt',
+        profile: ns,
+        model: r2.model,
+        plaintext: bytesToHex(utf8ToBytes('exchange r3')),
+        ad: adForSender(ns, 'passive', ad)
+      })
+      expect(r3.ok).toBe(true)
+      expectBytes(
+        session.decrypt(hex((r3.wire as { ciphertext: string }).ciphertext)),
+        bytesToHex(utf8ToBytes('exchange r3'))
+      )
+      expect(session.state.skipped.length).toBeGreaterThan(0)
+      expectBytes(
+        session.decrypt(hex((r2.wire as { ciphertext: string }).ciphertext)),
+        bytesToHex(utf8ToBytes('exchange r2'))
+      )
+    })
+  }
+})
+
+describe.skipIf(!HAS_PYTHON)('full message interop through the bridge', () => {
+  for (const ns of ['omemo2', 'legacy'] as const) {
+    const x3dh = vectors.x3dh[ns]
+    const dr = vectors.ratchet[ns]
+
+    it(
+      `${ns}: our encrypted elements decrypt under the reference stack`,
+      { timeout: 120_000 },
+      async () => {
+        const bundle = pyBundle(ns)
+        const alice = await managerFor(ns, x3dh.identityA, ALICE_JID, ALICE_DEVICE)
+
+        // first message: key exchange wrapped key material plus payload
+        const pt1 = envelope(ns, 'interop one')
+        const e1 = serializeEncrypted(
+          await alice.encrypt({
+            recipients: [{ jid: BOB_JID, deviceId: BOB_DEVICE, bundle: bundle.parsed }],
+            plaintext: pt1
+          })
+        )
+        const d1 = py({
+          op: 'msg_decrypt',
+          profile: ns,
+          xml: e1,
+          deviceId: BOB_DEVICE,
+          ownJid: BOB_JID,
+          senderJid: ALICE_JID,
+          x3dh: {
+            ikPriv: x3dh.identityB.priv,
+            spkPriv: x3dh.signedPreKey.priv,
+            pkPriv: x3dh.preKey.priv,
+            ikSignBit: signBitOf(x3dh.identityA),
+            ratchetPriv: dr.bobRatchet.priv
+          }
+        })
+        expect(d1.ok).toBe(true)
+        expect(d1.wasKex).toBe(true)
+        expect(d1.plaintext).toBe(bytesToHex(pt1))
+        const ad = d1.ad as string
+        let model = d1.model
+
+        // the reference side replies; decrypting its message confirms our
+        // session so follow-ups no longer carry the key exchange
+        const reply1 = envelope(ns, 'reference reply one')
+        const r1 = py({
+          op: 'msg_encrypt',
+          profile: ns,
+          plaintext: bytesToHex(reply1),
+          senderJid: BOB_JID,
+          sid: BOB_DEVICE,
+          recipientJid: ALICE_JID,
+          rid: ALICE_DEVICE,
+          session: { model, ad: adForSender(ns, 'passive', ad) }
+        })
+        expect(r1.ok).toBe(true)
+        model = r1.model
+        const a1 = await alice.decrypt(parseXml(r1.xml as string), BOB_JID)
+        expect(bytesToHex(a1.plaintext ?? new Uint8Array(0))).toBe(bytesToHex(reply1))
+
+        // follow-up message on the established session
+        const pt2 = envelope(ns, 'interop two')
+        const e2 = serializeEncrypted(
+          await alice.encrypt({
+            recipients: [{ jid: BOB_JID, deviceId: BOB_DEVICE }],
+            plaintext: pt2
+          })
+        )
+        const d2 = py({
+          op: 'msg_decrypt',
+          profile: ns,
+          xml: e2,
+          deviceId: BOB_DEVICE,
+          ownJid: BOB_JID,
+          senderJid: ALICE_JID,
+          session: { model, ad }
+        })
+        expect(d2.ok).toBe(true)
+        expect(d2.wasKex).toBe(false)
+        expect(d2.plaintext).toBe(bytesToHex(pt2))
+        model = d2.model
+
+        // two more delivered out of order: the reference side must stash the
+        // skipped message key and still decrypt both
+        const pt3 = envelope(ns, 'interop three')
+        const pt4 = envelope(ns, 'interop four')
+        const e3 = serializeEncrypted(
+          await alice.encrypt({
+            recipients: [{ jid: BOB_JID, deviceId: BOB_DEVICE }],
+            plaintext: pt3
+          })
+        )
+        const e4 = serializeEncrypted(
+          await alice.encrypt({
+            recipients: [{ jid: BOB_JID, deviceId: BOB_DEVICE }],
+            plaintext: pt4
+          })
+        )
+        const d4 = py({
+          op: 'msg_decrypt',
+          profile: ns,
+          xml: e4,
+          deviceId: BOB_DEVICE,
+          ownJid: BOB_JID,
+          senderJid: ALICE_JID,
+          session: { model, ad }
+        })
+        expect(d4.ok).toBe(true)
+        expect(d4.plaintext).toBe(bytesToHex(pt4))
+        const d3 = py({
+          op: 'msg_decrypt',
+          profile: ns,
+          xml: e3,
+          deviceId: BOB_DEVICE,
+          ownJid: BOB_JID,
+          senderJid: ALICE_JID,
+          session: { model: d4.model, ad }
+        })
+        expect(d3.ok).toBe(true)
+        expect(d3.plaintext).toBe(bytesToHex(pt3))
+        model = d3.model
+
+        // the reference side replies on the same session
+        const reply = envelope(ns, 'reference reply')
+        const enc = py({
+          op: 'msg_encrypt',
+          profile: ns,
+          plaintext: bytesToHex(reply),
+          senderJid: BOB_JID,
+          sid: BOB_DEVICE,
+          recipientJid: ALICE_JID,
+          rid: ALICE_DEVICE,
+          session: { model, ad: adForSender(ns, 'passive', ad) }
+        })
+        expect(enc.ok).toBe(true)
+        const result = await alice.decrypt(parseXml(enc.xml as string), BOB_JID)
+        expect(result.empty).toBe(false)
+        expect(result.wasKeyExchange).toBe(false)
+        expect(bytesToHex(result.plaintext ?? new Uint8Array(0))).toBe(bytesToHex(reply))
+      }
+    )
+
+    it(`${ns}: reference encrypted elements decrypt on our side`, { timeout: 60_000 }, async () => {
+      // our responder with vector key material so the reference initiates
+      // against a bundle we can verify end to end
+      const store = new InMemoryOmemoStore()
+      await store.putIdentity(identityMaterial(ns, x3dh.identityB))
+      await store.putSignedPreKey({
+        id: x3dh.signedPreKey.id,
+        pair: {
+          privateKey: hex(x3dh.signedPreKey.priv),
+          publicKey: hex(x3dh.signedPreKey.pub)
+        },
+        signature:
+          ns === 'omemo2'
+            ? ed25519.sign(hex(x3dh.signedPreKey.pub), hex(x3dh.identityB.seed))
+            : xed25519Sign(
+                hex(x3dh.identityB.priv),
+                encodeCurveKeyWire(hex(x3dh.signedPreKey.pub))
+              ),
+        createdAt: 0
+      })
+      await store.putPreKey(x3dh.preKey.id, {
+        privateKey: hex(x3dh.preKey.priv),
+        publicKey: hex(x3dh.preKey.pub)
+      })
+      const bob = await OmemoManager.create({
+        namespace: ns,
+        store,
+        ownJid: BOB_JID,
+        deviceId: BOB_DEVICE,
+        preKeyCount: 1
+      })
+      const bundleXml = serializeXml(await bob.buildBundle())
+
+      // the reference initiates: X3DH against our bundle (verifying our
+      // signed pre key signature), ratchet encrypt, serialize the element
+      const pt1 = envelope(ns, 'reference hello')
+      const e1 = py({
+        op: 'msg_encrypt',
+        profile: ns,
+        plaintext: bytesToHex(pt1),
+        senderJid: ALICE_JID,
+        sid: ALICE_DEVICE,
+        recipientJid: BOB_JID,
+        rid: BOB_DEVICE,
+        x3dh: {
+          ikPriv: x3dh.identityA.priv,
+          bundleXml,
+          bundleJid: BOB_JID,
+          bundleDeviceId: BOB_DEVICE,
+          ekPriv: x3dh.ephemeral.priv,
+          ratchetPriv: dr.aliceRatchet.priv
+        }
+      })
+      expect(e1.ok).toBe(true)
+      // fixed ephemeral key: the derived secret matches the golden vector
+      expect(e1.sharedSecret).toBe(x3dh.sharedSecret)
+
+      const d1 = await bob.decrypt(parseXml(e1.xml as string), ALICE_JID)
+      expect(d1.wasKeyExchange).toBe(true)
+      expect(bytesToHex(d1.plaintext ?? new Uint8Array(0))).toBe(bytesToHex(pt1))
+      expect(d1.senderIdentityKey).toEqual(wireIdentity(ns, x3dh.identityA))
+
+      // our reply decrypts on the reference side
+      const pt2 = envelope(ns, 'our reply')
+      const e2 = serializeEncrypted(
+        await bob.encrypt({
+          recipients: [{ jid: ALICE_JID, deviceId: ALICE_DEVICE }],
+          plaintext: pt2
+        })
+      )
+      const d2 = py({
+        op: 'msg_decrypt',
+        profile: ns,
+        xml: e2,
+        deviceId: ALICE_DEVICE,
+        ownJid: ALICE_JID,
+        senderJid: BOB_JID,
+        session: {
+          model: e1.model,
+          ad: adForSender(ns, 'passive', e1.associatedData as string)
+        }
+      })
+      expect(d2.ok).toBe(true)
+      expect(d2.plaintext).toBe(bytesToHex(pt2))
+    })
+  }
+})
+
+describe.skipIf(!HAS_PYTHON)('bundle interop through the bridge', () => {
+  for (const ns of ['omemo2', 'legacy'] as const) {
+    const x3dh = vectors.x3dh[ns]
+
+    it(
+      `${ns}: reference-serialized bundle parses and verifies on our side`,
+      { timeout: 30_000 },
+      () => {
+        const { parsed } = pyBundle(ns)
+        expect(parsed.namespace).toBe(ns)
+        expect(parsed.signedPreKeyId).toBe(x3dh.signedPreKey.id)
+        expectBytes(parsed.signedPreKey, x3dh.signedPreKey.pub)
+        expectBytes(parsed.identityKeyEd, x3dh.identityB.edPub)
+        expectBytes(parsed.identityKeyCurve, x3dh.identityB.curvePub)
+        expect(parsed.preKeys.map((p) => p.pkId)).toEqual([x3dh.preKey.id])
+        expectBytes(parsed.preKeys[0]?.pk ?? new Uint8Array(0), x3dh.preKey.pub)
+      }
+    )
+
+    it(`${ns}: our serialized bundle parses under the reference stack`, { timeout: 30_000 }, () => {
+      const res = py({
+        op: 'bundle_parse',
+        profile: ns,
+        xml: serializeBundle(ownBundle(ns)),
+        jid: BOB_JID,
+        deviceId: BOB_DEVICE
+      })
+      expect(res.ok).toBe(true)
+      // the reference parser reports the identity key in Ed25519 form
+      expect(res.identityKey).toBe(x3dh.identityB.edPub)
+      expect(res.signedPreKey).toBe(x3dh.signedPreKey.pub)
+      expect(res.signedPreKeyId).toBe(x3dh.signedPreKey.id)
+      const preKeys = res.preKeys as Record<string, number>
+      expect(preKeys[x3dh.preKey.pub]).toBe(x3dh.preKey.id)
+      // the reference-side signature check already ran during parse; the
+      // returned signature has the smuggled bit stripped for legacy
+      const sig = hex(res.signedPreKeySignature as string)
+      expect(sig.length).toBe(64)
+      expect((sig[63] ?? 0) >> 7).toBe(0)
+    })
+  }
 })

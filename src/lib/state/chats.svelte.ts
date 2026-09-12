@@ -3,6 +3,7 @@ import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 import { MESSAGE_PAGE_SIZE } from '$lib/constants'
 import { idb } from '$lib/core/storage/idb'
 import { scopedKey } from '$lib/core/storage/keys'
+import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
 import type { Attachment, ChatState, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 
@@ -53,11 +54,23 @@ export interface Conversation {
   unread: number
   // typing indicator state of the peer (dm) - composing etc.
   peerState?: ChatState | undefined
+  // muc: which occupant the chat state came from
+  peerStateNick?: string | undefined
   // muc only
   subject?: string | undefined
+  // room vCard photo as a data URI, fetched lazily when the room opens
+  avatar?: string | undefined
+  avatarFetched?: boolean | undefined
   occupants: SvelteMap<string, RoomOccupant>
   ourNick?: string | undefined
   joined?: boolean
+  // mam paging: the rsm first uid of the oldest page we pulled, sent as
+  // the before cursor when fetching further back
+  historyCursor?: string | undefined
+  // true once the archive reports complete or a page comes back with no
+  // first uid to page before
+  historyComplete?: boolean | undefined
+  historyLoading?: boolean | undefined
 }
 
 const RETAINED_MESSAGES = MESSAGE_PAGE_SIZE * 4
@@ -82,8 +95,10 @@ export class ChatStore {
   // peers whose MAM archive we already pulled this session
   mamDone = new SvelteSet<string>()
   private loaded: Record<string, true> = {}
-  // recent stanza/origin ids per peer for dedup
-  private seen = new SvelteMap<string, string[]>()
+  // recent stanza/origin ids per peer for dedup; internal bookkeeping,
+  // no reactivity needed
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  private seen = new Map<string, Set<string>>()
 
   constructor(private readonly accountJid: string) {}
 
@@ -125,7 +140,7 @@ export class ChatStore {
     while (at > 0 && (conversation.messages[at - 1]?.timestamp ?? 0) > message.timestamp) at--
     conversation.messages.splice(at, 0, message)
     if (!message.outgoing && !active) conversation.unread += 1
-    void this.persist(conversation)
+    this.persistSoon(conversation)
     return true
   }
 
@@ -214,6 +229,7 @@ export class ChatStore {
     }
     if (message.chatState !== undefined && !outgoing) {
       conversation.peerState = message.chatState
+      conversation.peerStateNick = message.type === 'groupchat' ? message.nick : undefined
     }
     if (message.subject !== undefined) {
       conversation.subject = message.subject || undefined
@@ -228,6 +244,21 @@ export class ChatStore {
       // target unknown: fall through and show it as a normal message
     }
     if (!message.body && !message.attachments?.length) return
+
+    // MUC self-echo: the room reflects our own message back with a fresh
+    // stanza id. Merge it into the locally pushed copy (mark delivered,
+    // adopt the stanza id) instead of showing the message twice.
+    if (outgoing && message.type === 'groupchat' && !message.carbon) {
+      for (let i = conversation.messages.length - 1; i >= 0; i--) {
+        const recent = conversation.messages[i]
+        if (!recent || Date.now() - recent.timestamp > 60_000) break
+        if (recent.outgoing && !recent.delivered && recent.body === message.body) {
+          recent.delivered = true
+          if (message.stanzaId) recent.id = message.stanzaId
+          return
+        }
+      }
+    }
 
     const id =
       message.stanzaId ?? message.originId ?? `${peer}:${message.delay ?? ''}:${message.body}`
@@ -253,6 +284,36 @@ export class ChatStore {
     if (message) message.delivered = true
   }
 
+  // Record the rsm cursor from a finished archive page. The archive is
+  // treated as exhausted when the fin says complete or the page carried
+  // no first uid to page before.
+  noteHistoryPage(conversation: Conversation, result: MamPageResult): void {
+    conversation.historyCursor = result.first
+    conversation.historyComplete = result.complete || !result.first
+  }
+
+  // Fetch the next older archive page. No-ops while a page is in flight
+  // or once the archive is exhausted. With no cursor yet the server
+  // returns its latest page, which is what the initial selectPeer fetch
+  // uses too.
+  loadOlder(conversation: Conversation, connection: ChatConnection): void {
+    if (!connection.connected) return
+    if (conversation.historyLoading || conversation.historyComplete) return
+    conversation.historyLoading = true
+    connection.queryArchive(
+      conversation.peerJid,
+      {
+        max: MESSAGE_PAGE_SIZE,
+        before: conversation.historyCursor,
+        room: conversation.kind === 'muc'
+      },
+      (result) => {
+        this.noteHistoryPage(conversation, result)
+        conversation.historyLoading = false
+      }
+    )
+  }
+
   setOccupant(room: string, occupant: RoomOccupant): void {
     const conversation = this.open(room, 'muc')
     if (occupant.presence === 'offline') {
@@ -267,14 +328,21 @@ export class ChatStore {
   }
 
   private isDuplicate(peer: string, id: string): boolean {
-    let list = this.seen.get(peer)
-    if (!list) {
-      list = []
-      this.seen.set(peer, list)
+    let set = this.seen.get(peer)
+    if (!set) {
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity
+      set = new Set()
+      this.seen.set(peer, set)
     }
-    if (list.includes(id)) return true
-    list.push(id)
-    if (list.length > DEDUP_CAP) list.splice(0, list.length - DEDUP_CAP)
+    if (set.has(id)) return true
+    set.add(id)
+    if (set.size > DEDUP_CAP) {
+      // drop the oldest entries; Set iterates in insertion order
+      for (const old of set) {
+        if (set.size <= DEDUP_CAP) break
+        set.delete(old)
+      }
+    }
     return false
   }
 
@@ -285,17 +353,35 @@ export class ChatStore {
   private async hydrate(conversation: Conversation): Promise<void> {
     const stored = await idb.get<ChatMessage[]>('messages', this.storageKey(conversation.peerJid))
     if (!stored || conversation.messages.length > 0) return
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const seen = this.seen.get(conversation.peerJid) ?? new Set<string>()
+    this.seen.set(conversation.peerJid, seen)
+    const batch: ChatMessage[] = []
     for (const raw of stored) {
       // older caches lack newer fields
       raw.reactions ??= {}
-      conversation.messages.push(raw)
-      let list = this.seen.get(conversation.peerJid)
-      if (!list) {
-        list = []
-        this.seen.set(conversation.peerJid, list)
-      }
-      if (list.length < DEDUP_CAP) list.push(raw.id)
+      batch.push(raw)
+      if (seen.size < DEDUP_CAP) seen.add(raw.id)
     }
+    // one splice so reactivity notifies once for the whole batch
+    conversation.messages.splice(0, 0, ...batch)
+  }
+
+  // coalesce writes: a 50-message MAM page is one IDB transaction, not 50
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  private persistTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  private persistSoon(conversation: Conversation): void {
+    const key = this.storageKey(conversation.peerJid)
+    const existing = this.persistTimers.get(key)
+    if (existing) clearTimeout(existing)
+    this.persistTimers.set(
+      key,
+      setTimeout(() => {
+        this.persistTimers.delete(key)
+        void this.persist(conversation)
+      }, 250)
+    )
   }
 
   private async persist(conversation: Conversation): Promise<void> {

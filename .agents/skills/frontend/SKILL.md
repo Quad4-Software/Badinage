@@ -10,8 +10,10 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
   scroll-area, separator, skeleton, sonner, switch, tooltip
 - ui/components/ holds app components, one file each. Shared building
   blocks: avatar (initials), presence-dot, unread-badge snippet in
-  chat-sidebar, emoji-picker, reaction-picker, voice-player,
-  message-attachments
+  chat-sidebar, emoji-picker (used by both composer and message reactions),
+  voice-player, message-attachments, chat-image, message-meta, load-older
+- ui/ non-component helpers live next to them: voice.svelte.ts
+  (MediaRecorder wrapper), upload.ts (XEP-0363 pipeline)
 - state/ holds runes stores in .svelte.ts files
 - app.css holds the theme tokens, Tailwind v4 CSS-first config
 
@@ -47,6 +49,27 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
   initializer, not inside methods. Wrap object literals by declaring a
   const first.
 - Resizable layouts use paneforge PaneGroup/Pane/PaneResizer with
-  autoSaveId; the mobile shell keeps the hidden/swap pattern instead.
+  autoSaveId. Mount only ONE responsive layout at a time via matchMedia;
+  rendering both and hiding one leaves duplicate nodes in the DOM and
+  breaks axe plus Playwright strict locators.
 - Dropdown content that should match its trigger width uses
   w-(--bits-dropdown-menu-anchor-width).
+- Composer reply/edit context is per peer: app.composerFor(peerJid),
+  app.setComposer, app.focusComposer. Never a single global, the split
+  pane shares it otherwise.
+- Escape in a component must not double-fire global bindings: call
+  event.stopPropagation when the component consumes it, and the global
+  dispatcher in keyboard.svelte already skips Escape while a
+  role=dialog element exists.
+- Remote URLs from stanzas go through safeUrl in utils/url.ts before
+  reaching href/src. Only https, http, blob and data image/audio pass.
+- chat-image.svelte freezes animated images off-screen by painting the
+  current frame into a canvas via IntersectionObserver. Use it for every
+  message image, never a bare img.
+- Scroll-pinned message lists: track pinned on scroll, only scroll to
+  bottom while pinned, and use a fixed-height pager row (load-older) so
+  state swaps never shift content. Prepending needs a scroll anchor:
+  record scrollHeight before the fetch and add the delta after rows land.
+- Internal non-reactive Map/Set caches in .svelte.ts files get flagged by
+  svelte/prefer-svelte-reactivity; disable the rule per line with a
+  comment saying why it is intentionally plain.

@@ -83,7 +83,8 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] XEP-0077 in-band registration on the login screen
 - [ ] XEP-0352 client state indication on tab visibility change
 - [ ] SASL2/Bind2/FAST when strophe.js or an alternative gains support
-- [ ] MAM paging UX: load older pages on scroll, fin/complete tracking
+- [x] MAM paging UX: load older on scroll-to-top, RSM cursor + complete
+      tracking, scroll anchor preserved while prepending
 
 ## One-to-one chat
 
@@ -100,7 +101,8 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] Room config via XEP-0004 data forms
 - [ ] XEP-0421 occupant ids (needed for MUC OMEMO)
 - [ ] XEP-0425 moderation actions (retract, kick, ban)
-- [ ] MUC MAM history paging, occupants-can-see-real-jids handling
+- [x] MUC MAM history paging (shared loadOlder path)
+- [ ] occupants-can-see-real-jids handling
 - [ ] Self-ping and rejoin on kick/disconnect, join error surface
 - [ ] Per-sender MUC reaction ids need occupant-id or stable nick mapping
 

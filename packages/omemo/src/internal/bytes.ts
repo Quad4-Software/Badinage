@@ -1,6 +1,8 @@
 // Byte utilities. No Node Buffer and no DOM APIs so this works in browsers,
 // workers and Node alike.
 
+import { ParseError } from '../errors'
+
 const B64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
 const B64_LOOKUP = (() => {
@@ -35,7 +37,7 @@ export function bytesToHex(data: Uint8Array): string {
 }
 
 export function hexToBytes(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0 || /[^0-9a-fA-F]/.test(hex)) throw new Error('invalid hex string')
+  if (hex.length % 2 !== 0 || /[^0-9a-fA-F]/.test(hex)) throw new ParseError('invalid hex string')
   const out = new Uint8Array(hex.length / 2)
   for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   return out
@@ -76,13 +78,19 @@ export function base64Decode(text: string): Uint8Array {
   const clean = stripped.slice(0, end)
   const out = new Uint8Array(Math.floor((clean.length * 3) / 4))
   let written = 0
+  // -2 marks a missing character (implicit padding), -1 an invalid one.
+  const charAt = (index: number): number => {
+    const code = clean.charCodeAt(index)
+    if (Number.isNaN(code)) return -2
+    return code < 128 ? (B64_LOOKUP[code] ?? -1) : -1
+  }
   for (let i = 0; i < clean.length; i += 4) {
-    const a = B64_LOOKUP[clean.charCodeAt(i)] ?? -1
-    const b = B64_LOOKUP[clean.charCodeAt(i + 1)] ?? -1
-    const c = clean.charCodeAt(i + 2) < 128 ? B64_LOOKUP[clean.charCodeAt(i + 2)] : 0
-    const d = clean.charCodeAt(i + 3) < 128 ? B64_LOOKUP[clean.charCodeAt(i + 3)] : 0
-    if (a < 0 || b < 0 || (c ?? -1) < 0 || (d ?? -1) < 0) throw new Error('invalid base64')
-    const triple = (a << 18) | (b << 12) | ((c ?? 0) << 6) | (d ?? 0)
+    const a = charAt(i)
+    const b = charAt(i + 1)
+    const c = charAt(i + 2)
+    const d = charAt(i + 3)
+    if (a < 0 || b < 0 || c === -1 || d === -1) throw new ParseError('invalid base64')
+    const triple = (a << 18) | (b << 12) | (Math.max(c, 0) << 6) | Math.max(d, 0)
     if (written < out.length) out[written++] = (triple >> 16) & 0xff
     if (written < out.length) out[written++] = (triple >> 8) & 0xff
     if (written < out.length) out[written++] = triple & 0xff

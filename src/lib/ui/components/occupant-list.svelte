@@ -28,9 +28,9 @@
             {occupant.nick}
           </span>
           {#if occupant.role === 'moderator'}
-            <span class="text-muted-foreground text-xs">mod</span>
+            <span class="text-muted-foreground text-xs">{$LL.roleModerator()}</span>
           {:else if occupant.affiliation === 'admin' || occupant.affiliation === 'owner'}
-            <span class="text-muted-foreground text-xs">admin</span>
+            <span class="text-muted-foreground text-xs">{$LL.roleAdmin()}</span>
           {/if}
         </li>
       {/each}

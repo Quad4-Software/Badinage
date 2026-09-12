@@ -209,6 +209,29 @@ const ROOM_HISTORY: {
   { nick: 'wren', body: 'badinage demo mode looks cute btw', agoMin: 6, stanzaId: 'room-7' }
 ]
 
+// One extra page of older history per peer so scroll-up paging is visible
+// in demo mode. Timestamps sit about a day back so they always land in
+// front of the seeded history and produce a day separator.
+const DM_PAGE: { who: 'them' | 'me'; body: string; agoMin: number }[] = [
+  {
+    who: 'them',
+    body: 'did you see the outage notice from earlier?',
+    agoMin: 1600
+  },
+  {
+    who: 'me',
+    body: 'yeah, looked like a cert renewal hiccup',
+    agoMin: 1590
+  },
+  { who: 'them', body: 'that explains the reconnects', agoMin: 1580 }
+]
+
+const ROOM_PAGE: { nick: string; body: string; agoMin: number }[] = [
+  { nick: 'wren', body: 'is the new build server up yet?', agoMin: 1620 },
+  { nick: 'cleo', body: 'just provisioned it this morning', agoMin: 1610 },
+  { nick: 'dmitri', body: 'finally, the old one was crawling', agoMin: 1590 }
+]
+
 const REPLIES = [
   'lol',
   'on it',
@@ -231,6 +254,8 @@ export class DemoConnection {
   jid = ''
   private timers: ReturnType<typeof setTimeout>[] = []
   private replyTimer: ReturnType<typeof setTimeout> | null = null
+  // peers that already got their one older history page
+  private mamPaged = new Set<string>()
 
   connect(jid: string, _password: string): void {
     this.jid = jid
@@ -367,6 +392,10 @@ export class DemoConnection {
   sendPresence(): void {
     // demo presence is already seeded in connect()
   }
+  fetchAvatar(jid: string, onDone: (dataUri: string | undefined) => void): void {
+    // the lobby room gets the app mark as its avatar
+    onDone(jid === ROOM ? '/icons/icon-192.png' : undefined)
+  }
   sendDirectedPresence(to: string, type?: string): void {
     if (type === 'subscribe') {
       // demo contacts always accept after a beat
@@ -457,10 +486,56 @@ export class DemoConnection {
     opts: { max?: number; before?: string | undefined; room?: boolean | undefined },
     onDone: (result: MamPageResult) => void
   ): void {
-    // demo data is seeded eagerly; report the archive as exhausted
-    void peerJid
-    void opts
-    onDone({ complete: true })
+    void opts.max
+    // calls without a before cursor are the initial pull; the seeded
+    // history stands in for it, so hand back a cursor that lets scroll-up
+    // fetch one more page
+    if (opts.before === undefined) {
+      onDone(
+        this.mamPaged.has(peerJid)
+          ? { complete: true }
+          : { complete: false, first: `mam-page-${peerJid}-0` }
+      )
+      return
+    }
+    if (this.mamPaged.has(peerJid)) {
+      onDone({ complete: true })
+      return
+    }
+    this.mamPaged.add(peerJid)
+    this.timers.push(
+      setTimeout(() => {
+        const isRoom = opts.room === true || peerJid.includes('@conference.')
+        if (isRoom) {
+          for (const [i, entry] of ROOM_PAGE.entries()) {
+            this.events.emit('message', {
+              from: `${peerJid}/${entry.nick}`,
+              to: this.jid,
+              body: entry.body,
+              type: 'groupchat',
+              nick: entry.nick,
+              stanzaId: `mam-page-${peerJid}-${i + 1}`,
+              mam: true,
+              delay: ago(entry.agoMin)
+            })
+          }
+        } else {
+          for (const [i, entry] of DM_PAGE.entries()) {
+            this.events.emit('message', {
+              from: entry.who === 'me' ? this.jid : peerJid,
+              to: entry.who === 'me' ? peerJid : this.jid,
+              body: entry.body,
+              type: 'chat',
+              stanzaId: `mam-page-${peerJid}-${i + 1}`,
+              mam: true,
+              delay: ago(entry.agoMin),
+              carbon: entry.who === 'me' ? 'sent' : undefined
+            })
+          }
+        }
+        onDone({ complete: true, first: `mam-page-${peerJid}-1` })
+      }, 400)
+    )
   }
 
   enableCarbons(): void {

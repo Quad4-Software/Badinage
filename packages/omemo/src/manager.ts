@@ -5,7 +5,7 @@
 import { DEVICE_ID_MAX, PREKEY_COUNT_DEFAULT } from './constants'
 import type { Namespace } from './constants'
 import { DecryptionFailedError, KeyExchangeError, ParseError } from './errors'
-import { randomBytes } from './internal/bytes'
+import { bytesEqual, randomBytes } from './internal/bytes'
 import { parseXml } from './internal/xml'
 import type { XmlElement } from './internal/xml'
 
@@ -20,6 +20,7 @@ import {
   respondToKeyExchange
 } from './protocol/deviceKeys'
 import { decodeKeyExchangeWire, encodeKeyExchangeWire } from './protocol/keyExchange'
+import type { ParsedKeyExchange } from './protocol/keyExchange'
 import {
   decryptPayloadLegacy,
   decryptPayloadOmemo2,
@@ -30,7 +31,7 @@ import {
 import { PROFILES } from './protocol/profiles'
 import { Session, DEFAULT_LIMITS } from './protocol/session'
 import { sessionInitiator } from './protocol/sessionInit'
-import type { RatchetLimits } from './protocol/session'
+import type { PendingKeyExchange, RatchetLimits } from './protocol/session'
 import { deserializeSession, serializeSession } from './protocol/sessionData'
 import { x3dhInitiate } from './protocol/x3dh'
 import { buildEncryptedElement, parseEncryptedElement } from './protocol/wire'
@@ -232,13 +233,13 @@ export class OmemoManager {
     let inner = key.data
     let wasKex = false
 
+    let kex: ParsedKeyExchange | undefined
     if (key.kex) {
       wasKex = true
-      const kex = decodeKeyExchangeWire(this.namespace, key.data)
+      kex = decodeKeyExchangeWire(this.namespace, key.data)
       inner = kex.message
       if (session === undefined) {
         session = await respondToKeyExchange(this.store, this.profile(), kex, this.limits)
-        await this.saveSession(sender, parsed.sid, session)
       }
     }
     if (session === undefined) {
@@ -251,10 +252,18 @@ export class OmemoManager {
     } catch (error) {
       // If the kex was resent or the sender re-initiated, the stored session
       // may not line up. Rebuild the session from the key exchange once.
-      if (!wasKex) throw error
-      const kex = decodeKeyExchangeWire(this.namespace, key.data)
-      session = await respondToKeyExchange(this.store, this.profile(), kex, this.limits)
-      transport = session.decrypt(inner)
+      // Session state is only committed on successful decryption, so the
+      // stored session is still intact here.
+      if (kex === undefined) throw error
+      const rebuilt = await respondToKeyExchange(this.store, this.profile(), kex, this.limits)
+      transport = rebuilt.decrypt(inner)
+      // A retransmission of the same key exchange keeps the established
+      // session (the reference implementation calls this check
+      // builds_same_session); only a key exchange with different parameters
+      // replaces it.
+      if (!sameKeyExchange(session.state.receivedKeyExchange ?? null, kex)) {
+        session = rebuilt
+      }
     }
     await this.saveSession(sender, parsed.sid, session)
 
@@ -296,6 +305,16 @@ export class OmemoManager {
 function requireIv(parsed: ParsedEncrypted): Uint8Array {
   if (parsed.iv === undefined) throw new ParseError('legacy message missing iv')
   return parsed.iv
+}
+
+function sameKeyExchange(received: PendingKeyExchange | null, kex: ParsedKeyExchange): boolean {
+  return (
+    received !== null &&
+    received.pkId === kex.pkId &&
+    received.spkId === kex.spkId &&
+    bytesEqual(received.ik, kex.ik) &&
+    bytesEqual(received.ek, kex.ek)
+  )
 }
 
 export function encryptedElementFromXml(xml: string): XmlElement {

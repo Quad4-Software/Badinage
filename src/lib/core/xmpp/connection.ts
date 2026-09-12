@@ -32,6 +32,9 @@ export interface SubscriptionRequest {
 export interface MamPageResult {
   complete: boolean
   last?: string | undefined
+  // rsm uid of the oldest row in this page - pass it as before to fetch
+  // the next older page
+  first?: string | undefined
 }
 
 // XEP-0461 reply target: id is the replied-to stanza id, plus its author
@@ -119,6 +122,7 @@ export interface ChatConnection {
   sendMarker(to: string, id: string, marker: MarkerType): void
   sendPresence(show?: string, status?: string): void
   sendDirectedPresence(to: string, type?: string, status?: string): void
+  fetchAvatar(jid: string, onDone: (dataUri: string | undefined) => void): void
   fetchRoster(): void
   rosterSet(jid: string, name: string, groups?: string[]): void
   rosterRemove(jid: string): void
@@ -397,6 +401,24 @@ export class XmppConnection implements ChatConnection {
     this.conn.send(pres)
   }
 
+  // vcard-temp PHOTO fetch, used for room avatars. Delivers a data URI or
+  // undefined when the peer has no photo or the query errors.
+  fetchAvatar(jid: string, onDone: (dataUri: string | undefined) => void): void {
+    this.sendIq(
+      $iq({ type: 'get', to: jid, id: this.conn.getUniqueId('vcard') }).c('vCard', {
+        xmlns: NS.VCARD_TEMP
+      }),
+      (stanza) => {
+        const vcard = stanza.getElementsByTagName('vCard').item(0)
+        const photo = vcard?.getElementsByTagName('PHOTO').item(0)
+        const type = photo?.getElementsByTagName('TYPE').item(0)?.textContent
+        const binval = photo?.getElementsByTagName('BINVAL').item(0)?.textContent
+        onDone(type && binval ? `data:${type};base64,${binval.trim()}` : undefined)
+      },
+      () => onDone(undefined)
+    )
+  }
+
   // ---- roster -------------------------------------------------------------
 
   fetchRoster(): void {
@@ -481,9 +503,11 @@ export class XmppConnection implements ChatConnection {
         const fin = result.getElementsByTagNameNS(NS.MAM, 'fin').item(0) as Element | null
         const set = fin?.getElementsByTagNameNS(NS.RSM, 'set').item(0) as Element | null
         const last = set?.getElementsByTagName('last').item(0)?.textContent
+        const first = set?.getElementsByTagName('first').item(0)?.textContent
         onDone({
           complete: fin?.getAttribute('complete') === 'true',
-          last: last ?? undefined
+          last: last ?? undefined,
+          first: first ?? undefined
         })
       },
       () => onDone({ complete: true })

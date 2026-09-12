@@ -49,7 +49,18 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true
+    sourcemap: true,
+    rolldownOptions: {
+      output: {
+        // strophe and lucide are heavy leaf deps; splitting them keeps the
+        // entry chunk under the size warning and lets them cache separately
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('strophe.js')) return 'strophe'
+          if (id.includes('@lucide')) return 'lucide'
+        }
+      }
+    }
   },
   test: {
     include: ['src/**/*.test.ts'],

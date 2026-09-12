@@ -124,5 +124,6 @@
       playing = false
       elapsed = 0
     }}
+    onerror={() => (playing = false)}
   ></audio>
 </div>

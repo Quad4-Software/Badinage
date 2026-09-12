@@ -37,7 +37,19 @@ export function generateCurve25519Identity(): KeyPair {
 }
 
 export function x25519SharedSecret(privateKey: Uint8Array, publicKey: Uint8Array): Uint8Array {
-  const shared = x25519.getSharedSecret(privateKey, publicKey)
+  if (privateKey.length !== CURVE_KEY_SIZE) {
+    throw new ProtocolError('invalid Curve25519 secret length')
+  }
+  if (publicKey.length !== CURVE_KEY_SIZE) {
+    throw new ProtocolError('invalid Curve25519 public key length')
+  }
+  let shared: Uint8Array
+  try {
+    shared = x25519.getSharedSecret(privateKey, publicKey)
+  } catch {
+    // noble rejects low order points with a bare Error; normalize it
+    throw new ProtocolError('invalid Curve25519 public key')
+  }
   if (bytesEqual(shared, new Uint8Array(CURVE_KEY_SIZE))) {
     throw new ProtocolError('Curve25519 shared secret all zero, low order input')
   }

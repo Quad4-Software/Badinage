@@ -61,6 +61,20 @@ test('unread badges are circular', async ({ page }) => {
   expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1)
 })
 
+test('scrolling to top loads an older archive page', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Try the demo' }).click()
+  const conversation = page.getByRole('button', { name: /Aria/ }).first()
+  await expect(conversation).toBeVisible({ timeout: 10_000 })
+  await conversation.click()
+  const before = await page.locator('ol li').count()
+  const loadOlder = page.getByRole('button', { name: 'Load older messages' })
+  await expect(loadOlder).toBeVisible()
+  await loadOlder.click()
+  await expect(page.getByText('Beginning of the conversation')).toBeVisible({ timeout: 10_000 })
+  expect(await page.locator('ol li').count()).toBeGreaterThan(before)
+})
+
 test('composer placeholder uses the contact name', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Try the demo' }).click()

@@ -129,7 +129,14 @@ function parseBundleOmemo2(element: XmlElement): ParsedBundle {
   }
   if (identityKeyWire.length !== CURVE_KEY_SIZE) throw new ParseError('bundle: invalid ik length')
 
-  if (!ed25519.verify(signedPreKeySignature, signedPreKey, identityKeyWire)) {
+  // Malformed identity keys can make noble throw instead of returning false.
+  let signatureValid = false
+  try {
+    signatureValid = ed25519.verify(signedPreKeySignature, signedPreKey, identityKeyWire)
+  } catch {
+    signatureValid = false
+  }
+  if (!signatureValid) {
     throw new InvalidSignatureError('bundle: signed pre key signature invalid')
   }
 

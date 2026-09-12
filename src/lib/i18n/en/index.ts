@@ -33,6 +33,7 @@ const en = {
   notEncrypted: 'Not encrypted',
   unread: '{count:number} unread',
   typing: 'typing…',
+  typingNick: '{name:string} is typing…',
   tryDemo: 'Try the demo',
   demoHint: 'No server needed. Fake contacts, fake chats, all local.',
   rooms: 'Rooms',
@@ -91,6 +92,8 @@ const en = {
   pause: 'Pause',
   addReactionEmoji: 'Pick an emoji',
   messageSigned: 'Message signed',
+  loadOlder: 'Load older messages',
+  beginningOfHistory: 'Beginning of the conversation',
 
   settings: 'Settings',
   settingsHint: 'Preferences are stored on this device only',
@@ -128,6 +131,8 @@ const en = {
     '{jid:string} will be disconnected and its local data on this device deleted. The account itself stays on the server.',
   cancel: 'Cancel',
   confirm: 'Remove',
+  roleModerator: 'mod',
+  roleAdmin: 'admin',
 
   openSettings: 'Open settings',
   loadingContacts: 'Loading contacts',

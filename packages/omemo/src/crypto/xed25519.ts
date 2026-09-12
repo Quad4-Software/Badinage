@@ -8,7 +8,7 @@
 import { ed25519 } from '@noble/curves/ed25519.js'
 
 import { CURVE_KEY_SIZE, SIGNATURE_SIZE } from '../constants'
-import { ProtocolError, InvalidSignatureError } from '../errors'
+import { OmemoError, ProtocolError, InvalidSignatureError } from '../errors'
 import { bigIntToBytesLE, bytesToBigIntLE, concatBytes, randomBytes } from '../internal/bytes'
 import { sha512 } from './kdf'
 import {
@@ -71,8 +71,15 @@ export function xed25519Verify(
   if (signature.length !== SIGNATURE_SIZE)
     throw new InvalidSignatureError('invalid signature length')
   const signBit = ((signature[63] ?? 0) >> 7) as 0 | 1
-  const u = decodeCurveKeyWire(curvePublicKeyWire)
-  const ed25519PublicKey = curvePublicToEdPublic(u, signBit)
+  let ed25519PublicKey: Uint8Array
+  try {
+    const u = decodeCurveKeyWire(curvePublicKeyWire)
+    ed25519PublicKey = curvePublicToEdPublic(u, signBit)
+  } catch (error) {
+    if (error instanceof OmemoError) throw error
+    // Degenerate public keys (non-canonical u, u = -1) reject cleanly.
+    throw new InvalidSignatureError('invalid Curve25519 identity key')
+  }
 
   const strict = Uint8Array.from(signature)
   strict[63] = (strict[63] ?? 0) & 0x7f

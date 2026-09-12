@@ -144,6 +144,11 @@ type RootTranslation = {
 	 */
 	typing: string
 	/**
+	 * {​n​a​m​e​}​ ​i​s​ ​t​y​p​i​n​g​…
+	 * @param {string} name
+	 */
+	typingNick: RequiredParams<'name'>
+	/**
 	 * T​r​y​ ​t​h​e​ ​d​e​m​o
 	 */
 	tryDemo: string
@@ -375,6 +380,14 @@ type RootTranslation = {
 	 */
 	messageSigned: string
 	/**
+	 * L​o​a​d​ ​o​l​d​e​r​ ​m​e​s​s​a​g​e​s
+	 */
+	loadOlder: string
+	/**
+	 * B​e​g​i​n​n​i​n​g​ ​o​f​ ​t​h​e​ ​c​o​n​v​e​r​s​a​t​i​o​n
+	 */
+	beginningOfHistory: string
+	/**
 	 * S​e​t​t​i​n​g​s
 	 */
 	settings: string
@@ -504,6 +517,14 @@ type RootTranslation = {
 	 * R​e​m​o​v​e
 	 */
 	confirm: string
+	/**
+	 * m​o​d
+	 */
+	roleModerator: string
+	/**
+	 * a​d​m​i​n
+	 */
+	roleAdmin: string
 	/**
 	 * O​p​e​n​ ​s​e​t​t​i​n​g​s
 	 */
@@ -667,6 +688,10 @@ export type TranslationFunctions = {
 	 * typing…
 	 */
 	typing: () => LocalizedString
+	/**
+	 * {name} is typing…
+	 */
+	typingNick: (arg: { name: string }) => LocalizedString
 	/**
 	 * Try the demo
 	 */
@@ -896,6 +921,14 @@ export type TranslationFunctions = {
 	 */
 	messageSigned: () => LocalizedString
 	/**
+	 * Load older messages
+	 */
+	loadOlder: () => LocalizedString
+	/**
+	 * Beginning of the conversation
+	 */
+	beginningOfHistory: () => LocalizedString
+	/**
 	 * Settings
 	 */
 	settings: () => LocalizedString
@@ -1019,6 +1052,14 @@ export type TranslationFunctions = {
 	 * Remove
 	 */
 	confirm: () => LocalizedString
+	/**
+	 * mod
+	 */
+	roleModerator: () => LocalizedString
+	/**
+	 * admin
+	 */
+	roleAdmin: () => LocalizedString
 	/**
 	 * Open settings
 	 */

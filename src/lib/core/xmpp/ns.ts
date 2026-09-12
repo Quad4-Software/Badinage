@@ -17,6 +17,7 @@ export const NS = {
   DELAY: 'urn:xmpp:delay',
   HTTP_UPLOAD: 'urn:xmpp:http:upload:0',
   VCARD_AVATAR: 'urn:xmpp:avatar:metadata',
+  VCARD_TEMP: 'vcard-temp',
   BLOCKING: 'urn:xmpp:blocking',
   OMEMO: 'urn:xmpp:omemo:2',
   OMEMO_LEGACY: 'eu.siacs.conversations.axolotl',

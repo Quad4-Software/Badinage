@@ -60,6 +60,9 @@ export function sessionResponder(
     ownRatchet: KeyPair
     localIdentity: Uint8Array
     remoteIdentity: Uint8Array
+    // The key exchange the session was built from. Stored so a retransmitted
+    // key exchange can be recognized instead of replacing the session.
+    keyExchange?: PendingKeyExchange
   },
   limits: RatchetLimits = DEFAULT_LIMITS
 ): Session {
@@ -71,5 +74,6 @@ export function sessionResponder(
   s.localIdentity = args.localIdentity
   s.remoteIdentity = args.remoteIdentity
   s.dhs = args.ownRatchet
+  s.receivedKeyExchange = args.keyExchange ?? null
   return session
 }

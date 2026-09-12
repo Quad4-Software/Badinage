@@ -136,7 +136,8 @@ export async function respondToKeyExchange(
       associatedData: result.associatedData,
       ownRatchet: result.signedPreKey,
       localIdentity: identity.wirePublicKey,
-      remoteIdentity: result.remoteIdentityWire
+      remoteIdentity: result.remoteIdentityWire,
+      keyExchange: { pkId: kex.pkId, spkId: kex.spkId, ik: kex.ik, ek: kex.ek }
     },
     limits
   )

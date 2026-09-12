@@ -23,9 +23,48 @@ bytes as the reference stack for:
   dh_pub=1 n=2 pn=3 ct=4, OMEMOKeyExchange pk_id=1 ek=2 ik=3 msg=4
   spk_id=6) and the legacy sender-first associated data ordering
 
-scripts/py_verify.py is a one-shot bridge invoked by some tests to have the
-reference stack verify our signatures and decrypt our ciphertexts. Tests
-that need it are skipped when .venv is absent.
+Beyond golden vectors, the suite performs true bidirectional round trips
+through scripts/py_verify.py for both namespaces:
+
+- our key exchange accepted by the reference passive side
+  (kex_accept: reference parses our OMEMOKeyExchange wire bytes, runs
+  passive X3DH and decrypts the wrapped ratchet message)
+- a reference-initiated key exchange driving our responder session
+  (kex_build: reference active X3DH against a bundle serialized by our
+  code, which also verifies our signed pre key signature)
+- alternating multi-message exchange through the bridge, including
+  out-of-order delivery on both sides
+- complete <encrypted> elements produced by OmemoManager parsed and
+  decrypted by the reference etree/XML-schema layer (msg_decrypt), and
+  reference-produced elements decrypted by OmemoManager (msg_encrypt),
+  including session confirmation and repeated key exchange handling
+- bundle serialization and parsing in both directions
+  (bundle_serialize, bundle_parse)
+
+scripts/py_verify.py speaks one JSON request per stdin line and answers
+with one JSON response per stdout line. The test file keeps a single
+bridge process alive for the whole run so python interpreter startup is
+paid once. Requests and responses hex-encode byte strings; ratchet state
+is exchanged as the DoubleRatchetModel JSON dump used by dr_encrypt and
+dr_decrypt since python session objects are not serializable.
+
+Tests that need the bridge are skipped when .venv is absent, and a sanity
+test fails the suite if the bridge cannot answer a trivial request while
+the venv exists. Run only this file with:
+
+    pnpm test:interop
+
+Remaining gaps:
+
+- The bridge covers single-device one-to-one exchanges; multi-recipient
+  elements are produced by our code but only decrypted per device on the
+  reference side.
+- SCE heartbeat envelopes and XMPP pubsub device list flows are exercised
+  against golden vectors and our own stack, not through the bridge.
+- The reference stack does not model one-time pre key consumption on the
+  responder side, so repeated key exchanges are still accepted; our
+  manager keeps the established session in that case
+  (builds_same_session).
 
 Note: vectors.json was generated with twomemo and xmlschema installed on
 top of the base venv (uv pip install --python .venv/bin/python twomemo

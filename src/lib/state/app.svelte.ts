@@ -1,3 +1,5 @@
+import { SvelteMap } from 'svelte/reactivity'
+
 import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
@@ -21,8 +23,10 @@ class AppStore {
   loginOpen = $state(false)
   joinRoomOpen = $state(false)
   addContactOpen = $state(false)
-  composerFocus: (() => void) | undefined
-  composer = $state<ComposerContext>({})
+  // reply/edit context and focus callbacks are keyed per peer so split
+  // panes keep independent composer state
+  composerByPeer = new SvelteMap<string, ComposerContext>()
+  private focusByPeer = new Map<string, () => void>()
   drafts = new Map<string, string>()
 
   private handlers = new Map<string, () => void>()
@@ -75,6 +79,27 @@ class AppStore {
     else this.drafts.delete(key)
   }
 
+  composerFor(peer: string): ComposerContext {
+    return this.composerByPeer.get(this.draftKey(peer)) ?? {}
+  }
+
+  setComposer(peer: string, ctx: ComposerContext): void {
+    const key = this.draftKey(peer)
+    if (ctx.replyTo || ctx.editing) this.composerByPeer.set(key, ctx)
+    else this.composerByPeer.delete(key)
+  }
+
+  registerComposerFocus(peer: string, focus: () => void): () => void {
+    const key = this.draftKey(peer)
+    this.focusByPeer.set(key, focus)
+    return () => this.focusByPeer.delete(key)
+  }
+
+  focusComposer(peer: string | null): void {
+    if (!peer) return
+    this.focusByPeer.get(this.draftKey(peer))?.()
+  }
+
   selectPeer(peer: string | null): void {
     const bare = peer ? bareJid(peer) : null
     // if the picked conversation lives in the split pane, swap the panes
@@ -83,22 +108,31 @@ class AppStore {
       this.splitPeer = this.activePeer
     }
     this.activePeer = bare
-    this.composer = {}
+    if (bare) this.composerByPeer.delete(this.draftKey(bare))
     if (!peer) return
     const account = accounts.active
     if (!account) return
     const store = this.chatsFor(account.jid)
     const conversation = store.open(peer)
     conversation.unread = 0
+    // room avatars come from the room vCard, fetched once per session
+    if (
+      conversation.kind === 'muc' &&
+      !conversation.avatarFetched &&
+      account.status === 'connected'
+    ) {
+      conversation.avatarFetched = true
+      account.connection.fetchAvatar(conversation.peerJid, (uri) => {
+        if (uri) conversation.avatar = uri
+      })
+    }
     // pull server history once per session per conversation; dedup by
-    // stanza-id keeps it from doubling messages we already cached
+    // stanza-id keeps it from doubling messages we already cached. The
+    // first page has no cursor yet so loadOlder fetches the latest page
+    // and records the fin cursor for scroll-up paging.
     if (account.status === 'connected' && !store.mamDone.has(conversation.peerJid)) {
       store.mamDone.add(conversation.peerJid)
-      account.connection.queryArchive(
-        conversation.peerJid,
-        { max: 50, room: conversation.kind === 'muc' },
-        () => undefined
-      )
+      store.loadOlder(conversation, account.connection)
     }
     // tell the sender the latest incoming message was displayed
     if (!settings.current.sendReadMarkers) return

@@ -5,7 +5,31 @@ import { ParseError } from '../errors'
 import { base64Decode, base64Encode } from '../internal/bytes'
 import { PROFILES } from './profiles'
 import { DEFAULT_LIMITS, Session } from './session'
-import type { RatchetLimits, SessionState } from './session'
+import type { PendingKeyExchange, RatchetLimits, SessionState } from './session'
+
+function serializeKex(
+  kex: PendingKeyExchange | null | undefined
+): { pkId: number; spkId: number; ik: string; ek: string } | null {
+  if (kex == null) return null
+  return {
+    pkId: kex.pkId,
+    spkId: kex.spkId,
+    ik: base64Encode(kex.ik),
+    ek: base64Encode(kex.ek)
+  }
+}
+
+function deserializeKex(
+  kex: { pkId: number; spkId: number; ik: string; ek: string } | null | undefined
+): PendingKeyExchange | null {
+  if (kex == null) return null
+  return {
+    pkId: kex.pkId,
+    spkId: kex.spkId,
+    ik: base64Decode(kex.ik),
+    ek: base64Decode(kex.ek)
+  }
+}
 
 export interface SessionData {
   v: 1
@@ -24,6 +48,8 @@ export interface SessionData {
   remoteIdentity: string
   localIdentity: string
   pendingKeyExchange: { pkId: number; spkId: number; ik: string; ek: string } | null
+  // The key exchange a passive session was built from, if recorded.
+  receivedKeyExchange?: { pkId: number; spkId: number; ik: string; ek: string } | null
   skipped: { dh: string; n: number; mk: string }[]
   confirmed: boolean
 }
@@ -46,15 +72,8 @@ export function serializeSession(session: Session): SessionData {
     ad: base64Encode(s.ad),
     remoteIdentity: base64Encode(s.remoteIdentity),
     localIdentity: base64Encode(s.localIdentity),
-    pendingKeyExchange:
-      s.pendingKeyExchange === null
-        ? null
-        : {
-            pkId: s.pendingKeyExchange.pkId,
-            spkId: s.pendingKeyExchange.spkId,
-            ik: base64Encode(s.pendingKeyExchange.ik),
-            ek: base64Encode(s.pendingKeyExchange.ek)
-          },
+    pendingKeyExchange: serializeKex(s.pendingKeyExchange),
+    receivedKeyExchange: serializeKex(s.receivedKeyExchange ?? null),
     skipped: s.skipped.map((entry) => ({
       dh: base64Encode(entry.dh),
       n: entry.n,
@@ -86,15 +105,8 @@ export function deserializeSession(
     ad: base64Decode(data.ad),
     remoteIdentity: base64Decode(data.remoteIdentity),
     localIdentity: base64Decode(data.localIdentity),
-    pendingKeyExchange:
-      data.pendingKeyExchange === null
-        ? null
-        : {
-            pkId: data.pendingKeyExchange.pkId,
-            spkId: data.pendingKeyExchange.spkId,
-            ik: base64Decode(data.pendingKeyExchange.ik),
-            ek: base64Decode(data.pendingKeyExchange.ek)
-          },
+    pendingKeyExchange: deserializeKex(data.pendingKeyExchange),
+    receivedKeyExchange: deserializeKex(data.receivedKeyExchange),
     skipped: data.skipped.map((entry) => ({
       dh: base64Decode(entry.dh),
       n: entry.n,

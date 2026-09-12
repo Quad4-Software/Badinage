@@ -1,10 +1,13 @@
 <script lang="ts">
   import { locale } from '$lib/i18n/i18n-svelte'
+  import { accounts } from '$lib/state/accounts.svelte'
+  import { app } from '$lib/state/app.svelte'
   import type { ChatMessage, Conversation } from '$lib/state/chats.svelte'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
   import { parseJid } from '$lib/utils/jid'
   import { formatDay, isSameDay } from '$lib/utils/time'
 
+  import LoadOlder from './load-older.svelte'
   import MessageItem from './message-item.svelte'
 
   interface Props {
@@ -20,8 +23,19 @@
   let { conversation, selfJid = '', onQuoteClick, onReply, onEdit, onReact }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
+  // scrollTop under this counts as near the top and shows the pager button
+  const TOP_THRESHOLD_PX = 60
 
   let viewport = $state<HTMLDivElement | null>(null)
+  let nearTop = $state(true)
+  let pinned = true
+  // scrollHeight captured when an older page is requested; while set the
+  // viewport is re-anchored by the prepended height as rows land so the
+  // reading position does not move
+  let anchorHeight: number | null = null
+
+  // the pager only makes sense while a transport can answer it
+  const canLoadOlder = $derived(accounts.active?.status === 'connected')
 
   // in a muc, our reaction sender entry is our nick rather than our jid
   const self = $derived(conversation.kind === 'muc' ? (conversation.ourNick ?? selfJid) : selfJid)
@@ -41,21 +55,54 @@
     return message.nick ?? parseJid(message.peerJid).local ?? message.peerJid
   }
 
+  function loadOlder() {
+    const account = accounts.active
+    if (!account || !viewport) return
+    if (conversation.historyLoading || conversation.historyComplete) return
+    anchorHeight = viewport.scrollHeight
+    app.chatsFor(account.jid).loadOlder(conversation, account.connection)
+    // the store refused (loading, complete or offline): drop the anchor
+    // so a stale height does not corrupt the next prepend
+    if (!conversation.historyLoading) anchorHeight = null
+  }
+
+  // reset scroll state when the pane switches to another conversation
+  $effect(() => {
+    void conversation.peerJid
+    pinned = true
+    nearTop = true
+    anchorHeight = null
+  })
+
   $effect(() => {
     const _count = conversation.messages.length
-    if (viewport) {
-      viewport.scrollTop = viewport.scrollHeight
+    const el = viewport
+    if (!el) return
+    if (anchorHeight !== null) {
+      // an older page is landing above: shift the viewport by the added
+      // height so the same messages stay in view
+      el.scrollTop += el.scrollHeight - anchorHeight
+      anchorHeight = el.scrollHeight
+      return
     }
+    // stay pinned to the bottom only when the user is already there
+    if (pinned) el.scrollTop = el.scrollHeight
+  })
+
+  // a page that adds no rows (empty or fully deduped) leaves nothing to
+  // anchor against
+  $effect(() => {
+    if (!conversation.historyLoading) anchorHeight = null
   })
 
   // images and other async content grow the list after the initial scroll;
   // stay pinned to the bottom whenever we were already there
-  let pinned = true
   $effect(() => {
     const el = viewport
     if (!el) return
     const onScroll = () => {
       pinned = el.scrollTop + el.clientHeight >= el.scrollHeight - 40
+      nearTop = el.scrollTop < TOP_THRESHOLD_PX
     }
     el.addEventListener('scroll', onScroll)
     const observer = new ResizeObserver(() => {
@@ -71,6 +118,14 @@
 
 <ScrollArea bind:viewportRef={viewport} class="flex-1">
   <ol class="flex flex-col p-4">
+    {#if canLoadOlder}
+      <LoadOlder
+        loading={conversation.historyLoading ?? false}
+        complete={conversation.historyComplete ?? false}
+        {nearTop}
+        onLoad={loadOlder}
+      />
+    {/if}
     {#each conversation.messages as message, i (message.id)}
       {@const grouped = startsGroup(i)}
       {#if i === 0 || !isSameDay(message.timestamp, conversation.messages[i - 1]?.timestamp ?? 0)}

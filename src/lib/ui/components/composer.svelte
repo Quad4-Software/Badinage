@@ -12,6 +12,8 @@
   import { Input } from '$lib/ui/primitives/input'
 
   import EmojiPicker from './emoji-picker.svelte'
+  import { uploadAndSend } from '../upload'
+  import { createVoiceRecorder } from '../voice.svelte'
 
   let {
     peerJid,
@@ -25,9 +27,6 @@
   let inputEl = $state<HTMLInputElement | null>(null)
   let fileEl = $state<HTMLInputElement | null>(null)
   let emojiOpen = $state(false)
-  let recording = $state(false)
-  let recorder: MediaRecorder | null = null
-  let chunks: Blob[] = []
   let composingSent = false
   let pauseTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -39,9 +38,10 @@
   })
 
   $effect(() => {
-    app.composerFocus = () => inputEl?.focus()
-    return () => (app.composerFocus = undefined)
+    return app.registerComposerFocus(peerJid, () => inputEl?.focus())
   })
+
+  const composerCtx = $derived(app.composerFor(peerJid))
 
   const placeholder = $derived($LL.messagePlaceholder({ peer: peerName || bareJid(peerJid) }))
 
@@ -64,7 +64,8 @@
 
   function pushOutgoing(text: string, attachments?: Attachment[]) {
     if (!account) return
-    app.chatsFor(account.jid).push(peerJid, {
+    const store = app.chatsFor(account.jid)
+    store.push(peerJid, {
       id: account.connection.uniqueId('local'),
       peerJid,
       body: text,
@@ -75,18 +76,18 @@
       read: false,
       reactions: {},
       attachments,
-      nick: kind === 'muc' ? (account.roster ? undefined : undefined) : undefined
+      nick: kind === 'muc' ? store.open(peerJid).ourNick : undefined
     })
   }
 
   function send() {
     const text = body.trim()
-    if (!account || (!text && !recording)) return
+    if (!account || (!text && !voice.recording)) return
     clearTimeout(pauseTimer)
     composingSent = false
 
     const type = kind === 'muc' ? 'groupchat' : 'chat'
-    const ctx = app.composer
+    const ctx = app.composerFor(peerJid)
 
     if (ctx.editing) {
       const ref = ctx.editing.wireId ?? ctx.editing.id
@@ -131,12 +132,15 @@
       })
     }
     body = ''
-    app.composer = {}
+    app.setComposer(peerJid, {})
   }
 
   function onKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && (app.composer.replyTo || app.composer.editing)) {
-      app.composer = {}
+    if (event.key === 'Escape' && (composerCtx.replyTo || composerCtx.editing)) {
+      event.preventDefault()
+      // keep the global nav.closeConversation binding from firing too
+      event.stopPropagation()
+      app.setComposer(peerJid, {})
       return
     }
     if (event.key !== 'Enter') notifyTyping()
@@ -165,112 +169,65 @@
     await sendFile(file, file.name, file.type || 'application/octet-stream')
   }
 
-  async function sendFile(file: Blob, name: string, mediaType: string, duration?: number) {
+  function sendFile(file: Blob, name: string, mediaType: string, duration?: number) {
     if (!account) return
-    const conn = account.connection
-    const type = kind === 'muc' ? 'groupchat' : 'chat'
-    conn.requestUploadSlot(name, file.size, mediaType, async (slot) => {
-      let url: string
-      if (slot) {
-        try {
-          await conn.uploadFile(slot.putUrl, file)
-          url = slot.getUrl
-        } catch {
-          toast.error($LL.uploadFailed())
-          return
-        }
-      } else {
-        // no upload service (or demo mode): embed small files as data URIs
-        if (file.size > 512 * 1024) {
-          toast.error($LL.uploadFailed())
-          return
-        }
-        url = await blobToDataUri(file)
-      }
-      conn.sendAttachment(peerJid, url, type, {
-        name,
-        mediaType,
-        size: file.size,
-        duration
-      })
-      pushOutgoing(url, [{ url, mediaType, name, size: file.size, duration }])
-    })
+    uploadAndSend(
+      account.connection,
+      peerJid,
+      kind === 'muc' ? 'groupchat' : 'chat',
+      file,
+      name,
+      mediaType,
+      duration,
+      (url, attachment) => pushOutgoing(url, [attachment]),
+      () => toast.error($LL.uploadFailed())
+    )
   }
 
-  function blobToDataUri(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = () => reject(reader.error)
-      reader.readAsDataURL(blob)
-    })
-  }
+  const voice = createVoiceRecorder((blob, mime) => {
+    const webm = mime.startsWith('audio/webm')
+    void sendFile(
+      blob,
+      `voice-${Date.now()}.${webm ? 'webm' : 'ogg'}`,
+      webm ? 'audio/webm' : 'audio/ogg; codecs=opus'
+    )
+  })
 
-  async function toggleRecording() {
-    if (recording) {
-      recorder?.stop()
-      return
-    }
-    if (!navigator.mediaDevices?.getUserMedia) return
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mime = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-        ? 'audio/ogg;codecs=opus'
-        : 'audio/webm'
-      chunks = []
-      recorder = new MediaRecorder(stream, { mimeType: mime })
-      recorder.ondataavailable = (e) => chunks.push(e.data)
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop())
-        const blob = new Blob(chunks, { type: mime.split(';')[0] ?? 'audio/ogg' })
-        recording = false
-        await sendFile(blob, `voice-${Date.now()}.ogg`, 'audio/ogg; codecs=opus')
-      }
-      recorder.start()
-      recording = true
-    } catch {
-      recording = false
-    }
-  }
-
-  function cancelRecording() {
-    if (recorder) {
-      recorder.onstop = null
-      recorder.stop()
-      recording = false
-    }
+  function toggleRecording() {
+    if (voice.recording) voice.stop()
+    else void voice.start()
   }
 </script>
 
 <div class="border-t">
-  {#if app.composer.replyTo}
+  {#if composerCtx.replyTo}
     <div class="bg-muted/60 flex items-center gap-2 px-3 py-1.5 text-xs">
       <span class="border-primary min-w-0 flex-1 truncate border-l-2 pl-2">
         {$LL.replyingTo({
-          name: app.composer.replyTo.nick ?? bareJid(app.composer.replyTo.peerJid)
+          name: composerCtx.replyTo.nick ?? bareJid(composerCtx.replyTo.peerJid)
         })}:
-        {app.composer.replyTo.body}
+        {composerCtx.replyTo.body}
       </span>
       <Button
         variant="ghost"
         size="icon"
         class="size-6 shrink-0"
-        onclick={() => (app.composer = {})}
+        onclick={() => app.setComposer(peerJid, {})}
         aria-label={$LL.cancelEdit()}
       >
         <X class="size-3.5" />
       </Button>
     </div>
-  {:else if app.composer.editing}
+  {:else if composerCtx.editing}
     <div class="bg-muted/60 flex items-center gap-2 px-3 py-1.5 text-xs">
       <span class="border-primary min-w-0 flex-1 truncate border-l-2 pl-2">
-        {$LL.editingMessage()}: {app.composer.editing.body}
+        {$LL.editingMessage()}: {composerCtx.editing.body}
       </span>
       <Button
         variant="ghost"
         size="icon"
         class="size-6 shrink-0"
-        onclick={() => (app.composer = {})}
+        onclick={() => app.setComposer(peerJid, {})}
         aria-label={$LL.cancelEdit()}
       >
         <X class="size-3.5" />
@@ -292,7 +249,7 @@
       size="icon"
       onclick={attach}
       aria-label={$LL.attachFile()}
-      disabled={recording}
+      disabled={voice.recording}
     >
       <Paperclip class="size-4" />
     </Button>
@@ -303,7 +260,7 @@
         onclick={() => (emojiOpen = !emojiOpen)}
         aria-label={$LL.addReactionEmoji()}
         aria-expanded={emojiOpen}
-        disabled={recording}
+        disabled={voice.recording}
       >
         <Smile class="size-4" />
       </Button>
@@ -318,14 +275,14 @@
       {placeholder}
       aria-label={placeholder}
       class="min-w-0 flex-1"
-      disabled={recording}
+      disabled={voice.recording}
     />
-    {#if recording}
+    {#if voice.recording}
       <span class="text-destructive animate-pulse px-1 text-xs font-medium">REC</span>
       <Button
         variant="ghost"
         size="icon"
-        onclick={cancelRecording}
+        onclick={() => voice.cancel()}
         aria-label={$LL.cancelRecording()}
       >
         <X class="size-4" />

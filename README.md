@@ -15,19 +15,17 @@ XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 
 ## Features
 
-- Multiple XMPP accounts, one connection each, per-account state isolation
-- WebSocket and BOSH transports with automatic endpoint discovery
-- Direct messages and groupchat (MUC) with occupants, subjects and joins
-- Roster pushes, presence subscriptions, typing notifications, delivery
-  receipts and read markers, message carbons, MAM history, stanza dedup
-- Replies, reactions, message corrections, file attachments and voice
-  messages
-- Customizable keyboard shortcuts with full keyboard navigation
-- Resizable panes with an optional split view for a second conversation
-- Offline-friendly: IndexedDB message cache plus a PWA service worker
-- Dark and light themes, accessible UI, responsive layout
-- Demo mode with fake contacts and a room, no server needed
-- packages/omemo: standalone OMEMO (XEP-0384) library
+- Chat like you expect: DMs and group chats, replies, reactions, edits,
+  attachments, voice messages, typing and read indicators
+- All your accounts in one place, with history that keeps loading as you
+  scroll up
+- Works offline and feels fast: messages cached locally, resizable and
+  split panes, dark mode, keyboard-first
+- Private by design: OMEMO encryption is our own permissively licensed
+  implementation, validated against the reference stack
+- Self-host anywhere: static files behind any web server, or the included
+  Docker image
+- Try it instantly: a demo mode with fake contacts needs no server at all
 
 ## Install
 

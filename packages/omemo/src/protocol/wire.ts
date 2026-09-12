@@ -12,7 +12,7 @@
 //   <payload>B64</payload>
 // </encrypted>
 
-import { NAMESPACES } from '../constants'
+import { DEVICE_ID_MAX, NAMESPACES } from '../constants'
 import type { Namespace } from '../constants'
 import { ParseError } from '../errors'
 import { base64Decode, base64Encode } from '../internal/bytes'
@@ -98,10 +98,7 @@ export function parseEncryptedElement(element: XmlElement, namespace: Namespace)
   if (element.name !== 'encrypted') throw new ParseError('expected <encrypted>')
   const header = findChild(element, 'header')
   if (!header) throw new ParseError('encrypted: missing <header>')
-  const sidAttr = header.attrs['sid']
-  if (sidAttr === undefined) throw new ParseError('encrypted: missing sid')
-  const sid = Number.parseInt(sidAttr, 10)
-  if (!Number.isInteger(sid) || sid < 0) throw new ParseError('encrypted: invalid sid')
+  const sid = parseIdAttr(header.attrs['sid'], 'sid')
 
   const keys: WireKey[] = []
   if (namespace === 'omemo2') {
@@ -132,11 +129,18 @@ export function parseEncryptedElement(element: XmlElement, namespace: Namespace)
   }
 }
 
+// Device ids on the wire are decimal integers in the signed 32 bit range.
+function parseIdAttr(raw: string | undefined, name: string): number {
+  if (raw === undefined || !/^\d+$/.test(raw)) {
+    throw new ParseError(`encrypted: missing or invalid ${name}`)
+  }
+  const id = Number.parseInt(raw, 10)
+  if (id > DEVICE_ID_MAX) throw new ParseError(`encrypted: ${name} out of range`)
+  return id
+}
+
 function parseKey(element: XmlElement, jid: string | undefined, kexAttr: string): WireKey {
-  const ridAttr = element.attrs['rid']
-  if (ridAttr === undefined) throw new ParseError('key: missing rid')
-  const rid = Number.parseInt(ridAttr, 10)
-  if (!Number.isInteger(rid) || rid < 0) throw new ParseError('key: invalid rid')
+  const rid = parseIdAttr(element.attrs['rid'], 'rid')
   const data = base64Decode(element.text)
   const attr = element.attrs[kexAttr]
   const kex =

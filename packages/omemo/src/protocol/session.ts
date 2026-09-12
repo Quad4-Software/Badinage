@@ -7,10 +7,10 @@ import { CURVE_KEY_SIZE, KEY_MATERIAL_SIZE, MAX_SKIP, MAX_SKIPPED_KEYS } from '.
 import type { Namespace } from '../constants'
 import {
   AuthenticationError,
-  DecryptionFailedError,
   DoSProtectionError,
   DuplicateMessageError,
-  ParseError
+  ParseError,
+  ProtocolError
 } from '../errors'
 import { bytesEqual, concatBytes } from '../internal/bytes'
 import { aes256CbcDecrypt, aes256CbcEncrypt } from '../crypto/aes'
@@ -60,6 +60,11 @@ export interface SessionState {
   remoteIdentity: Uint8Array
   localIdentity: Uint8Array
   pendingKeyExchange: PendingKeyExchange | null
+  // The key exchange this session was passively built from, if any. Used to
+  // recognize retransmitted key exchanges (the reference implementation calls
+  // this builds_same_session) so that a replayed key exchange does not
+  // clobber an established session.
+  receivedKeyExchange?: PendingKeyExchange | null
   skipped: SkippedKey[]
   confirmed: boolean
 }
@@ -84,6 +89,7 @@ export function emptySessionState(): SessionState {
     remoteIdentity: new Uint8Array(0),
     localIdentity: new Uint8Array(0),
     pendingKeyExchange: null,
+    receivedKeyExchange: null,
     skipped: [],
     confirmed: false
   }
@@ -136,8 +142,11 @@ export class Session {
     return x25519SharedSecret(privateKey, publicKey)
   }
 
-  private kdfRoot(dhOutput: Uint8Array): { rootKey: Uint8Array; chainKey: Uint8Array } {
-    const out = hkdfSha256(dhOutput, this.s.rk, this.profile.infoRoot, CURVE_KEY_SIZE * 2)
+  private kdfRoot(
+    rootKey: Uint8Array,
+    dhOutput: Uint8Array
+  ): { rootKey: Uint8Array; chainKey: Uint8Array } {
+    const out = hkdfSha256(dhOutput, rootKey, this.profile.infoRoot, CURVE_KEY_SIZE * 2)
     return { rootKey: out.slice(0, CURVE_KEY_SIZE), chainKey: out.slice(CURVE_KEY_SIZE) }
   }
 
@@ -150,7 +159,7 @@ export class Session {
   }
 
   encrypt(plaintext: Uint8Array): EncryptResult {
-    if (this.s.cks === null) throw new DecryptionFailedError('no sending chain')
+    if (this.s.cks === null) throw new ProtocolError('no sending chain')
     const { nextChainKey, messageKey } = chainMessageKey(this.s.cks)
     const keys = this.deriveMessageKeys(messageKey)
     const ciphertext = aes256CbcEncrypt(keys.enc, keys.iv, plaintext)
@@ -177,33 +186,46 @@ export class Session {
   }
 
   decrypt(wire: Uint8Array): Uint8Array {
+    // Work on a copy of the state so that a failed decryption leaves the
+    // session untouched: a malformed or forged message must not advance the
+    // ratchet, consume skipped keys, or rotate the sending key pair. The
+    // reference implementation follows the same pattern of only committing
+    // ratchet state changes after successful authentication.
+    const work: SessionState = { ...this.s, skipped: [...this.s.skipped] }
+    const plaintext = this.decryptWith(work, wire)
+    work.confirmed = true
+    Object.assign(this.s, work)
+    return plaintext
+  }
+
+  private decryptWith(s: SessionState, wire: Uint8Array): Uint8Array {
     const { mac, messageBytes } = this.profile.open(wire)
     const parsed = decodeOmemoMessage(
       unmarshalMessage(this.profile, messageBytes),
       this.profile.namespace
     )
     const dhPub = this.profile.decodeHeaderKey(parsed.dhPub)
-    const ad = this.profile.adForRecipient(this.s.initiation, this.s.ad)
+    const ad = this.profile.adForRecipient(s.initiation, s.ad)
 
-    let messageKey = this.takeSkipped(dhPub, parsed.n)
+    let messageKey = this.takeSkipped(s, dhPub, parsed.n)
     if (messageKey === undefined) {
-      if (this.s.dhr === null || !bytesEqual(dhPub, this.s.dhr)) {
+      if (s.dhr === null || !bytesEqual(dhPub, s.dhr)) {
         // Skips inside the old chain are bounded by the DoS threshold. If the
         // announced gap is larger the keys are not computed, matching the
         // reference behavior which keeps the ratchet able to recover.
-        if (this.s.ckr !== null && parsed.pn - this.s.nr <= this.limits.maxSkip) {
-          this.skipMessageKeys(parsed.pn)
+        if (s.ckr !== null && parsed.pn - s.nr <= this.limits.maxSkip) {
+          this.skipMessageKeys(s, parsed.pn)
         }
-        this.dhRatchet(dhPub)
+        this.dhRatchet(s, dhPub)
       }
-      this.skipMessageKeys(parsed.n)
-      if (parsed.n < this.s.nr || this.s.ckr === null) {
+      this.skipMessageKeys(s, parsed.n)
+      if (parsed.n < s.nr || s.ckr === null) {
         throw new DuplicateMessageError('message already decrypted')
       }
-      const step = chainMessageKey(this.s.ckr)
-      this.s.ckr = step.nextChainKey
+      const step = chainMessageKey(s.ckr)
+      s.ckr = step.nextChainKey
       messageKey = step.messageKey
-      this.s.nr += 1
+      s.nr += 1
     }
 
     const keys = this.deriveMessageKeys(messageKey)
@@ -215,48 +237,49 @@ export class Session {
       throw new AuthenticationError('message authentication failed')
     }
     if (parsed.ciphertext === undefined) throw new ParseError('missing ciphertext')
-    const plaintext = aes256CbcDecrypt(keys.enc, keys.iv, parsed.ciphertext)
-    this.s.confirmed = true
-    return plaintext
+    return aes256CbcDecrypt(keys.enc, keys.iv, parsed.ciphertext)
   }
 
-  private takeSkipped(dhPub: Uint8Array, n: number): Uint8Array | undefined {
-    const index = this.s.skipped.findIndex((entry) => entry.n === n && bytesEqual(entry.dh, dhPub))
+  private takeSkipped(s: SessionState, dhPub: Uint8Array, n: number): Uint8Array | undefined {
+    const index = s.skipped.findIndex((entry) => entry.n === n && bytesEqual(entry.dh, dhPub))
     if (index < 0) return undefined
-    const [entry] = this.s.skipped.splice(index, 1)
+    const [entry] = s.skipped.splice(index, 1)
     return entry?.mk
   }
 
-  private dhRatchet(remotePublic: Uint8Array): void {
-    this.s.dhr = remotePublic
-    const receiving = this.kdfRoot(this.dh(this.s.dhs.privateKey, remotePublic))
-    this.s.rk = receiving.rootKey
-    this.s.ckr = receiving.chainKey
-    this.s.pn = this.s.ns
-    this.s.ns = 0
-    this.s.nr = 0
-    this.s.dhs = generateX25519KeyPair()
-    const sending = this.kdfRoot(this.dh(this.s.dhs.privateKey, remotePublic))
-    this.s.rk = sending.rootKey
-    this.s.cks = sending.chainKey
+  private dhRatchet(s: SessionState, remotePublic: Uint8Array): void {
+    // The root chain step happens before touching the state so an invalid
+    // remote key (for example a low order point) cannot leave the session in
+    // a half ratcheted state.
+    const receiving = this.kdfRoot(s.rk, this.dh(s.dhs.privateKey, remotePublic))
+    const nextKeyPair = generateX25519KeyPair()
+    const sending = this.kdfRoot(receiving.rootKey, this.dh(nextKeyPair.privateKey, remotePublic))
+    s.dhr = remotePublic
+    s.rk = sending.rootKey
+    s.ckr = receiving.chainKey
+    s.pn = s.ns
+    s.ns = 0
+    s.nr = 0
+    s.dhs = nextKeyPair
+    s.cks = sending.chainKey
   }
 
   // Advance the receiving chain up to n, storing skipped message keys. Called
   // before a DH ratchet step with the sender announced previous chain length,
   // and when walking to the announced chain index.
-  private skipMessageKeys(until: number): void {
-    if (this.s.ckr === null || this.s.dhr === null) return
-    const gap = until - this.s.nr
+  private skipMessageKeys(s: SessionState, until: number): void {
+    if (s.ckr === null || s.dhr === null) return
+    const gap = until - s.nr
     if (gap <= 0) return
     if (gap > this.limits.maxSkip) {
       throw new DoSProtectionError(`message gap ${gap} exceeds limit ${this.limits.maxSkip}`)
     }
     for (let i = 0; i < gap; i++) {
-      const step = chainMessageKey(this.s.ckr)
-      this.s.ckr = step.nextChainKey
-      this.s.skipped.push({ dh: this.s.dhr, n: this.s.nr, mk: step.messageKey })
-      this.s.nr += 1
+      const step = chainMessageKey(s.ckr)
+      s.ckr = step.nextChainKey
+      s.skipped.push({ dh: s.dhr, n: s.nr, mk: step.messageKey })
+      s.nr += 1
     }
-    while (this.s.skipped.length > this.limits.maxSkippedKeys) this.s.skipped.shift()
+    while (s.skipped.length > this.limits.maxSkippedKeys) s.skipped.shift()
   }
 }

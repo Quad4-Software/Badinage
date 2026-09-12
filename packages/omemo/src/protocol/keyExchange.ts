@@ -8,7 +8,7 @@ import { LEGACY_VERSION_BYTE } from '../constants'
 import type { Namespace } from '../constants'
 import { ParseError } from '../errors'
 import { concatBytes } from '../internal/bytes'
-import { readFields, requireBytes, requireVarint } from '../internal/protobuf'
+import { getVarint, readFields, requireBytes, requireVarint } from '../internal/protobuf'
 import { encodeKeyExchange } from './messages'
 import { decodeCurveKeyWire } from '../crypto/keys'
 import type { PendingKeyExchange } from './session'
@@ -56,7 +56,11 @@ export function decodeKeyExchangeWire(namespace: Namespace, data: Uint8Array): P
   const ekField = namespace === 'legacy' ? 2 : 4
   const messageField = namespace === 'legacy' ? 4 : 5
   const spkIdField = namespace === 'legacy' ? 6 : 2
-  const pkId = requireVarint(fields, 1, 'OMEMOKeyExchange')
+  const pkIdRaw = getVarint(fields, 1)
+  if (pkIdRaw !== undefined && (pkIdRaw < 0n || pkIdRaw > 0xffffffffn)) {
+    throw new ParseError('OMEMOKeyExchange: missing or invalid field 1')
+  }
+  const pkId = pkIdRaw === undefined ? -1 : Number(pkIdRaw)
   const spkId = requireVarint(fields, spkIdField, 'OMEMOKeyExchange')
   const ik = requireBytes(fields, 3, 'OMEMOKeyExchange')
   const ekRaw = requireBytes(fields, ekField, 'OMEMOKeyExchange')

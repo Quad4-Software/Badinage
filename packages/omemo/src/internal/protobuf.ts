@@ -76,6 +76,7 @@ export function readFields(data: Uint8Array): ProtoField[] {
     const tag = readVarint()
     const number = Number(tag >> 3n)
     const wireType = Number(tag & 7n)
+    if (number === 0) throw new ParseError('invalid field number 0')
     const field: ProtoField = { number, wireType, varint: undefined, bytes: undefined }
     switch (wireType) {
       case WIRE_VARINT:
