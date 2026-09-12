@@ -8,6 +8,9 @@
 A self-hostable web XMPP client. Connects to any existing
 XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 
+**[Try the live demo](https://quad4-software.github.io/Badinage/)** — fake
+contacts, no account or server needed.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png" />
   <img src="docs/screenshot.png" alt="Badinage demo" />

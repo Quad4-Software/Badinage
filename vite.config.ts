@@ -9,7 +9,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// deploys under a subpath (github pages project sites) set VITE_BASE;
+// a demo-only deployment sets VITE_DEMO=1 to land straight in demo mode
+const base = process.env.VITE_BASE ?? '/'
+
 export default defineConfig({
+  base,
   plugins: [
     tailwindcss(),
     svelte(),
@@ -23,13 +28,14 @@ export default defineConfig({
         theme_color: '#18181b',
         background_color: '#18181b',
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
+        // relative paths so the manifest works under a subpath deploy
+        start_url: '.',
+        scope: '.',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           {
-            src: '/icons/icon-512-maskable.png',
+            src: 'icons/icon-512-maskable.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'
@@ -38,7 +44,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html'
+        navigateFallback: `${base}index.html`
       }
     })
   ],

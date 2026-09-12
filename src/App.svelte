@@ -31,6 +31,10 @@
     for (const options of restoreSessions()) {
       void accounts.add(options)
     }
+    // demo deployments (github pages) drop visitors straight into demo mode
+    if (import.meta.env.VITE_DEMO === '1' && accounts.list.length === 0) {
+      void accounts.add({ jid: 'demo@badinage.local', password: 'demo', demo: true })
+    }
 
     const onError = (event: ErrorEvent) => {
       if (!event.error) return
