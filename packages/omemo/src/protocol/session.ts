@@ -3,12 +3,7 @@
 // of header keys and associated-data ordering, all handled by WireProfile.
 // Serialization lives in sessionData.ts.
 
-import {
-  CURVE_KEY_SIZE,
-  KEY_MATERIAL_SIZE,
-  MAX_SKIP,
-  MAX_SKIPPED_KEYS
-} from '../constants'
+import { CURVE_KEY_SIZE, KEY_MATERIAL_SIZE, MAX_SKIP, MAX_SKIPPED_KEYS } from '../constants'
 import type { Namespace } from '../constants'
 import {
   AuthenticationError,
@@ -20,10 +15,7 @@ import {
 import { bytesEqual, concatBytes } from '../internal/bytes'
 import { aes256CbcDecrypt, aes256CbcEncrypt } from '../crypto/aes'
 import { chainMessageKey, hkdfSha256, hmacSha256 } from '../crypto/kdf'
-import {
-  generateX25519KeyPair,
-  x25519SharedSecret
-} from '../crypto/keys'
+import { generateX25519KeyPair, x25519SharedSecret } from '../crypto/keys'
 import type { KeyPair } from '../crypto/keys'
 import { marshalMessage, unmarshalMessage } from './profiles'
 import type { WireProfile } from './profiles'
@@ -215,8 +207,10 @@ export class Session {
     }
 
     const keys = this.deriveMessageKeys(messageKey)
-    const expectedMac = hmacSha256(keys.auth, concatBytes(ad, messageBytes))
-      .slice(0, this.profile.macSize)
+    const expectedMac = hmacSha256(keys.auth, concatBytes(ad, messageBytes)).slice(
+      0,
+      this.profile.macSize
+    )
     if (!bytesEqual(expectedMac, mac)) {
       throw new AuthenticationError('message authentication failed')
     }

@@ -1,15 +1,19 @@
 # Badinage
 
+> [!WARNING]
+> This project is still alpha level software and being actively developed.
+
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Quad4-Software/Badinage/badge)](https://scorecard.dev/viewer/?uri=github.com/Quad4-Software/Badinage)
 
 A self-hostable web XMPP client. Connects to any existing
 XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 
+![Badinage demo](docs/screenshot.png)
+
 ## Features
 
 - Multiple XMPP accounts, one connection each, per-account state isolation
 - WebSocket and BOSH transports with automatic endpoint discovery
-- Roster, presence, and direct messaging
 - Customizable keyboard shortcuts with full keyboard navigation
 - Offline-friendly: IndexedDB message cache plus a PWA service worker
 - Dark and light themes, accessible UI, responsive layout
@@ -61,6 +65,13 @@ pnpm lint      # eslint
 pnpm test      # unit tests
 pnpm test:e2e  # playwright, needs browsers installed
 pnpm test:omemo # OMEMO library tests incl. interop vectors
+```
+
+Regenerate icons and the README screenshot:
+
+```sh
+pnpm icons       # pixel-art logo, favicons, PWA icons, og image
+pnpm screenshot  # demo-mode screenshot to docs/screenshot.png
 ```
 
 ## License

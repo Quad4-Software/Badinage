@@ -48,10 +48,7 @@ import { sessionResponder } from '../../src/protocol/sessionInit'
 import { x3dhInitiate, x3dhRespond } from '../../src/protocol/x3dh'
 import type { ParsedBundle } from '../../src/protocol/bundle'
 import { parseBundle } from '../../src/protocol/bundle'
-import {
-  decodeKeyExchangeWire,
-  encodeKeyExchangeWire
-} from '../../src/protocol/keyExchange'
+import { decodeKeyExchangeWire, encodeKeyExchangeWire } from '../../src/protocol/keyExchange'
 import { parseEncryptedElement } from '../../src/protocol/wire'
 import type { Namespace } from '../../src/constants'
 
@@ -128,9 +125,7 @@ function sessionStateFromModel(
 }
 
 function wireIdentity(ns: Namespace, identity: { curvePub: string; edPub: string }): Uint8Array {
-  return ns === 'legacy'
-    ? encodeCurveKeyWire(hex(identity.curvePub))
-    : hex(identity.edPub)
+  return ns === 'legacy' ? encodeCurveKeyWire(hex(identity.curvePub)) : hex(identity.edPub)
 }
 
 // --------------------------------------------------------------------------
@@ -199,9 +194,7 @@ describe('XEdDSA (python-xeddsa vectors)', () => {
       expectBytes(res.ed25519PublicKey, c.edPub)
       const flipped = Uint8Array.from(sig)
       flipped[10] = (flipped[10] ?? 0) ^ 1
-      expect(
-        xed25519Verify(encodeCurveKeyWire(hex(c.curvePub)), msg, flipped).valid
-      ).toBe(false)
+      expect(xed25519Verify(encodeCurveKeyWire(hex(c.curvePub)), msg, flipped).valid).toBe(false)
     })
 
     it.skipIf(!HAS_PYTHON)(`vector ${i + 1}: our signature verifies under xeddsa`, () => {

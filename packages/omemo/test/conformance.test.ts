@@ -210,10 +210,7 @@ describe('protobuf schema field numbers are stable', () => {
   })
 
   it('OMEMOPreKey nested: pk_id=1, pk=2', () => {
-    const inner = new ProtoWriter()
-      .fieldVarint(1, 42)
-      .fieldBytes(2, new Uint8Array(32))
-      .finish()
+    const inner = new ProtoWriter().fieldVarint(1, 42).fieldBytes(2, new Uint8Array(32)).finish()
     expect(fieldNumbers(inner)).toEqual([1, 2])
   })
 })

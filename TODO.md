@@ -30,6 +30,25 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       sign + provenance attestation
 - [x] UI measurement e2e: overflow, target size, z-index, focus trap
 - [x] Inter variable font via fontsource
+- [x] Roster push handling (iq set jabber:iq:roster)
+- [x] Presence subscription flow: inbound request UI, accept/deny, add
+      contact, remove contact
+- [x] XEP-0280 carbons: enable on connect, sent/received unwrap, dedup
+- [x] XEP-0359 stanza-id + origin-id dedup in the chat store
+- [x] XEP-0203 delay stamps parsed on live, carbon and MAM paths
+- [x] XEP-0085 chat states: composing/paused sent from the composer,
+      typing indicator in header and sidebar
+- [x] XEP-0184 receipts (request + auto-answer) and XEP-0333 displayed
+      markers, delivery/read ticks on outgoing messages
+- [x] XEP-0313 MAM: per-conversation archive fetch on open, RSM paging
+      primitives, MUC archive query
+- [x] MUC (XEP-0045): join/leave with nick, subject display, occupant
+      list with roles/affiliations, room messages, unread counts
+- [x] Demo mode: fake transport with contacts, rooms, history, typing
+      and replies, reachable from the login screen
+- [x] Pixel-art logo, favicons, PWA icons, og card (pnpm icons)
+- [x] Screenshot tool (pnpm screenshot) + README demo image
+- [x] Stanza parsing unit tests (carbons, MAM, MUC presence, receipts)
 
 ## Decisions to make
 
@@ -39,13 +58,8 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Protocol core
 
-- [ ] Roster push handling (iq set jabber:iq:roster)
-- [ ] Presence subscription flow (subscribe, subscribed, inbound requests UI)
 - [ ] XEP-0198 stream management: enable, ack, resume on reconnect,
       per-account persisted SM state
-- [ ] XEP-0280 carbons
-- [ ] XEP-0359 stanza-id dedup (partially parsed already)
-- [ ] XEP-0203 delay stamps on all incoming paths
 - [ ] XEP-0199 ping keepalive and latency indicator
 - [ ] XEP-0030/0115 disco + caps, publish own identity and features
 - [ ] vCard4 + XEP-0153 avatars with cache in IndexedDB
@@ -53,12 +67,10 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] XEP-0077 in-band registration on the login screen
 - [ ] XEP-0352 client state indication on tab visibility change
 - [ ] SASL2/Bind2/FAST when strophe.js or an alternative gains support
+- [ ] MAM paging UX: load older pages on scroll, fin/complete tracking
 
 ## One-to-one chat
 
-- [ ] XEP-0313 MAM sync per conversation, RSM paging, IndexedDB archive
-- [ ] XEP-0085 chat states in composer and header
-- [ ] XEP-0184 receipts and XEP-0333 markers
 - [ ] XEP-0308 correction, XEP-0424 retraction, XEP-0461 replies,
       XEP-0444 reactions, XEP-0382 spoilers, XEP-0393 styling, XEP-0245 /me
 - [ ] XEP-0363 HTTP upload: slot request, PUT with progress, Cookie header
@@ -68,13 +80,13 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Groupchat (XEP-0045)
 
-- [ ] Join/leave, nick management, subject, occupant list with roles
+- [ ] Nickname changes in-room, subject editing UI
 - [ ] XEP-0249 direct invites, mediated invites
 - [ ] Room config via XEP-0004 data forms
 - [ ] XEP-0421 occupant ids (needed for MUC OMEMO)
 - [ ] XEP-0425 moderation actions (retract, kick, ban)
-- [ ] MUC MAM history, occupants-can-see-real-jids handling
-- [ ] Self-ping and rejoin on kick/disconnect
+- [ ] MUC MAM history paging, occupants-can-see-real-jids handling
+- [ ] Self-ping and rejoin on kick/disconnect, join error surface
 
 ## OMEMO (own library, packages/omemo, 0BSD)
 

@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:omemo": "pnpm -F @quad4-software/omemo test",
     "icons": "node scripts/generate-icons.mjs",
+    "screenshot": "node scripts/screenshot.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -46,6 +47,7 @@
     "@sveltejs/vite-plugin-svelte": "7.3.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.4.1",
+    "@xmldom/xmldom": "0.9.10",
     "eslint": "10.10.0",
     "eslint-plugin-svelte": "3.23.0",
     "globals": "17.12.0",

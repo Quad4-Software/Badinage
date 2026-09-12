@@ -48,9 +48,16 @@ describe('property: byte helpers', () => {
 describe('property: symmetric crypto round-trips', () => {
   it('aes-256-cbc decrypt(encrypt(m)) = m', () => {
     fc.assert(
-      fc.property(bytes32, fc.uint8Array({ minLength: 16, maxLength: 16 }), anyBytes, (key, iv, pt) => {
-        expect(bytesEqual(aes256CbcDecrypt(key, iv, aes256CbcEncrypt(key, iv, pt)), pt)).toBe(true)
-      })
+      fc.property(
+        bytes32,
+        fc.uint8Array({ minLength: 16, maxLength: 16 }),
+        anyBytes,
+        (key, iv, pt) => {
+          expect(bytesEqual(aes256CbcDecrypt(key, iv, aes256CbcEncrypt(key, iv, pt)), pt)).toBe(
+            true
+          )
+        }
+      )
     )
   })
 
@@ -221,9 +228,7 @@ describe('property: protobuf wire structs', () => {
   it('OMEMOKeyExchange round-trips', () => {
     fc.assert(
       fc.property(varint, varint, bytes32, bytes32, anyBytes, (pkId, spkId, ik, ek, message) => {
-        const decoded = decodeKeyExchange(
-          encodeKeyExchange({ pkId, spkId, ik, ek, message })
-        )
+        const decoded = decodeKeyExchange(encodeKeyExchange({ pkId, spkId, ik, ek, message }))
         expect(decoded.pkId).toBe(pkId)
         expect(decoded.spkId).toBe(spkId)
         expect(bytesEqual(decoded.ik, ik)).toBe(true)

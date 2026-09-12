@@ -37,15 +37,9 @@ export function encodeOmemoMessage(
 ): Uint8Array {
   const writer = new ProtoWriter()
   if (namespace === 'legacy') {
-    writer
-      .fieldBytes(1, message.dhPub)
-      .fieldVarint(2, message.n)
-      .fieldVarint(3, message.pn)
+    writer.fieldBytes(1, message.dhPub).fieldVarint(2, message.n).fieldVarint(3, message.pn)
   } else {
-    writer
-      .fieldVarint(1, message.n)
-      .fieldVarint(2, message.pn)
-      .fieldBytes(3, message.dhPub)
+    writer.fieldVarint(1, message.n).fieldVarint(2, message.pn).fieldBytes(3, message.dhPub)
   }
   if (message.ciphertext !== undefined) writer.fieldBytes(4, message.ciphertext)
   return writer.finish()

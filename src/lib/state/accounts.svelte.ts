@@ -2,7 +2,13 @@ import { DEFAULT_RESOURCE } from '$lib/constants'
 import { omemoModule } from '$lib/core/omemo'
 import { ModuleRegistry } from '$lib/core/module'
 import { scopedKey } from '$lib/core/storage/keys'
-import { XmppConnection, type ConnectionStatus, type RosterItem } from '$lib/core/xmpp/connection'
+import {
+  XmppConnection,
+  type ChatConnection,
+  type ConnectionStatus
+} from '$lib/core/xmpp/connection'
+import { DemoConnection } from '$lib/core/xmpp/demo'
+import type { RosterItem } from '$lib/core/xmpp/stanzas'
 import { discoverEndpoints } from '$lib/core/xmpp/discovery'
 import { bareJid, jidDomain } from '$lib/utils/jid'
 
@@ -12,6 +18,7 @@ export interface AccountOptions {
   websocketUrl?: string | undefined
   boshUrl?: string | undefined
   remember?: boolean | undefined
+  demo?: boolean | undefined
 }
 
 export interface RosterContact extends RosterItem {
@@ -19,23 +26,35 @@ export interface RosterContact extends RosterItem {
   presenceStatus: string
 }
 
+export interface PendingSubscription {
+  from: string
+  status: string
+}
+
 export class Account {
   readonly jid: string
-  readonly connection: XmppConnection
+  readonly connection: ChatConnection
 
   status = $state<ConnectionStatus>('disconnected')
   roster = $state<RosterContact[]>([])
+  subscriptions = $state<PendingSubscription[]>([])
 
   private registry = new ModuleRegistry()
 
   constructor(readonly options: AccountOptions) {
     this.jid = options.jid
-    this.connection = new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '')
+    this.connection = options.demo
+      ? new DemoConnection()
+      : new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '')
     this.registry.register(omemoModule)
     this.bind()
   }
 
   async connect(): Promise<void> {
+    if (this.options.demo) {
+      this.connection.connect(this.jid, this.options.password)
+      return
+    }
     if (!this.options.websocketUrl && !this.options.boshUrl) {
       const endpoints = await discoverEndpoints(jidDomain(this.jid))
       this.options.websocketUrl = endpoints.websocket
@@ -55,6 +74,39 @@ export class Account {
     this.connection.disconnect()
   }
 
+  // ---- contacts -------------------------------------------------------------
+
+  addContact(jid: string, name = ''): void {
+    this.connection.rosterSet(bareJid(jid), name)
+    this.connection.sendDirectedPresence(bareJid(jid), 'subscribe')
+  }
+
+  removeContact(jid: string): void {
+    this.connection.rosterRemove(bareJid(jid))
+  }
+
+  acceptSubscription(from: string): void {
+    this.connection.sendDirectedPresence(from, 'subscribed')
+    // ask for their presence back if not already subscribed
+    this.connection.sendDirectedPresence(from, 'subscribe')
+    this.subscriptions = this.subscriptions.filter((s) => s.from !== from)
+  }
+
+  denySubscription(from: string): void {
+    this.connection.sendDirectedPresence(from, 'unsubscribed')
+    this.subscriptions = this.subscriptions.filter((s) => s.from !== from)
+  }
+
+  // ---- rooms -----------------------------------------------------------------
+
+  joinRoom(room: string, nick: string, password?: string): void {
+    this.connection.joinRoom(bareJid(room), nick, password)
+  }
+
+  leaveRoom(room: string, nick: string): void {
+    this.connection.leaveRoom(bareJid(room), nick)
+  }
+
   private bind(): void {
     this.connection.events.on('status', (status) => {
       this.status = status
@@ -66,8 +118,21 @@ export class Account {
       this.roster = items.map((item) => ({
         ...item,
         presence: previous[item.jid]?.presence ?? 'offline',
-        presenceStatus: ''
+        presenceStatus: previous[item.jid]?.presenceStatus ?? ''
       }))
+    })
+    this.connection.events.on('rosterUpdate', (item) => {
+      const index = this.roster.findIndex((c) => c.jid === item.jid)
+      const patch = { ...item, presence: 'offline', presenceStatus: '' }
+      const existing = index === -1 ? undefined : this.roster[index]
+      if (existing) {
+        this.roster[index] = { ...existing, ...patch }
+      } else {
+        this.roster.push(patch)
+      }
+    })
+    this.connection.events.on('rosterRemove', (jid) => {
+      this.roster = this.roster.filter((c) => c.jid !== jid)
     })
     this.connection.events.on('presence', (update) => {
       const contact = this.roster.find((c) => c.jid === update.from)
@@ -76,11 +141,16 @@ export class Account {
         contact.presenceStatus = update.status
       }
     })
+    this.connection.events.on('subscriptionRequest', (request) => {
+      if (!this.subscriptions.some((s) => s.from === request.from)) {
+        this.subscriptions.push(request)
+      }
+    })
   }
 }
 
 function persistSession(options: AccountOptions): void {
-  if (options.remember) {
+  if (options.remember && !options.demo) {
     sessionStorage.setItem(scopedKey(options.jid, 'session'), JSON.stringify(options))
   }
 }

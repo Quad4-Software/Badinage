@@ -140,6 +140,104 @@ type RootTranslation = {
 	 */
 	unread: RequiredParams<'count'>
 	/**
+	 * t​y​p​i​n​g​…
+	 */
+	typing: string
+	/**
+	 * T​r​y​ ​t​h​e​ ​d​e​m​o
+	 */
+	tryDemo: string
+	/**
+	 * N​o​ ​s​e​r​v​e​r​ ​n​e​e​d​e​d​.​ ​F​a​k​e​ ​c​o​n​t​a​c​t​s​,​ ​f​a​k​e​ ​c​h​a​t​s​,​ ​a​l​l​ ​l​o​c​a​l​.
+	 */
+	demoHint: string
+	/**
+	 * R​o​o​m​s
+	 */
+	rooms: string
+	/**
+	 * J​o​i​n​ ​a​ ​r​o​o​m
+	 */
+	joinRoom: string
+	/**
+	 * R​o​o​m​ ​a​d​d​r​e​s​s
+	 */
+	roomJid: string
+	/**
+	 * r​o​o​m​@​c​o​n​f​e​r​e​n​c​e​.​e​x​a​m​p​l​e​.​o​r​g
+	 */
+	roomJidPlaceholder: string
+	/**
+	 * N​i​c​k​n​a​m​e
+	 */
+	nickname: string
+	/**
+	 * y​o​u​r​ ​n​i​c​k​n​a​m​e​ ​i​n​ ​t​h​e​ ​r​o​o​m
+	 */
+	nicknamePlaceholder: string
+	/**
+	 * J​o​i​n
+	 */
+	join: string
+	/**
+	 * L​e​a​v​e​ ​r​o​o​m
+	 */
+	leaveRoom: string
+	/**
+	 * {​c​o​u​n​t​}​ ​o​c​c​u​p​a​n​t​s
+	 * @param {number} count
+	 */
+	occupants: RequiredParams<'count'>
+	/**
+	 * R​o​o​m​ ​s​u​b​j​e​c​t
+	 */
+	roomSubject: string
+	/**
+	 * A​d​d​ ​a​ ​c​o​n​t​a​c​t
+	 */
+	addContact: string
+	/**
+	 * C​o​n​t​a​c​t​ ​a​d​d​r​e​s​s
+	 */
+	contactJid: string
+	/**
+	 * D​i​s​p​l​a​y​ ​n​a​m​e
+	 */
+	contactName: string
+	/**
+	 * A​d​d
+	 */
+	add: string
+	/**
+	 * S​u​b​s​c​r​i​p​t​i​o​n​ ​r​e​q​u​e​s​t​s
+	 */
+	subscriptionRequests: string
+	/**
+	 * {​f​r​o​m​}​ ​w​a​n​t​s​ ​t​o​ ​s​e​e​ ​y​o​u​r​ ​p​r​e​s​e​n​c​e
+	 * @param {string} from
+	 */
+	wantsToSubscribe: RequiredParams<'from'>
+	/**
+	 * A​c​c​e​p​t
+	 */
+	accept: string
+	/**
+	 * D​e​n​y
+	 */
+	deny: string
+	/**
+	 * D​e​l​i​v​e​r​e​d
+	 */
+	delivered: string
+	/**
+	 * R​e​a​d
+	 */
+	read: string
+	/**
+	 * S​e​n​t
+	 */
+	sent: string
+	/**
 	 * S​e​t​t​i​n​g​s
 	 */
 	settings: string
@@ -428,6 +526,102 @@ export type TranslationFunctions = {
 	 * {count} unread
 	 */
 	unread: (arg: { count: number }) => LocalizedString
+	/**
+	 * typing…
+	 */
+	typing: () => LocalizedString
+	/**
+	 * Try the demo
+	 */
+	tryDemo: () => LocalizedString
+	/**
+	 * No server needed. Fake contacts, fake chats, all local.
+	 */
+	demoHint: () => LocalizedString
+	/**
+	 * Rooms
+	 */
+	rooms: () => LocalizedString
+	/**
+	 * Join a room
+	 */
+	joinRoom: () => LocalizedString
+	/**
+	 * Room address
+	 */
+	roomJid: () => LocalizedString
+	/**
+	 * room@conference.example.org
+	 */
+	roomJidPlaceholder: () => LocalizedString
+	/**
+	 * Nickname
+	 */
+	nickname: () => LocalizedString
+	/**
+	 * your nickname in the room
+	 */
+	nicknamePlaceholder: () => LocalizedString
+	/**
+	 * Join
+	 */
+	join: () => LocalizedString
+	/**
+	 * Leave room
+	 */
+	leaveRoom: () => LocalizedString
+	/**
+	 * {count} occupants
+	 */
+	occupants: (arg: { count: number }) => LocalizedString
+	/**
+	 * Room subject
+	 */
+	roomSubject: () => LocalizedString
+	/**
+	 * Add a contact
+	 */
+	addContact: () => LocalizedString
+	/**
+	 * Contact address
+	 */
+	contactJid: () => LocalizedString
+	/**
+	 * Display name
+	 */
+	contactName: () => LocalizedString
+	/**
+	 * Add
+	 */
+	add: () => LocalizedString
+	/**
+	 * Subscription requests
+	 */
+	subscriptionRequests: () => LocalizedString
+	/**
+	 * {from} wants to see your presence
+	 */
+	wantsToSubscribe: (arg: { from: string }) => LocalizedString
+	/**
+	 * Accept
+	 */
+	accept: () => LocalizedString
+	/**
+	 * Deny
+	 */
+	deny: () => LocalizedString
+	/**
+	 * Delivered
+	 */
+	delivered: () => LocalizedString
+	/**
+	 * Read
+	 */
+	read: () => LocalizedString
+	/**
+	 * Sent
+	 */
+	sent: () => LocalizedString
 	/**
 	 * Settings
 	 */

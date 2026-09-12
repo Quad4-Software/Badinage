@@ -26,4 +26,3 @@ If you touched `packages/omemo`, also run `pnpm test:omemo`.
 - XMPP protocol code stays in `src/lib/core/` and talks Strophe only.
 - OMEMO lives in `packages/omemo` and must stay dependency-free of the app.
 - Commits are GPG signed.
-- See `AGENTS.md` and `.agents/docs/` for architecture and style rules.

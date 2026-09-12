@@ -25,7 +25,7 @@
           {formatDay(message.timestamp, 'en')}
         </li>
       {/if}
-      <li><MessageItem {message} /></li>
+      <li><MessageItem {message} showNick={conversation.kind === 'muc'} /></li>
     {/each}
   </ol>
 </ScrollArea>

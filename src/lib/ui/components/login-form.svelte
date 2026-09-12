@@ -19,6 +19,16 @@
 
   const jidValid = $derived(isValidUserJid(jid))
 
+  async function startDemo() {
+    submitting = true
+    await accounts.add({
+      jid: 'demo@badinage.local',
+      password: 'demo',
+      demo: true
+    })
+    submitting = false
+  }
+
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     error = ''
@@ -119,5 +129,14 @@
         {$LL.connect()}
       {/if}
     </Button>
+
+    {#if !embedded}
+      <div class="border-t pt-4">
+        <Button type="button" variant="secondary" class="w-full" onclick={startDemo}>
+          {$LL.tryDemo()}
+        </Button>
+        <p class="text-muted-foreground mt-2 text-center text-xs">{$LL.demoHint()}</p>
+      </div>
+    {/if}
   </form>
 </div>

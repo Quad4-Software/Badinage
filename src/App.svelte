@@ -8,8 +8,10 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import AddContactDialog from '$lib/ui/components/add-contact-dialog.svelte'
   import AppShell from '$lib/ui/components/app-shell.svelte'
   import CrashView from '$lib/ui/components/crash-view.svelte'
+  import JoinRoomDialog from '$lib/ui/components/join-room-dialog.svelte'
   import Keyboard from '$lib/ui/components/keyboard.svelte'
   import LoginForm from '$lib/ui/components/login-form.svelte'
   import SettingsDialog from '$lib/ui/components/settings-dialog.svelte'
@@ -51,6 +53,8 @@
 <Keyboard />
 <StatusToasts />
 <SettingsDialog />
+<JoinRoomDialog />
+<AddContactDialog />
 
 <Dialog bind:open={app.loginOpen}>
   <DialogContent>

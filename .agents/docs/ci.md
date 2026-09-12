@@ -8,7 +8,7 @@
 - codeql.yml: CodeQL javascript-typescript, security-and-quality queries,
   build-mode none, weekly cron. Actions pinned by SHA.
 - dependency-review.yml: fails PRs introducing high severity deps.
-- docker.yml: on main and v*.*.* tags. buildx for linux/amd64+linux/arm64,
+- docker.yml: on main and v*._._ tags. buildx for linux/amd64+linux/arm64,
   gha layer cache, pushes to ghcr.io/<repo>, signs keyless with cosign
   (Fulcio + Rekor via id-token) and attaches a build provenance attestation
   with actions/attest-build-provenance.

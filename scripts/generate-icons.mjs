@@ -1,7 +1,8 @@
-// Generates PNG icons and the OG card for Badinage without native deps.
-// Usage: pnpm icons
-// Renders the mark (gradient tile + chat bubble + dots) and a bitmap wordmark,
-// supersampled 4x then box-downsampled for antialiasing.
+// Generates PNG icons, favicon.svg and the OG card for Badinage without
+// native deps. Usage: pnpm icons
+// The mark is 16x16 pixel art (speech bubble with a knockout heart) drawn on
+// a logical grid and scaled with nearest neighbor: crisp pixels, no
+// antialiasing. The OG card adds a bitmap wordmark in the same spirit.
 
 import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -12,12 +13,35 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const outDir = path.join(root, 'public', 'icons')
 mkdirSync(outDir, { recursive: true })
 
-const BRAND_TOP = [129, 140, 248]
-const BRAND_BOTTOM = [79, 70, 229]
+const TILE = [79, 70, 229] // #4f46e5
+const BUBBLE = [238, 242, 255] // #eef2ff
+const INK = [24, 24, 27] // og background
 const WHITE = [250, 250, 250]
-const DOT = [79, 70, 229]
 
-const SS = 4
+const SS = 1 // no supersampling: the mark must stay crisp
+
+const GRID = 16
+// B = bubble, H = heart (knockout to tile color)
+const MARK = [
+  '................',
+  '................',
+  '....BBBBBBBB....',
+  '..BBBBBBBBBBBB..',
+  '.BBBBHHBHHBBBBB.',
+  '.BBBHHHHHHHBBBB.',
+  '.BBBHHHHHHHBBBB.',
+  '.BBBBHHHHHBBBBB.',
+  '.BBBBBHHHBBBBBB.',
+  '.BBBBBBHBBBBBBB.',
+  '..BBBBBBBBBBBB..',
+  '..BBBBB.........',
+  '..BBBB..........',
+  '..BBB...........',
+  '..BB............',
+  '................'
+]
+
+const MARK_COLORS = { B: BUBBLE, H: TILE }
 
 function crc32(buf) {
   let table = crc32.table
@@ -98,6 +122,10 @@ class Canvas {
     }
   }
 
+  rect(x0, y0, w, h, color) {
+    this.fill((x, y) => (x >= x0 && x < x0 + w && y >= y0 && y < y0 + h ? color : null))
+  }
+
   roundedRect(x0, y0, w, h, radius, colorFn) {
     const inRect = (x, y) => x >= x0 && x < x0 + w && y >= y0 && y < y0 + h
     const inCorner = (x, y) => {
@@ -108,22 +136,17 @@ class Canvas {
     this.fill((x, y) => (inRect(x, y) && inCorner(x, y) ? colorFn(x, y) : null))
   }
 
-  circle(cx, cy, r, color) {
-    this.fill((x, y) => ((x - cx) ** 2 + (y - cy) ** 2 <= r * r ? color : null))
-  }
-
-  triangle(x0, y0, x1, y1, x2, y2, color) {
-    const minX = Math.min(x0, x1, x2)
-    const maxX = Math.max(x0, x1, x2)
-    const minY = Math.min(y0, y1, y2)
-    const maxY = Math.max(y0, y1, y2)
-    const area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+  // Nearest-neighbor blit of a character mask onto the canvas. Each output
+  // pixel maps to exactly one mask cell, so edges stay hard even when the
+  // cell size is fractional.
+  blit(mask, gx, gy, cell, colors) {
+    const rows = mask.length
+    const cols = mask[0].length
     this.fill((x, y) => {
-      if (x < minX || x > maxX || y < minY || y > maxY) return null
-      const w1 = ((x1 - x) * (y2 - y) - (x2 - x) * (y1 - y)) / area
-      const w2 = ((x2 - x) * (y0 - y) - (x0 - x) * (y2 - y)) / area
-      const w3 = 1 - w1 - w2
-      return w1 >= 0 && w2 >= 0 && w3 >= 0 ? color : null
+      const cx = Math.floor((x - gx) / cell)
+      const cy = Math.floor((y - gy) / cell)
+      if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) return null
+      return colors[mask[cy][cx]] || null
     })
   }
 
@@ -135,7 +158,7 @@ class Canvas {
         for (let row = 0; row < 7; row++) {
           for (let col = 0; col < 5; col++) {
             if (glyph[row][col] === '1') {
-              this.roundedRect(cx + col * cell, y0 + row * cell, cell, cell, 0, () => color)
+              this.rect(cx + col * cell, y0 + row * cell, cell, cell, color)
             }
           }
         }
@@ -177,40 +200,14 @@ class Canvas {
   }
 }
 
-function gradient(size) {
-  return (_x, y) => {
-    const t = Math.min(1, Math.max(0, y / size))
-    return [
-      Math.round(BRAND_TOP[0] + (BRAND_BOTTOM[0] - BRAND_TOP[0]) * t),
-      Math.round(BRAND_TOP[1] + (BRAND_BOTTOM[1] - BRAND_TOP[1]) * t),
-      Math.round(BRAND_TOP[2] + (BRAND_BOTTOM[2] - BRAND_TOP[2]) * t)
-    ]
-  }
-}
-
-function drawMark(canvas, size, pad = 0, ox = 0, oy = 0) {
-  const tile = size - pad * 2
-  canvas.roundedRect(ox + pad, oy + pad, tile, tile, tile * 0.22, gradient(tile))
-  const bx = ox + pad + tile * 0.22
-  const by = oy + pad + tile * 0.25
-  const bw = tile * 0.56
-  const bh = tile * 0.375
-  const br = tile * 0.09
-  canvas.roundedRect(bx, by, bw, bh, br, () => WHITE)
-  canvas.triangle(
-    bx + bw * 0.28,
-    by + bh,
-    bx + bw * 0.28,
-    by + bh + tile * 0.16,
-    bx + bw * 0.45,
-    by + bh,
-    WHITE
-  )
-  const dotR = tile * 0.05
-  const dotY = by + bh / 2
-  for (const fx of [0.25, 0.5, 0.75]) {
-    canvas.circle(bx + bw * fx, dotY, dotR, DOT)
-  }
+// Draws the mark at (x, y) in a size x size box. The tile always fills the
+// box; glyphScale < 1 shrinks the bubble+heart inside it, used to keep the
+// maskable icon glyph inside the safe zone.
+function drawMark(canvas, x, y, size, glyphScale = 1) {
+  canvas.rect(x, y, size, size, TILE)
+  const cell = (size / GRID) * glyphScale
+  const off = (size - GRID * cell) / 2
+  canvas.blit(MARK, x + off, y + off, cell, MARK_COLORS)
 }
 
 const FONT = {
@@ -225,7 +222,7 @@ const FONT = {
 
 for (const size of [32, 180, 192, 512]) {
   const c = new Canvas(size, size)
-  drawMark(c, size)
+  drawMark(c, 0, 0, size)
   const name =
     size === 180 ? 'apple-touch-icon.png' : size === 32 ? 'favicon-32.png' : `icon-${size}.png`
   writeFileSync(path.join(outDir, name), c.png())
@@ -233,24 +230,51 @@ for (const size of [32, 180, 192, 512]) {
 
 {
   const size = 512
-  const pad = Math.round(size * 0.2)
   const c = new Canvas(size, size)
-  drawMark(c, size, pad)
+  drawMark(c, 0, 0, size, 0.62)
   writeFileSync(path.join(outDir, 'icon-512-maskable.png'), c.png())
 }
 
 {
   const c = new Canvas(1200, 630)
-  c.fill(() => [24, 24, 27])
-  const markSize = 300
+  c.fill(() => INK)
+  const markSize = 320 // 20 device px per logical pixel, perfectly even
   const cell = 8
   const word = 'badinage'
   const wordWidth = word.length * 6 * cell
   const mx = (1200 - markSize - 48 - wordWidth) / 2
   const my = (630 - markSize) / 2
-  drawMark(c, markSize, 0, mx, my)
+  drawMark(c, mx, my, markSize)
   c.text(word, mx + markSize + 48, my + markSize / 2 - (7 * cell) / 2, cell, WHITE)
   writeFileSync(path.join(root, 'public', 'og.png'), c.png())
 }
 
-console.log('icons written to public/icons and public/og.png')
+// favicon.svg: the same 16x16 mark as crisp-edged SVG rects, one horizontal
+// run per path segment.
+function maskPath(ch) {
+  let d = ''
+  MARK.forEach((row, y) => {
+    let x = 0
+    while (x < GRID) {
+      if (row[x] === ch) {
+        let x2 = x
+        while (x2 < GRID && row[x2] === ch) x2++
+        d += `M${x} ${y}h${x2 - x}v1h-${x2 - x}z`
+        x = x2
+      } else {
+        x++
+      }
+    }
+  })
+  return d
+}
+
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <rect width="16" height="16" fill="#4f46e5"/>
+  <path d="${maskPath('B')}" fill="#eef2ff"/>
+  <path d="${maskPath('H')}" fill="#4f46e5"/>
+</svg>
+`
+writeFileSync(path.join(root, 'public', 'favicon.svg'), svg)
+
+console.log('icons written to public/icons, public/favicon.svg and public/og.png')

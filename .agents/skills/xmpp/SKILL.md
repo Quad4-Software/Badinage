@@ -6,6 +6,9 @@ description: XMPP protocol layer conventions for this repo. Use when adding stan
 ## Where things live
 
 - core/xmpp/connection.ts wraps Strophe.Connection and emits typed events
+- core/xmpp/stanzas.ts parses Elements into typed events (pure, unit tested)
+- core/xmpp/demo.ts is the fake transport behind demo mode; it implements
+  the same ChatConnection interface as connection.ts
 - core/xmpp/ns.ts holds every XML namespace as a constant in NS
 - core/xmpp/discovery.ts resolves websocket and BOSH endpoints
 - One feature equals one Module folder under src/lib/core/, registered per
@@ -13,8 +16,10 @@ description: XMPP protocol layer conventions for this repo. Use when adding stan
 
 ## Rules
 
-- Never spread stanza parsing across components. Parse in core/, emit
-  typed events, render the parsed result.
+- Never spread stanza parsing across components. Parse in stanzas.ts,
+  emit typed events, render the parsed result. Parsers use
+  getElementsByTagName(NS), not querySelector, so tests run under
+  @xmldom/xmldom in the node vitest environment.
 - New namespaces go in NS, not inline strings.
 - IQ handlers must call the matching callback and return true or they leak
   the handler.
