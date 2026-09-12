@@ -3,3 +3,6 @@ node_modules/
 pnpm-lock.yaml
 src/lib/i18n/
 docker/
+packages/omemo/docs/
+test-results/
+playwright-report/

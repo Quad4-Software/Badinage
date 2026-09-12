@@ -5,12 +5,14 @@
 
   interface Props extends HTMLInputAttributes {
     value?: string
+    ref?: HTMLInputElement | null
   }
 
-  let { class: className, value = $bindable(''), ...rest }: Props = $props()
+  let { class: className, value = $bindable(''), ref = $bindable(null), ...rest }: Props = $props()
 </script>
 
 <input
+  bind:this={ref}
   bind:value
   class={cn(
     'border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',

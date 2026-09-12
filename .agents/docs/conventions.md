@@ -34,9 +34,36 @@
 ## UI primitives
 
 - shadcn-svelte style: thin wrappers over Bits UI in ui/primitives/<name>/,
-  each with an index.ts. Add new primitives with `pnpm dlx shadcn-svelte add
-<name>` and then trim to match house style.
+  each with an index.ts. Existing set: avatar, alert-dialog, button,
+  checkbox, dialog, input, kbd, label, scroll-area, separator, skeleton,
+  sonner, switch, tooltip. Add new ones with `pnpm dlx shadcn-svelte add <name>`
+  and then trim to match house style.
 - App components live in ui/components/, flat files, one component each.
+- Toasts come from the Sonner primitive: `import { toast } from
+'$lib/ui/primitives/sonner'`.
+- Destructive actions always go through AlertDialog confirmation. The wipe
+  flow in settings is the reference.
+- Style with semantic tokens (bg-card, text-muted-foreground, border,
+  ring). Raw colors and hardcoded z-index values outside the z-50 overlay
+  layer are not allowed.
+
+## Keybindings
+
+- Actions are declared in KEYBINDING_ACTIONS with a default combo in
+  DEFAULT_KEYBINDINGS (state/settings.svelte.ts), labeled in the locale,
+  and wired in ui/components/keyboard.svelte.
+- Combos serialize as `mod+shift+k` where mod means Ctrl or Cmd. Parsing
+  and matching live in utils/keymap.ts, unit tested.
+- Global keys must not fire while the user is typing in an editable field,
+  Escape excepted.
+
+## Feedback and errors
+
+- svelte:boundary wraps the app; CrashView renders the recovery UI.
+  window error and unhandledrejection handlers surface async failures as
+  toasts.
+- Loading states use Skeleton, not spinners, in lists. Buttons use
+  LoaderCircle while busy.
 
 ## i18n
 

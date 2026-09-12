@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Moon, Sun } from 'lucide-svelte'
+  import { Moon, Sun } from '@lucide/svelte'
   import { toggleMode } from 'mode-watcher'
 
   import LL from '$lib/i18n/i18n-svelte'

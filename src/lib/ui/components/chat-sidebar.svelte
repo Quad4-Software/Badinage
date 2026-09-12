@@ -3,9 +3,13 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { bareJid } from '$lib/utils/jid'
+  import { Settings } from '@lucide/svelte'
+
   import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
+  import { Button } from '$lib/ui/primitives/button'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
   import { Separator } from '$lib/ui/primitives/separator'
+  import { Skeleton } from '$lib/ui/primitives/skeleton'
 
   import AccountSwitcher from './account-switcher.svelte'
   import PresenceDot from './presence-dot.svelte'
@@ -32,7 +36,17 @@
 <div class="flex h-full flex-col">
   <header class="flex items-center justify-between gap-2 p-3">
     <h1 class="text-lg font-semibold">{$LL.appName()}</h1>
-    <ThemeToggle />
+    <div class="flex items-center">
+      <Button
+        variant="ghost"
+        size="icon"
+        onclick={() => (app.settingsOpen = true)}
+        aria-label={$LL.openSettings()}
+      >
+        <Settings class="size-4" />
+      </Button>
+      <ThemeToggle />
+    </div>
   </header>
 
   <div class="px-3 pb-3">
@@ -99,7 +113,19 @@
           </span>
         </button>
       {:else}
-        <p class="text-muted-foreground px-2 py-4 text-sm">{$LL.emptyRoster()}</p>
+        {#if account?.status === 'connecting'}
+          <div class="flex flex-col gap-2 p-2" role="status" aria-label={$LL.loadingContacts()}>
+            {#each Array.from({ length: 6 }) as _, i (i)}
+              <div class="flex items-center gap-3">
+                <Skeleton class="size-8 rounded-full" />
+                <Skeleton class="h-4 flex-1" />
+              </div>
+            {/each}
+            <p class="text-muted-foreground mt-2 text-xs">{$LL.connectingStatus()}</p>
+          </div>
+        {:else}
+          <p class="text-muted-foreground px-2 py-4 text-sm">{$LL.emptyRoster()}</p>
+        {/if}
       {/each}
     </nav>
   </ScrollArea>

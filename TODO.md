@@ -5,8 +5,9 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 ## Done
 
 - [x] Repo scaffold: pnpm 11, Vite 8, Svelte 5 runes, TS strict
-- [x] Tailwind 4 + shadcn-svelte primitives (button, input, label,
-      separator, avatar, tooltip, scroll-area)
+- [x] Tailwind 4 + shadcn-svelte primitives (avatar, alert-dialog, button,
+      checkbox, dialog, input, kbd, label, scroll-area, separator, skeleton,
+      sonner, switch, tooltip)
 - [x] Supply chain defaults in pnpm-workspace.yaml
 - [x] ESLint flat config (typed) + Prettier + svelte-check
 - [x] typesafe-i18n wired, en locale
@@ -14,14 +15,24 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [x] Login form with endpoint discovery (host-meta json + xml)
 - [x] Roster fetch, presence tracking, 1:1 send/receive skeleton
 - [x] Responsive shell (sidebar / chat split, mobile swap)
-- [x] Dockerfile + nginx + compose, dev prosody config
+- [x] Docker split: prod (rootless nginx, digest-pinned, OCI labels) and
+      dev (vite + prosody) under docker/dev/
 - [x] AGENTS.md, .agents docs + skills, LICENSE 0BSD
+- [x] Settings dialog: general prefs + customizable keybindings
+- [x] Global keyboard navigation via keymap registry
+- [x] Crash boundary + crash view + global error toasts
+- [x] Dangerous ops behind AlertDialog (remove account, wipe data)
+- [x] Loading states: skeletons, spinner buttons, connection toasts
+- [x] SEO/OG meta, PWA manifest, favicon + icons + og.png generator
+- [x] Message caching to IndexedDB, PWA shell precache via workbox
+- [x] CI: matrix builds, pinned actions, harden-runner, CodeQL advanced,
+      dependency review, scorecard, docker buildx arm64 + cosign keyless
+      sign + provenance attestation
+- [x] UI measurement e2e: overflow, target size, z-index, focus trap
+- [x] Inter variable font via fontsource
 
 ## Decisions to make
 
-- [ ] OMEMO license path: relicense bundle GPL-3.0 with libomemo.js vs
-      clean-room X3DH/double-ratchet vs wait for MLS. Blocks all OMEMO work.
-      See .agents/docs/architecture.md.
 - [ ] App resource naming and device-id scheme for OMEMO
 - [ ] Whether BOSH stays a first-class transport or becomes fallback-only
 - [ ] Domain and final branding for badinage (check badinage.dev/.app)
@@ -65,17 +76,26 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] MUC MAM history, occupants-can-see-real-jids handling
 - [ ] Self-ping and rejoin on kick/disconnect
 
-## OMEMO (blocked on license decision)
+## OMEMO (own library, packages/omemo, 0BSD)
 
+- [x] packages/omemo: X3DH, double ratchet, protobuf wire, SCE, bundles,
+      device lists, both namespaces, storage interface
+- [x] Interop validation against python-omemo (reference impl) via golden
+      vectors + round-trip bridge tests (test/interop, scripts/gen_vectors.py,
+      scripts/py_verify.py)
+- [x] Property-based tests (fast-check), RFC 5869 known-answer vectors
+- [x] API docs via TypeDoc (`pnpm --filter @quad4-software/omemo docs`)
+- [ ] Wire the package into src/lib/core/omemo/ module
 - [ ] Device list publish/fetch via PEP, both omemo:2 and legacy namespaces
 - [ ] Bundle publish, prekey rotation, session building per device
-- [ ] XEP-0420 SCE envelope for payload encryption
 - [ ] Trust model UI: blind trust on first use vs manual verify, key
       fingerprints, QR verification
 - [ ] Per-account encrypted key storage in IndexedDB (WebCrypto-wrapped)
 - [ ] MUC OMEMO gated on members-only + non-anonymous + occupant ids
 - [ ] XEP-0454 encrypted media sharing
 - [ ] Undecryptable message handling and key-request UX
+- [x] Publish @quad4-software/omemo to GitHub Packages on omemo-v* tags
+      (publish-omemo.yml workflow)
 
 ## Multi-account and sessions
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft } from 'lucide-svelte'
+  import { ArrowLeft } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'

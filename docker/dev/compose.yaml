@@ -1,0 +1,32 @@
+# Dev stack: Vite dev server plus a local Prosody for testing.
+#   docker compose -f docker/dev/compose.yaml up
+#
+# Prosody listens on 5280 (BOSH+WS over http). Register an account at
+# login with any jid like test@localhost since in-band registration is on.
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: docker/dev/Dockerfile
+    ports:
+      - '5173:5173'
+    volumes:
+      - ../../:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      - prosody
+
+  prosody:
+    image: prosody/prosody:latest@sha256:984d473833c8401e049c63039b93a6fd1cdffa1f4abe3e93d005f34b3c87b893
+    ports:
+      - '5222:5222'
+      - '5280:5280'
+    volumes:
+      - prosody_data:/var/lib/prosody
+      - ./prosody.cfg.lua:/etc/prosody/prosody.cfg.lua:ro
+    restart: unless-stopped
+
+volumes:
+  node_modules:
+  prosody_data:

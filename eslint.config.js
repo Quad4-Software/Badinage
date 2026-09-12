@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 
 export default defineConfig([
   {
-    ignores: ['dist/', 'node_modules/', 'src/lib/i18n/', 'docker/']
+    ignores: ['dist/', 'node_modules/', 'src/lib/i18n/', 'docker/', 'packages/']
   },
   js.configs.recommended,
   ...tseslint.configs.strict,

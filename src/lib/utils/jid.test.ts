@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { bareJid, isValidBareJid, jidDomain, parseJid } from './jid'
+import { bareJid, isValidBareJid, isValidUserJid, jidDomain, parseJid } from './jid'
 
 describe('parseJid', () => {
   it('parses a full jid', () => {
@@ -45,11 +45,33 @@ describe('isValidBareJid', () => {
     expect(isValidBareJid('romeo@example.net')).toBe(true)
   })
 
-  it('rejects a jid without a dot in the domain', () => {
-    expect(isValidBareJid('romeo@localhost')).toBe(false)
+  it('accepts single-label domains for local dev servers', () => {
+    expect(isValidBareJid('romeo@localhost')).toBe(true)
   })
 
   it('rejects an empty jid', () => {
     expect(isValidBareJid('')).toBe(false)
+  })
+})
+
+describe('isValidUserJid', () => {
+  it('accepts a local@domain jid', () => {
+    expect(isValidUserJid('romeo@example.net')).toBe(true)
+  })
+
+  it('accepts a jid with a resource', () => {
+    expect(isValidUserJid('romeo@example.net/phone')).toBe(true)
+  })
+
+  it('rejects a domain-only jid', () => {
+    expect(isValidUserJid('example.net')).toBe(false)
+  })
+
+  it('rejects a missing domain', () => {
+    expect(isValidUserJid('romeo@')).toBe(false)
+  })
+
+  it('rejects an empty jid', () => {
+    expect(isValidUserJid('')).toBe(false)
   })
 })

@@ -26,5 +26,10 @@ export function jidDomain(jid: string): string {
 
 export function isValidBareJid(jid: string): boolean {
   const { local, domain } = parseJid(jid)
-  return domain.length > 0 && domain.includes('.') && (local === undefined || local.length > 0)
+  return domain.length > 0 && (local === undefined || local.length > 0)
+}
+
+export function isValidUserJid(jid: string): boolean {
+  const { local, domain } = parseJid(jid)
+  return local !== undefined && local.length > 0 && domain.length > 0
 }

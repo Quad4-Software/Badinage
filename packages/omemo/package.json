@@ -1,0 +1,61 @@
+{
+  "name": "@quad4-software/omemo",
+  "version": "0.1.0",
+  "description": "OMEMO (XEP-0384) end-to-end encryption for XMPP: X3DH, Double Ratchet, SCE",
+  "license": "0BSD",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Quad4-Software/Badinage.git",
+    "directory": "packages/omemo"
+  },
+  "type": "module",
+  "private": false,
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:interop": "vitest run test/interop",
+    "vectors": ".venv/bin/python scripts/gen_vectors.py",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "docs": "typedoc --tsconfig tsconfig.build.json --out docs/api src/index.ts",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@noble/ciphers": "2.4.0",
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "fast-check": "4.9.0",
+    "typedoc": "0.28.20",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  }
+}

@@ -37,12 +37,12 @@ Status: done | partial | planned | deferred
 | XEP-0359      | Stanza IDs                 | partial  | parsed, not yet used for dedup                   |
 | XEP-0363      | HTTP file upload           | planned  | slot request + PUT, Cookie gotcha documented     |
 | XEP-0382      | Spoilers                   | planned  |                                                  |
-| XEP-0384      | OMEMO                      | planned  | blocked on license decision, see architecture.md |
+| XEP-0384      | OMEMO                      | library  | own impl in packages/omemo, interop vectors vs python-omemo |
 | XEP-0385      | Stateless IM               | deferred |                                                  |
 | XEP-0388      | SASL2                      | deferred | strophe.js lacks support                         |
 | XEP-0393      | Message styling            | planned  |                                                  |
 | XEP-0402      | PEP bookmarks              | planned  | replaces XEP-0048                                |
-| XEP-0420      | Stanza content encryption  | planned  | required by OMEMO:2                              |
+| XEP-0420      | Stanza content encryption  | library  | SCE envelope in packages/omemo                                |
 | XEP-0421      | Occupant IDs               | planned  | required for MUC OMEMO                           |
 | XEP-0424      | Message retraction         | planned  |                                                  |
 | XEP-0425      | Message moderation         | planned  | MUC moderator removal                            |

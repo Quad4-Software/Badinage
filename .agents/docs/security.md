@@ -48,7 +48,10 @@ Keep it that way. Do not add configDependencies.
 
 ## Reporting and deps
 
-- Run `pnpm audit` before releases. Dependabot or renovate config is a
-  TODO item.
-- Base images in docker/Dockerfile should move to digest pinning once CI
-  exists to bump them.
+- Run `pnpm audit` before releases. Dependabot covers npm, actions, and
+  docker ecosystems weekly.
+- Base images in docker/Dockerfile are pinned by digest; bump them
+  deliberately and record the new digest.
+- packages/omemo is our own 0BSD implementation, interop-checked against
+  python-omemo vectors. Never import GPL code (libomemo.js, libsignal) into
+  the dependency tree.

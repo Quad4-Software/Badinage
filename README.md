@@ -1,41 +1,66 @@
 # Badinage
 
-Web XMPP client. Self-hosted, multi-account, OMEMO planned.
+A self-hostable web XMPP client. Connects to any existing
+XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 
-## Develop
+## Features
 
-Requires Node 22+ and pnpm 11 (pinned via corepack).
+- Multiple XMPP accounts, one connection each, per-account state isolation
+- WebSocket and BOSH transports with automatic endpoint discovery
+- Roster, presence, and direct messaging
+- Customizable keyboard shortcuts with full keyboard navigation
+- Offline-friendly: IndexedDB message cache plus a PWA service worker
+- Dark and light themes, accessible UI, responsive layout
+- packages/omemo: standalone OMEMO (XEP-0384) library
 
-    pnpm install
-    pnpm dev
+## Install
 
-## Build
+Requires Node 22+ and pnpm 11+.
 
-    pnpm build
+```sh
+pnpm install
+pnpm dev
+```
 
-Static output lands in dist/, serve it with any web server.
+## Build from source
 
-## Run with Docker
+```sh
+pnpm build
+```
 
-    docker compose -f docker/compose.yaml up --build
+Static output lands in `dist/`, serve it with any web server.
 
-The app listens on port 8080. An optional Prosody dev server is included:
+## Docker
 
-    docker compose -f docker/compose.yaml --profile xmpp up --build
+The production image is multi-stage, rootless, digest-pinned, and published
+to `ghcr.io/quad4-software/badinage` with keyless cosign signatures.
+
+```sh
+docker run -p 8080:8080 ghcr.io/quad4-software/badinage:latest
+```
+
+Or build locally:
+
+```sh
+docker compose -f docker/compose.yaml up --build
+```
+
+The dev stack under `docker/dev/` adds a local Prosody server:
+
+```sh
+docker compose -f docker/dev/compose.yaml up
+```
 
 ## Verify
 
-    pnpm check     # types + svelte diagnostics
-    pnpm lint      # eslint
-    pnpm test      # unit tests
-    pnpm test:e2e  # playwright, needs browsers installed
-
-## Layout
-
-src/lib/core is DOM-free XMPP and storage code, src/lib/state holds the
-Svelte runes stores, src/lib/ui holds components. See AGENTS.md and
-.agents/docs/ for the rules.
+```sh
+pnpm check     # types + svelte diagnostics
+pnpm lint      # eslint
+pnpm test      # unit tests
+pnpm test:e2e  # playwright, needs browsers installed
+pnpm test:omemo # OMEMO library tests incl. interop vectors
+```
 
 ## License
 
-0BSD, see LICENSE.
+0BSD, see [LICENSE](LICENSE).

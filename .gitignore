@@ -14,3 +14,10 @@ test-results/
 !.env.example
 .DS_Store
 Thumbs.db
+
+# omemo package
+packages/omemo/.venv/
+packages/omemo/docs/
+*.tgz
+test-results/
+playwright-report/

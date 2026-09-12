@@ -37,6 +37,7 @@ cross_domain_bosh = true
 http_ports = { 5280 }
 http_interfaces = { "*" }
 https_ports = {}
+websocket_allow_subprotocols = true
 
 VirtualHost "localhost"
   authentication = "internal_hashed"

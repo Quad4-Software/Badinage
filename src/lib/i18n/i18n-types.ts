@@ -139,6 +139,168 @@ type RootTranslation = {
 	 * @param {number} count
 	 */
 	unread: RequiredParams<'count'>
+	/**
+	 * S​e​t​t​i​n​g​s
+	 */
+	settings: string
+	/**
+	 * P​r​e​f​e​r​e​n​c​e​s​ ​a​r​e​ ​s​t​o​r​e​d​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​o​n​l​y
+	 */
+	settingsHint: string
+	/**
+	 * G​e​n​e​r​a​l
+	 */
+	general: string
+	/**
+	 * S​e​n​d​ ​m​e​s​s​a​g​e​s​ ​w​i​t​h​ ​E​n​t​e​r
+	 */
+	sendWithEnter: string
+	/**
+	 * D​e​s​k​t​o​p​ ​n​o​t​i​f​i​c​a​t​i​o​n​s
+	 */
+	notifications: string
+	/**
+	 * N​o​t​i​f​i​c​a​t​i​o​n​ ​s​o​u​n​d​s
+	 */
+	sounds: string
+	/**
+	 * K​e​y​b​o​a​r​d​ ​s​h​o​r​t​c​u​t​s
+	 */
+	keyboard: string
+	/**
+	 * C​l​i​c​k​ ​a​ ​s​h​o​r​t​c​u​t​ ​t​o​ ​r​e​b​i​n​d​ ​i​t​.​ ​P​r​e​s​s​ ​E​s​c​a​p​e​ ​t​o​ ​c​a​n​c​e​l​.
+	 */
+	keyboardHint: string
+	/**
+	 * p​r​e​s​s​ ​k​e​y​s
+	 */
+	pressKeys: string
+	/**
+	 * R​e​b​i​n​d​ ​{​a​c​t​i​o​n​}
+	 * @param {string} action
+	 */
+	rebindFor: RequiredParams<'action'>
+	/**
+	 * R​e​s​e​t​ ​t​o​ ​d​e​f​a​u​l​t
+	 */
+	resetBinding: string
+	/**
+	 * O​p​e​n​ ​s​e​t​t​i​n​g​s
+	 */
+	kbSettings: string
+	/**
+	 * T​o​g​g​l​e​ ​t​h​e​m​e
+	 */
+	kbToggleTheme: string
+	/**
+	 * N​e​x​t​ ​c​o​n​v​e​r​s​a​t​i​o​n
+	 */
+	kbNextConversation: string
+	/**
+	 * P​r​e​v​i​o​u​s​ ​c​o​n​v​e​r​s​a​t​i​o​n
+	 */
+	kbPrevConversation: string
+	/**
+	 * C​l​o​s​e​ ​c​o​n​v​e​r​s​a​t​i​o​n
+	 */
+	kbCloseConversation: string
+	/**
+	 * F​o​c​u​s​ ​m​e​s​s​a​g​e​ ​i​n​p​u​t
+	 */
+	kbFocusComposer: string
+	/**
+	 * S​w​i​t​c​h​ ​t​o​ ​a​c​c​o​u​n​t​ ​{​n​}
+	 * @param {number} n
+	 */
+	kbAccount: RequiredParams<'n'>
+	/**
+	 * S​o​m​e​t​h​i​n​g​ ​w​e​n​t​ ​w​r​o​n​g
+	 */
+	crashTitle: string
+	/**
+	 * T​h​e​ ​a​p​p​ ​h​i​t​ ​a​n​ ​u​n​e​x​p​e​c​t​e​d​ ​e​r​r​o​r​.​ ​Y​o​u​r​ ​m​e​s​s​a​g​e​s​ ​a​r​e​ ​s​t​o​r​e​d​ ​l​o​c​a​l​l​y​ ​a​n​d​ ​n​o​t​h​i​n​g​ ​w​a​s​ ​s​e​n​t​ ​a​n​y​w​h​e​r​e​.
+	 */
+	crashDescription: string
+	/**
+	 * T​r​y​ ​a​g​a​i​n
+	 */
+	crashRetry: string
+	/**
+	 * R​e​l​o​a​d​ ​a​p​p
+	 */
+	crashReload: string
+	/**
+	 * C​o​p​y​ ​e​r​r​o​r
+	 */
+	copyError: string
+	/**
+	 * C​o​p​i​e​d
+	 */
+	copied: string
+	/**
+	 * C​o​n​n​e​c​t​e​d​ ​a​s​ ​{​j​i​d​}
+	 * @param {string} jid
+	 */
+	toastConnected: RequiredParams<'jid'>
+	/**
+	 * C​o​n​n​e​c​t​i​o​n​ ​p​r​o​b​l​e​m​ ​f​o​r​ ​{​j​i​d​}
+	 * @param {string} jid
+	 */
+	toastConnectionError: RequiredParams<'jid'>
+	/**
+	 * D​i​s​c​o​n​n​e​c​t​e​d​:​ ​{​j​i​d​}
+	 * @param {string} jid
+	 */
+	toastDisconnected: RequiredParams<'jid'>
+	/**
+	 * R​e​m​o​v​e​ ​t​h​i​s​ ​a​c​c​o​u​n​t​?
+	 */
+	removeAccountTitle: string
+	/**
+	 * {​j​i​d​}​ ​w​i​l​l​ ​b​e​ ​d​i​s​c​o​n​n​e​c​t​e​d​ ​a​n​d​ ​i​t​s​ ​l​o​c​a​l​ ​d​a​t​a​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​d​e​l​e​t​e​d​.​ ​T​h​e​ ​a​c​c​o​u​n​t​ ​i​t​s​e​l​f​ ​s​t​a​y​s​ ​o​n​ ​t​h​e​ ​s​e​r​v​e​r​.
+	 * @param {string} jid
+	 */
+	removeAccountDescription: RequiredParams<'jid'>
+	/**
+	 * C​a​n​c​e​l
+	 */
+	cancel: string
+	/**
+	 * R​e​m​o​v​e
+	 */
+	confirm: string
+	/**
+	 * O​p​e​n​ ​s​e​t​t​i​n​g​s
+	 */
+	openSettings: string
+	/**
+	 * L​o​a​d​i​n​g​ ​c​o​n​t​a​c​t​s
+	 */
+	loadingContacts: string
+	/**
+	 * C​o​n​n​e​c​t​i​n​g​ ​t​o​ ​t​h​e​ ​s​e​r​v​e​r
+	 */
+	connectingStatus: string
+	/**
+	 * D​a​n​g​e​r​ ​z​o​n​e
+	 */
+	dangerZone: string
+	/**
+	 * W​i​p​e​ ​l​o​c​a​l​ ​d​a​t​a
+	 */
+	wipeData: string
+	/**
+	 * D​e​l​e​t​e​ ​a​l​l​ ​l​o​c​a​l​ ​m​e​s​s​a​g​e​s​,​ ​k​e​y​s​ ​a​n​d​ ​s​e​t​t​i​n​g​s​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e
+	 */
+	wipeDataHint: string
+	/**
+	 * W​i​p​e​ ​a​l​l​ ​l​o​c​a​l​ ​d​a​t​a​?
+	 */
+	wipeDataTitle: string
+	/**
+	 * E​v​e​r​y​ ​a​c​c​o​u​n​t​ ​s​e​s​s​i​o​n​,​ ​c​a​c​h​e​d​ ​m​e​s​s​a​g​e​ ​a​n​d​ ​s​t​o​r​e​d​ ​k​e​y​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​w​i​l​l​ ​b​e​ ​d​e​l​e​t​e​d​.​ ​T​h​i​s​ ​c​a​n​n​o​t​ ​b​e​ ​u​n​d​o​n​e​.
+	 */
+	wipeDataDescription: string
 }
 
 export type TranslationFunctions = {
@@ -266,6 +428,162 @@ export type TranslationFunctions = {
 	 * {count} unread
 	 */
 	unread: (arg: { count: number }) => LocalizedString
+	/**
+	 * Settings
+	 */
+	settings: () => LocalizedString
+	/**
+	 * Preferences are stored on this device only
+	 */
+	settingsHint: () => LocalizedString
+	/**
+	 * General
+	 */
+	general: () => LocalizedString
+	/**
+	 * Send messages with Enter
+	 */
+	sendWithEnter: () => LocalizedString
+	/**
+	 * Desktop notifications
+	 */
+	notifications: () => LocalizedString
+	/**
+	 * Notification sounds
+	 */
+	sounds: () => LocalizedString
+	/**
+	 * Keyboard shortcuts
+	 */
+	keyboard: () => LocalizedString
+	/**
+	 * Click a shortcut to rebind it. Press Escape to cancel.
+	 */
+	keyboardHint: () => LocalizedString
+	/**
+	 * press keys
+	 */
+	pressKeys: () => LocalizedString
+	/**
+	 * Rebind {action}
+	 */
+	rebindFor: (arg: { action: string }) => LocalizedString
+	/**
+	 * Reset to default
+	 */
+	resetBinding: () => LocalizedString
+	/**
+	 * Open settings
+	 */
+	kbSettings: () => LocalizedString
+	/**
+	 * Toggle theme
+	 */
+	kbToggleTheme: () => LocalizedString
+	/**
+	 * Next conversation
+	 */
+	kbNextConversation: () => LocalizedString
+	/**
+	 * Previous conversation
+	 */
+	kbPrevConversation: () => LocalizedString
+	/**
+	 * Close conversation
+	 */
+	kbCloseConversation: () => LocalizedString
+	/**
+	 * Focus message input
+	 */
+	kbFocusComposer: () => LocalizedString
+	/**
+	 * Switch to account {n}
+	 */
+	kbAccount: (arg: { n: number }) => LocalizedString
+	/**
+	 * Something went wrong
+	 */
+	crashTitle: () => LocalizedString
+	/**
+	 * The app hit an unexpected error. Your messages are stored locally and nothing was sent anywhere.
+	 */
+	crashDescription: () => LocalizedString
+	/**
+	 * Try again
+	 */
+	crashRetry: () => LocalizedString
+	/**
+	 * Reload app
+	 */
+	crashReload: () => LocalizedString
+	/**
+	 * Copy error
+	 */
+	copyError: () => LocalizedString
+	/**
+	 * Copied
+	 */
+	copied: () => LocalizedString
+	/**
+	 * Connected as {jid}
+	 */
+	toastConnected: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Connection problem for {jid}
+	 */
+	toastConnectionError: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Disconnected: {jid}
+	 */
+	toastDisconnected: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Remove this account?
+	 */
+	removeAccountTitle: () => LocalizedString
+	/**
+	 * {jid} will be disconnected and its local data on this device deleted. The account itself stays on the server.
+	 */
+	removeAccountDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Cancel
+	 */
+	cancel: () => LocalizedString
+	/**
+	 * Remove
+	 */
+	confirm: () => LocalizedString
+	/**
+	 * Open settings
+	 */
+	openSettings: () => LocalizedString
+	/**
+	 * Loading contacts
+	 */
+	loadingContacts: () => LocalizedString
+	/**
+	 * Connecting to the server
+	 */
+	connectingStatus: () => LocalizedString
+	/**
+	 * Danger zone
+	 */
+	dangerZone: () => LocalizedString
+	/**
+	 * Wipe local data
+	 */
+	wipeData: () => LocalizedString
+	/**
+	 * Delete all local messages, keys and settings on this device
+	 */
+	wipeDataHint: () => LocalizedString
+	/**
+	 * Wipe all local data?
+	 */
+	wipeDataTitle: () => LocalizedString
+	/**
+	 * Every account session, cached message and stored key on this device will be deleted. This cannot be undone.
+	 */
+	wipeDataDescription: () => LocalizedString
 }
 
 export type Formatters = {}

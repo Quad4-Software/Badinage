@@ -1,10 +1,14 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, type AccountOptions } from '$lib/state/accounts.svelte'
-  import { isValidBareJid } from '$lib/utils/jid'
+  import { isValidUserJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
+  import { Checkbox } from '$lib/ui/primitives/checkbox'
   import { Input } from '$lib/ui/primitives/input'
   import { Label } from '$lib/ui/primitives/label'
+  import { LoaderCircle } from '@lucide/svelte'
+
+  let { embedded = false }: { embedded?: boolean } = $props()
 
   let jid = $state('')
   let password = $state('')
@@ -13,7 +17,7 @@
   let submitting = $state(false)
   let error = $state('')
 
-  const jidValid = $derived(isValidBareJid(jid))
+  const jidValid = $derived(isValidUserJid(jid))
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
@@ -48,10 +52,12 @@
   }
 </script>
 
-<div class="flex h-full items-center justify-center p-4">
+<div class={embedded ? 'flex flex-col' : 'flex h-full items-center justify-center p-4'}>
   <form
     onsubmit={submit}
-    class="bg-card flex w-full max-w-sm flex-col gap-5 rounded-lg border p-6 shadow-sm"
+    class={embedded
+      ? 'flex flex-col gap-5'
+      : 'bg-card flex w-full max-w-sm flex-col gap-5 rounded-lg border p-6 shadow-sm'}
   >
     <div class="flex flex-col gap-1">
       <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
@@ -97,7 +103,7 @@
     </div>
 
     <label class="flex items-center gap-2 text-sm">
-      <input type="checkbox" bind:checked={remember} class="accent-primary size-4" />
+      <Checkbox id="remember" bind:checked={remember} />
       {$LL.rememberSession()}
     </label>
 
@@ -106,7 +112,12 @@
     {/if}
 
     <Button type="submit" disabled={submitting || !jidValid || !password}>
-      {submitting ? $LL.connecting() : $LL.connect()}
+      {#if submitting}
+        <LoaderCircle class="size-4 animate-spin" />
+        {$LL.connecting()}
+      {:else}
+        {$LL.connect()}
+      {/if}
     </Button>
   </form>
 </div>

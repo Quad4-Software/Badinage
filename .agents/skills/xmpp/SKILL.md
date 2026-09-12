@@ -22,3 +22,14 @@ description: XMPP protocol layer conventions for this repo. Use when adding stan
   must be scoped per account.
 - Check .agents/docs/xep-matrix.md before starting a protocol feature and
   update the status column when it lands.
+
+## OMEMO
+
+- The OMEMO implementation is packages/omemo (@quad4-software/omemo, 0BSD).
+  App code must only touch it through src/lib/core/omemo/index.ts.
+- packages/omemo/test/interop validates against python-omemo (Syndace's
+  reference stack) via golden vectors in test/interop/vectors.json.
+  Regenerate with packages/omemo/.venv/bin/python scripts/gen_vectors.py.
+- Property tests (fast-check) live in test/property.test.ts, spec-drift
+  guards in test/conformance.test.ts. New protocol behavior needs all
+  three kinds: unit, property, and vector/conformance.

@@ -31,7 +31,55 @@ const en = {
   back: 'Back',
   encrypted: 'Encrypted',
   notEncrypted: 'Not encrypted',
-  unread: '{count:number} unread'
+  unread: '{count:number} unread',
+
+  settings: 'Settings',
+  settingsHint: 'Preferences are stored on this device only',
+  general: 'General',
+  sendWithEnter: 'Send messages with Enter',
+  notifications: 'Desktop notifications',
+  sounds: 'Notification sounds',
+  keyboard: 'Keyboard shortcuts',
+  keyboardHint: 'Click a shortcut to rebind it. Press Escape to cancel.',
+  pressKeys: 'press keys',
+  rebindFor: 'Rebind {action:string}',
+  resetBinding: 'Reset to default',
+  kbSettings: 'Open settings',
+  kbToggleTheme: 'Toggle theme',
+  kbNextConversation: 'Next conversation',
+  kbPrevConversation: 'Previous conversation',
+  kbCloseConversation: 'Close conversation',
+  kbFocusComposer: 'Focus message input',
+  kbAccount: 'Switch to account {n:number}',
+
+  crashTitle: 'Something went wrong',
+  crashDescription:
+    'The app hit an unexpected error. Your messages are stored locally and nothing was sent anywhere.',
+  crashRetry: 'Try again',
+  crashReload: 'Reload app',
+  copyError: 'Copy error',
+  copied: 'Copied',
+
+  toastConnected: 'Connected as {jid:string}',
+  toastConnectionError: 'Connection problem for {jid:string}',
+  toastDisconnected: 'Disconnected: {jid:string}',
+
+  removeAccountTitle: 'Remove this account?',
+  removeAccountDescription:
+    '{jid:string} will be disconnected and its local data on this device deleted. The account itself stays on the server.',
+  cancel: 'Cancel',
+  confirm: 'Remove',
+
+  openSettings: 'Open settings',
+  loadingContacts: 'Loading contacts',
+  connectingStatus: 'Connecting to the server',
+
+  dangerZone: 'Danger zone',
+  wipeData: 'Wipe local data',
+  wipeDataHint: 'Delete all local messages, keys and settings on this device',
+  wipeDataTitle: 'Wipe all local data?',
+  wipeDataDescription:
+    'Every account session, cached message and stored key on this device will be deleted. This cannot be undone.'
 } satisfies BaseTranslation
 
 export default en
