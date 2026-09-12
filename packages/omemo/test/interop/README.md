@@ -44,7 +44,7 @@ through scripts/py_verify.py for both namespaces:
 scripts/py_verify.py speaks one JSON request per stdin line and answers
 with one JSON response per stdout line. The test file keeps a single
 bridge process alive for the whole run so python interpreter startup is
-paid once. Requests and responses hex-encode byte strings; ratchet state
+paid once. Requests and responses hex-encode byte strings. Ratchet state
 is exchanged as the DoubleRatchetModel JSON dump used by dr_encrypt and
 dr_decrypt since python session objects are not serializable.
 
@@ -56,13 +56,13 @@ the venv exists. Run only this file with:
 
 Remaining gaps:
 
-- The bridge covers single-device one-to-one exchanges; multi-recipient
+- The bridge covers single-device one-to-one exchanges. Multi-recipient
   elements are produced by our code but only decrypted per device on the
   reference side.
 - SCE heartbeat envelopes and XMPP pubsub device list flows are exercised
   against golden vectors and our own stack, not through the bridge.
 - The reference stack does not model one-time pre key consumption on the
-  responder side, so repeated key exchanges are still accepted; our
+  responder side, so repeated key exchanges are still accepted. Our
   manager keeps the established session in that case
   (builds_same_session).
 

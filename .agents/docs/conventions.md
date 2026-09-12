@@ -59,7 +59,7 @@
 
 ## Feedback and errors
 
-- svelte:boundary wraps the app; CrashView renders the recovery UI.
+- svelte:boundary wraps the app. CrashView renders the recovery UI.
   window error and unhandledrejection handlers surface async failures as
   toasts.
 - Loading states use Skeleton, not spinners, in lists. Buttons use
@@ -81,5 +81,6 @@
 ## Commits and prose
 
 - Sentence-case commit subjects, imperative mood, say why not what.
-- No em dashes, no emojis, no decorative formatting in docs, comments, or
-  commit messages. Comments are plain text without backticks.
+- No em dashes, no emojis, no decorative arrows or unicode formatting in
+  docs, comments, or commit messages. No semicolons in prose. Comments
+  are plain text without backticks.

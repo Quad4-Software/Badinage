@@ -1,4 +1,4 @@
-// @quad4-software/omemo — permissively licensed (0BSD) OMEMO implementation.
+// @quad4-software/omemo: permissively licensed (0BSD) OMEMO implementation.
 // Supports the current urn:xmpp:omemo:2 profile of XEP-0384 and the legacy
 // eu.siacs.conversations.axolotl profile (XEP-0384 0.3.0).
 

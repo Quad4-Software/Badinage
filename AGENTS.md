@@ -85,7 +85,9 @@ code.
 
 ## Style
 
-- Plain ASCII prose, no em dashes, no emojis, minimal semicolons.
+- Plain ASCII prose: no em dashes, no en dashes as punctuation, no emojis,
+  no decorative arrows or other unicode ornament, no semicolons, no curly
+  quotes.
 - Code comments are plain text, no backticks around identifiers.
 - Docs say what and why, not marketing. See the no-slop skill for the full
   ruleset applied to prose.

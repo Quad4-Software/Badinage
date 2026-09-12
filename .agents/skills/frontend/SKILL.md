@@ -43,14 +43,14 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
   subscription reasons, shrink-0 on icons/badges.
 - Unread badges and count chips are fixed-size circles: size-5 rounded-full
   flex items-center justify-center, never padding-shaped ovals.
-- $state objects cannot be structured-cloned into IndexedDB; call
+- $state objects cannot be structured-cloned into IndexedDB. Call
   $state.snapshot() before idb.set.
 - $state() is only legal in a variable declaration or class field
   initializer, not inside methods. Wrap object literals by declaring a
   const first.
 - Resizable layouts use paneforge PaneGroup/Pane/PaneResizer with
-  autoSaveId. Mount only ONE responsive layout at a time via matchMedia;
-  rendering both and hiding one leaves duplicate nodes in the DOM and
+  autoSaveId. Mount only ONE responsive layout at a time via matchMedia.
+  Rendering both and hiding one leaves duplicate nodes in the DOM and
   breaks axe plus Playwright strict locators.
 - Dropdown content that should match its trigger width uses
   w-(--bits-dropdown-menu-anchor-width).
@@ -71,5 +71,5 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
   state swaps never shift content. Prepending needs a scroll anchor:
   record scrollHeight before the fetch and add the delta after rows land.
 - Internal non-reactive Map/Set caches in .svelte.ts files get flagged by
-  svelte/prefer-svelte-reactivity; disable the rule per line with a
+  svelte/prefer-svelte-reactivity. Disable the rule per line with a
   comment saying why it is intentionally plain.

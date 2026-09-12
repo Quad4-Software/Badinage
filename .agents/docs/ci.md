@@ -15,7 +15,7 @@
 - scorecard.yml: OpenSSF Scorecard weekly, uploads SARIF to code scanning.
 - pages.yml: builds and deploys the demo to GitHub Pages on master. The
   build sets VITE_BASE to the repo subpath and VITE_DEMO=1 so the site
-  lands in demo mode. The demo account is fake; demo data only.
+  lands in demo mode. The demo account is fake. Demo data only.
 
 ## Rules
 
