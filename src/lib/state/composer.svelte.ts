@@ -21,6 +21,9 @@ export class ComposerStore {
   private focusCallbacks = new Map<string, () => void>()
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
   private drafts = new Map<string, string>()
+  // a focus() that lands before the composer registers its callback is
+  // remembered here and replayed by registerFocus
+  private pendingFocus: string | null = null
 
   key(accountJid: string | undefined, peer: string): string {
     return `${accountJid ?? ''}:${bareJid(peer)}`
@@ -50,10 +53,16 @@ export class ComposerStore {
 
   registerFocus(key: string, focus: () => void): () => void {
     this.focusCallbacks.set(key, focus)
+    if (this.pendingFocus === key) {
+      this.pendingFocus = null
+      focus()
+    }
     return () => this.focusCallbacks.delete(key)
   }
 
   focus(key: string): void {
-    this.focusCallbacks.get(key)?.()
+    const cb = this.focusCallbacks.get(key)
+    if (cb) cb()
+    else this.pendingFocus = key
   }
 }

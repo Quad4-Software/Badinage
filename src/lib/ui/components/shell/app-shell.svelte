@@ -1,17 +1,12 @@
 <script lang="ts">
   import { Pane, PaneGroup, PaneResizer } from 'paneforge'
-  import { PanelLeftOpen, Settings } from '@lucide/svelte'
 
-  import LL from '$lib/i18n/i18n-svelte'
-  import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
-  import { Button } from '$lib/ui/primitives/button'
 
   import ChatSidebar from '../chat/chat-sidebar.svelte'
   import ChatView from '../chat/chat-view.svelte'
-  import PresenceDot from '../presence/presence-dot.svelte'
-  import ThemeToggle from './theme-toggle.svelte'
+  import SidebarRail from '../chat/sidebar/sidebar-rail.svelte'
 
   // mount only the matching layout so hidden duplicates do not end up in
   // the DOM (a11y, axe, duplicate ids)
@@ -39,12 +34,21 @@
   // width has to be converted to keep the collapsed pane exactly rail-wide
   const railSize = $derived(windowWidth > 0 ? Math.min(8, (RAIL_WIDTH_PX / windowWidth) * 100) : 0)
 
-  const account = $derived(accounts.active)
+  const SIDEBAR_DEFAULT = 20
 
+  // expandPane() only fires when paneSize === collapsedSize with strict
+  // equality; collapsedSize is a float derived from window width, so after
+  // a resize or restore the check fails and expand() silently no-ops.
+  // isCollapsed() is tolerant, and resize() expands to any size, so it is
+  // the fallback when expand() could not prove the pane was collapsed
   function toggleSidebar() {
     if (!sidebarPane) return
-    if (app.sidebarCollapsed) sidebarPane.expand()
-    else sidebarPane.collapse()
+    if (sidebarPane.isCollapsed()) {
+      sidebarPane.expand()
+      if (sidebarPane.isCollapsed()) sidebarPane.resize(SIDEBAR_DEFAULT)
+    } else {
+      sidebarPane.collapse()
+    }
   }
 
   $effect(() => app.registerAction('nav.toggleSidebar', toggleSidebar))
@@ -63,33 +67,6 @@
   </PaneResizer>
 {/snippet}
 
-{#snippet rail()}
-  <div class="flex h-full w-14 flex-col items-center gap-1 border-r py-2">
-    <Button
-      variant="ghost"
-      size="icon"
-      onclick={() => sidebarPane?.expand()}
-      aria-label={$LL.expandSidebar()}
-    >
-      <PanelLeftOpen class="size-4" />
-    </Button>
-    <span class="flex-1"></span>
-    <PresenceDot
-      presence={account?.status === 'connected' ? account.presence : 'offline'}
-      class="size-3"
-    />
-    <Button
-      variant="ghost"
-      size="icon"
-      onclick={() => (app.settingsOpen = true)}
-      aria-label={$LL.openSettings()}
-    >
-      <Settings class="size-4" />
-    </Button>
-    <ThemeToggle />
-  </div>
-{/snippet}
-
 {#if !desktop}
   <div class="h-full">
     <!-- exactly one of these mains is visible at a time -->
@@ -104,8 +81,8 @@
   <PaneGroup direction="horizontal" class="h-full" autoSaveId="badinage-shell" role="main">
     <Pane
       bind:this={sidebarPane}
-      defaultSize={24}
-      minSize={16}
+      defaultSize={SIDEBAR_DEFAULT}
+      minSize={14}
       maxSize={40}
       collapsible
       collapsedSize={railSize}
@@ -113,7 +90,7 @@
       onExpand={() => (app.sidebarCollapsed = false)}
       class="bg-card"
     >
-      <div class="pane-rail h-full">{@render rail()}</div>
+      <div class="pane-rail h-full"><SidebarRail /></div>
       <div class="pane-full h-full min-w-0"><ChatSidebar /></div>
     </Pane>
     {@render resizer(app.sidebarCollapsed)}
