@@ -27,3 +27,7 @@ savePrefix: ''
 
 patchedDependencies:
   '@stryker-mutator/vitest-runner@10.0.0': patches/@stryker-mutator__vitest-runner@10.0.0.patch
+
+overrides:
+  # typed-rest-client (pulled in by stryker) pins a vulnerable qs range
+  'typed-rest-client>qs': '6.16.0'
