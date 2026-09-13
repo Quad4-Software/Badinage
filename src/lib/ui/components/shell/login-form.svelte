@@ -11,6 +11,8 @@
   import { Label } from '$lib/ui/primitives/label'
   import { LoaderCircle } from '@lucide/svelte'
 
+  import ThemeToggle from './theme-toggle.svelte'
+
   let { embedded = false }: { embedded?: boolean } = $props()
 
   let jid = $state('')
@@ -68,17 +70,35 @@
   }
 </script>
 
-<div class={embedded ? 'flex flex-col' : 'flex h-full items-center justify-center p-4'}>
+<div
+  class={embedded
+    ? 'flex flex-col'
+    : 'auth-bg relative flex h-full flex-col items-center justify-center gap-6 p-4'}
+>
+  {#if !embedded}
+    <div class="absolute top-4 right-4">
+      <ThemeToggle />
+    </div>
+    <div class="flex flex-col items-center gap-1">
+      <h1 class="font-pixel text-3xl">{$LL.appName()}</h1>
+      <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
+    </div>
+  {/if}
   <form
     onsubmit={submit}
     class={embedded
       ? 'flex flex-col gap-5'
       : 'bg-card flex w-full max-w-sm flex-col gap-5 rounded-lg border p-6 shadow-sm'}
   >
-    <div class="flex flex-col gap-1">
-      <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
+    {#if embedded}
+      <div class="flex flex-col gap-1">
+        <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
+        <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
+        <p class="text-muted-foreground text-sm">{$LL.signInTitle()}</p>
+      </div>
+    {:else}
       <p class="text-muted-foreground text-sm">{$LL.signInTitle()}</p>
-    </div>
+    {/if}
 
     <div class="grid gap-2">
       <Label for="jid">{$LL.jid()}</Label>

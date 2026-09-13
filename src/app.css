@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import '@fontsource-variable/inter/wght.css';
+@import '@fontsource/silkscreen/latin-700.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -35,6 +36,7 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.552 0.016 285.938);
+  --auth-tile: color-mix(in oklab, var(--foreground) 5%, transparent);
 }
 
 .dark {
@@ -67,10 +69,28 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.439 0 0);
+  --auth-tile: color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
+:root[data-accent] {
+  --primary: oklch(0.55 0.19 var(--accent-h));
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.55 0.19 var(--accent-h));
+  --sidebar-primary: oklch(0.55 0.19 var(--accent-h));
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+}
+
+.dark[data-accent] {
+  --primary: oklch(0.74 0.15 var(--accent-h));
+  --primary-foreground: oklch(0.2 0.01 285.885);
+  --ring: oklch(0.74 0.15 var(--accent-h));
+  --sidebar-primary: oklch(0.74 0.15 var(--accent-h));
+  --sidebar-primary-foreground: oklch(0.2 0.01 285.885);
 }
 
 @theme inline {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-pixel: 'Silkscreen', monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -158,4 +178,27 @@
   .typing-dot {
     animation: none;
   }
+}
+
+/* large checkerboard pixel tiles behind the auth page, subtler in dark */
+.auth-bg {
+  background-image:
+    linear-gradient(
+      45deg,
+      var(--auth-tile) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--auth-tile) 75%
+    ),
+    linear-gradient(
+      45deg,
+      var(--auth-tile) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--auth-tile) 75%
+    );
+  background-size: 96px 96px;
+  background-position:
+    0 0,
+    48px 48px;
 }
