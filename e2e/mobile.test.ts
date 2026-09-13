@@ -60,6 +60,8 @@ test('composer exposes a send key hint and the attach sheet', async ({ page }) =
   await page.getByRole('button', { name: 'Attach file' }).click()
   const sheet = page.getByRole('dialog')
   await expect(sheet).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'Attach image' })).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'Attach video' })).toBeVisible()
   await expect(sheet.getByRole('button', { name: 'Attach file' })).toBeVisible()
   await expect(sheet.getByRole('button', { name: 'Share location' })).toBeVisible()
 })

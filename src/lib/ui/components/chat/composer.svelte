@@ -213,7 +213,10 @@
   const files = createFileSend({ account: () => account, peer: () => peerJid, kind: () => kind })
   const { sendFile, onFiles, onPaste } = files
 
-  function attach() {
+  // the accept filter lands on the shared input before the picker opens,
+  // so the attach sheet can offer image and video specific pickers
+  function attach(accept = '') {
+    if (fileEl) fileEl.accept = accept
     fileEl?.click()
   }
 
@@ -268,7 +271,7 @@
       variant="ghost"
       size="icon"
       class="hidden md:inline-flex"
-      onclick={attach}
+      onclick={() => attach()}
       aria-label={$LL.attachFile()}
       disabled={voice.recording}
     >
@@ -303,7 +306,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="absolute bottom-0.5 left-0.5 size-8"
+        class="absolute bottom-1 left-1 size-8"
         onclick={() => (emojiOpen = !emojiOpen)}
         aria-label={$LL.addReactionEmoji()}
         aria-expanded={emojiOpen}
@@ -387,4 +390,9 @@
   </div>
 </div>
 
-<AttachSheet bind:open={attachOpen} {locating} onAttach={attach} onLocation={shareLocation} />
+<AttachSheet
+  bind:open={attachOpen}
+  {locating}
+  onAttach={(accept) => attach(accept)}
+  onLocation={shareLocation}
+/>

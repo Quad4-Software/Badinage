@@ -111,7 +111,10 @@ const en = {
   cancelUpload: 'Cancel upload',
   copyMessage: 'Copy message text',
   messageActions: 'Message actions',
+  scrollToLatest: 'Jump to latest message',
   attachFile: 'Attach file',
+  attachImage: 'Attach image',
+  attachVideo: 'Attach video',
   dropToSend: 'Drop files to send',
   searchEmoji: 'Search emoji',
   recordVoice: 'Record voice message',
@@ -156,6 +159,7 @@ const en = {
 
   settings: 'Settings',
   settingsHint: 'Preferences are stored on this device only',
+  settingsSections: 'Settings section',
   searchSettings: 'Search settings',
   appearance: 'Appearance',
   theme: 'Theme',

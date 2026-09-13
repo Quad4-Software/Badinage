@@ -225,6 +225,7 @@
 
 {#snippet paneContent()}
   {#if conversation}
+    {@const conv = conversation}
     <div class="flex h-full min-w-0">
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
@@ -253,18 +254,16 @@
             </Button>
           {/if}
           <PeerAvatar
-            jid={conversation.peerJid}
-            fallback={(isRoom ? '#' : '') + (contact?.name || conversation.peerJid).slice(0, 2)}
+            jid={conv.peerJid}
+            fallback={(isRoom ? '#' : '') + (contact?.name || conv.peerJid).slice(0, 2)}
             force
           />
           <div class="min-w-0 flex-1">
             <h1 class="flex items-center gap-1.5 truncate font-medium">
               <span class="truncate">
-                {isRoom
-                  ? conversation.peerJid.split('@')[0]
-                  : contact?.name || conversation.peerJid}
+                {isRoom ? conv.peerJid.split('@')[0] : contact?.name || conv.peerJid}
               </span>
-              {#if !isRoom && conversation.encrypted}
+              {#if !isRoom && conv.encrypted}
                 <Tooltip>
                   <TooltipTrigger>
                     {#snippet child({ props })}
@@ -281,7 +280,7 @@
                   <TooltipContent>{$LL.encryptedChat()}</TooltipContent>
                 </Tooltip>
               {/if}
-              {#if conversation.ephemeralTimer}
+              {#if conv.ephemeralTimer}
                 <Tooltip>
                   <TooltipTrigger>
                     {#snippet child({ props })}
@@ -290,7 +289,7 @@
                         class="inline-flex"
                         role="img"
                         aria-label={$LL.ephemeralActive({
-                          time: ephemeralLabel(conversation.ephemeralTimer)
+                          time: ephemeralLabel(conv.ephemeralTimer)
                         })}
                       >
                         <Timer class="text-muted-foreground size-3.5 shrink-0" />
@@ -298,7 +297,7 @@
                     {/snippet}
                   </TooltipTrigger>
                   <TooltipContent>
-                    {$LL.ephemeralActive({ time: ephemeralLabel(conversation.ephemeralTimer) })}
+                    {$LL.ephemeralActive({ time: ephemeralLabel(conv.ephemeralTimer) })}
                   </TooltipContent>
                 </Tooltip>
               {/if}
@@ -313,9 +312,9 @@
                       : ''}</span
                   >
                 {:else}
-                  <span class="truncate">{conversation.subject ?? ''}</span>
+                  <span class="truncate">{conv.subject ?? ''}</span>
                 {/if}
-              {:else if conversation.peerState === 'composing' || rttPreview}
+              {:else if conv.peerState === 'composing' || rttPreview}
                 <TypingIndicator class="text-primary" />
                 {#if rttPreview}
                   <!-- XEP-0301: the buffer the peer is composing, shown
@@ -332,7 +331,7 @@
                     : ''}
                 </span>
               {:else}
-                {conversation.peerJid}
+                {conv.peerJid}
               {/if}
             </p>
           </div>
@@ -355,7 +354,7 @@
                 variant="ghost"
                 size="icon"
                 onclick={() => (showOccupants = !showOccupants)}
-                aria-label={$LL.occupants({ count: conversation.occupants.size })}
+                aria-label={$LL.occupants({ count: conv.occupants.size })}
                 aria-pressed={showOccupants}
               >
                 <Users class="size-4" />
@@ -363,9 +362,9 @@
               <Button variant="ghost" size="icon" onclick={leaveRoom} aria-label={$LL.leaveRoom()}>
                 <LogOut class="size-4" />
               </Button>
-              {#if conversation.joined}
+              {#if conv.joined}
                 <OptionsMenu
-                  {conversation}
+                  conversation={conv}
                   room
                   {peerBookmarked}
                   {peerBlocked}
@@ -396,14 +395,14 @@
             {/if}
             {#if !isRoom}
               <OptionsMenu
-                {conversation}
+                conversation={conv}
                 room={false}
                 {peerBookmarked}
                 {peerBlocked}
                 onToggleBookmark={toggleBookmark}
                 onBuzz={buzz}
                 onBlock={() => {
-                  if (peerBlocked) account?.unblock(conversation.peerJid)
+                  if (peerBlocked) account?.unblock(conv.peerJid)
                   else confirmBlock = true
                 }}
                 onSetNotify={setNotify}
@@ -414,22 +413,22 @@
         </div>
         <Separator />
         {#if isRoom}
-          <RoomStatusBanner {conversation} />
+          <RoomStatusBanner conversation={conv} />
         {/if}
         <MessageList
-          {conversation}
+          conversation={conv}
           selfJid={account?.jid ?? ''}
           onQuoteClick={(id) => {
             document.getElementById(`m-${id}`)?.scrollIntoView({ block: 'center' })
           }}
           onReply={(message) => {
-            app.setComposer(conversation.peerJid, { replyTo: message })
-            app.focusComposer(conversation.peerJid)
+            app.setComposer(conv.peerJid, { replyTo: message })
+            app.focusComposer(conv.peerJid)
           }}
           onEdit={(message) => {
             if (message.outgoing) {
-              app.setComposer(conversation.peerJid, { editing: message })
-              app.focusComposer(conversation.peerJid)
+              app.setComposer(conv.peerJid, { editing: message })
+              app.focusComposer(conv.peerJid)
             }
           }}
           onReact={reactToMessage}
@@ -443,7 +442,7 @@
           }}
           onDismiss={(message) => {
             if (!account) return
-            app.chatsFor(account.jid).dropMessage(conversation.peerJid, message.id)
+            app.chatsFor(account.jid).dropMessage(conv.peerJid, message.id)
           }}
           onLongPress={(message) => {
             sheetMessage = message
@@ -451,14 +450,14 @@
           }}
         />
         <Composer
-          peerJid={conversation.peerJid}
-          kind={conversation.kind}
-          peerName={isRoom ? conversation.peerJid.split('@')[0] : (contact?.name ?? undefined)}
+          peerJid={conv.peerJid}
+          kind={conv.kind}
+          peerName={isRoom ? conv.peerJid.split('@')[0] : (contact?.name ?? undefined)}
         />
       </div>
       {#if isRoom && showOccupants && desktop}
         <aside class="w-56 shrink-0 border-l">
-          <OccupantList {conversation} />
+          <OccupantList conversation={conv} />
         </aside>
       {/if}
     </div>
@@ -513,18 +512,15 @@
 />
 
 {#if isRoom && conversation}
-  <ChangeNickDialog
-    bind:open={nickOpen}
-    currentNick={conversation.ourNick ?? ''}
-    onSubmit={changeNick}
-  />
+  {@const conv = conversation}
+  <ChangeNickDialog bind:open={nickOpen} currentNick={conv.ourNick ?? ''} onSubmit={changeNick} />
   <SubjectDialog
     bind:open={subjectOpen}
-    subject={conversation.subject ?? ''}
-    onSubmit={(subject) => account?.connection.setRoomSubject(conversation.peerJid, subject)}
+    subject={conv.subject ?? ''}
+    onSubmit={(subject) => account?.connection.setRoomSubject(conv.peerJid, subject)}
   />
   <InviteUserDialog bind:open={inviteOpen} onSubmit={sendInvite} />
-  <RoomConfigDialog bind:open={configOpen} room={conversation.peerJid} />
+  <RoomConfigDialog bind:open={configOpen} room={conv.peerJid} />
 
   <ConfirmDialog
     open={moderateTarget !== null}
@@ -559,18 +555,19 @@
 />
 
 {#if conversation}
+  {@const conv = conversation}
   <MessageSheet
     bind:open={sheetOpen}
     message={sheetMessage}
     {canModerate}
     onReply={(message) => {
-      app.setComposer(conversation.peerJid, { replyTo: message })
-      app.focusComposer(conversation.peerJid)
+      app.setComposer(conv.peerJid, { replyTo: message })
+      app.focusComposer(conv.peerJid)
     }}
     onEdit={(message) => {
       if (message.outgoing) {
-        app.setComposer(conversation.peerJid, { editing: message })
-        app.focusComposer(conversation.peerJid)
+        app.setComposer(conv.peerJid, { editing: message })
+        app.focusComposer(conv.peerJid)
       }
     }}
     onReact={reactToMessage}
@@ -581,13 +578,14 @@
     }}
     onDismiss={(message) => {
       if (!account) return
-      app.chatsFor(account.jid).dropMessage(conversation.peerJid, message.id)
+      app.chatsFor(account.jid).dropMessage(conv.peerJid, message.id)
     }}
   />
 {/if}
 
 {#if isRoom && conversation && !desktop}
-  <Sheet bind:open={showOccupants} title={$LL.occupants({ count: conversation.occupants.size })}>
-    <OccupantList {conversation} />
+  {@const conv = conversation}
+  <Sheet bind:open={showOccupants} title={$LL.occupants({ count: conv.occupants.size })}>
+    <OccupantList conversation={conv} />
   </Sheet>
 {/if}

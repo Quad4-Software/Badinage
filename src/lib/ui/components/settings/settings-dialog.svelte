@@ -83,19 +83,16 @@
       </div>
     </div>
 
-    <nav
-      class="flex gap-1.5 overflow-x-auto border-b px-3 py-2 md:hidden"
-      aria-label={$LL.settings()}
-    >
-      {#each navItems as item (item.id)}
-        <button
-          type="button"
-          class="hover:bg-accent shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs whitespace-nowrap"
-          onclick={() => jump(item.id)}
-        >
-          {item.label}
-        </button>
-      {/each}
+    <nav class="border-b px-3 py-2 md:hidden" aria-label={$LL.settings()}>
+      <select
+        class="bg-background w-full rounded-md border px-2 py-1.5 text-sm"
+        aria-label={$LL.settingsSections()}
+        onchange={(e) => jump((e.target as HTMLSelectElement).value)}
+      >
+        {#each navItems as item (item.id)}
+          <option value={item.id}>{item.label}</option>
+        {/each}
+      </select>
     </nav>
 
     <div class="flex min-h-0 flex-1">

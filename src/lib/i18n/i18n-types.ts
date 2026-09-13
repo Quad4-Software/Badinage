@@ -452,9 +452,21 @@ type RootTranslation = {
 	 */
 	messageActions: string
 	/**
+	 * J​u​m​p​ ​t​o​ ​l​a​t​e​s​t​ ​m​e​s​s​a​g​e
+	 */
+	scrollToLatest: string
+	/**
 	 * A​t​t​a​c​h​ ​f​i​l​e
 	 */
 	attachFile: string
+	/**
+	 * A​t​t​a​c​h​ ​i​m​a​g​e
+	 */
+	attachImage: string
+	/**
+	 * A​t​t​a​c​h​ ​v​i​d​e​o
+	 */
+	attachVideo: string
 	/**
 	 * D​r​o​p​ ​f​i​l​e​s​ ​t​o​ ​s​e​n​d
 	 */
@@ -623,6 +635,10 @@ type RootTranslation = {
 	 * P​r​e​f​e​r​e​n​c​e​s​ ​a​r​e​ ​s​t​o​r​e​d​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​o​n​l​y
 	 */
 	settingsHint: string
+	/**
+	 * S​e​t​t​i​n​g​s​ ​s​e​c​t​i​o​n
+	 */
+	settingsSections: string
 	/**
 	 * S​e​a​r​c​h​ ​s​e​t​t​i​n​g​s
 	 */
@@ -1977,9 +1993,21 @@ export type TranslationFunctions = {
 	 */
 	messageActions: () => LocalizedString
 	/**
+	 * Jump to latest message
+	 */
+	scrollToLatest: () => LocalizedString
+	/**
 	 * Attach file
 	 */
 	attachFile: () => LocalizedString
+	/**
+	 * Attach image
+	 */
+	attachImage: () => LocalizedString
+	/**
+	 * Attach video
+	 */
+	attachVideo: () => LocalizedString
 	/**
 	 * Drop files to send
 	 */
@@ -2148,6 +2176,10 @@ export type TranslationFunctions = {
 	 * Preferences are stored on this device only
 	 */
 	settingsHint: () => LocalizedString
+	/**
+	 * Settings section
+	 */
+	settingsSections: () => LocalizedString
 	/**
 	 * Search settings
 	 */

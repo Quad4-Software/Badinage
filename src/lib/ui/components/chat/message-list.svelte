@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CheckCheck } from '@lucide/svelte'
+  import { ArrowDown, CheckCheck } from '@lucide/svelte'
 
   import LL, { locale } from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
@@ -57,7 +57,7 @@
 
   let viewport = $state<HTMLDivElement | null>(null)
   let nearTop = $state(true)
-  let pinned = true
+  let pinned = $state(true)
   // scrollHeight captured when an older page is requested; while set the
   // viewport is re-anchored by the prepended height as rows land so the
   // reading position does not move
@@ -116,12 +116,20 @@
     if (!conversation.historyLoading) anchorHeight = null
   }
 
+  function scrollToLatest(behavior: 'auto' | 'smooth' = 'auto') {
+    if (!viewport) return
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior })
+  }
+
   // reset scroll state when the pane switches to another conversation
   $effect(() => {
     void conversation.peerJid
     pinned = true
     nearTop = true
     anchorHeight = null
+    // land on the newest message once the peer's rows mount; the
+    // pinned resize observer covers media growing in afterwards
+    requestAnimationFrame(() => scrollToLatest())
   })
 
   $effect(() => {
@@ -169,74 +177,89 @@
   })
 </script>
 
-<ScrollArea bind:viewportRef={viewport} class="flex-1">
-  <ol class="flex flex-col p-[var(--density-list-pad)]">
-    {#if canLoadOlder}
-      <LoadOlder
-        loading={conversation.historyLoading ?? false}
-        complete={conversation.historyComplete ?? false}
-        {nearTop}
-        onLoad={loadOlder}
-      />
-    {/if}
-    {#each conversation.messages as message, i (message.id)}
-      {@const grouped = startsGroup(i)}
-      {#if i === 0 || !isSameDay(message.timestamp, conversation.messages[i - 1]?.timestamp ?? 0)}
-        <li class="text-muted-foreground my-3 text-center text-xs" aria-hidden="true">
-          {formatDay(message.timestamp, $locale)}
+<div class="relative flex min-h-0 flex-1 flex-col">
+  <ScrollArea bind:viewportRef={viewport} class="flex-1">
+    <ol class="flex flex-col p-[var(--density-list-pad)]">
+      {#if canLoadOlder}
+        <LoadOlder
+          loading={conversation.historyLoading ?? false}
+          complete={conversation.historyComplete ?? false}
+          {nearTop}
+          onLoad={loadOlder}
+        />
+      {/if}
+      {#each conversation.messages as message, i (message.id)}
+        {@const grouped = startsGroup(i)}
+        {#if i === 0 || !isSameDay(message.timestamp, conversation.messages[i - 1]?.timestamp ?? 0)}
+          <li class="text-muted-foreground my-3 text-center text-xs" aria-hidden="true">
+            {formatDay(message.timestamp, $locale)}
+          </li>
+        {/if}
+        <li
+          id={`m-${message.id}`}
+          class={i > 0 ? (grouped ? 'mt-[var(--density-msg-gap)]' : 'mt-0.5') : ''}
+        >
+          <MessageItem
+            {message}
+            showNick={grouped}
+            showAvatar={grouped}
+            avatarName={avatarName(message)}
+            avatarJid={avatarJid(message)}
+            avatarForce={conversation.kind === 'dm'}
+            selfJid={self}
+            {senderLabel}
+            {onQuoteClick}
+            {onReply}
+            {onEdit}
+            onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
+            {onRetract}
+            {onCancelUpload}
+            {canModerate}
+            onModerate={onModerate ? () => onModerate(message) : undefined}
+            {onDismiss}
+            {onLongPress}
+          />
+        </li>
+      {/each}
+      {#if typing}
+        <li class="mt-3 flex items-center gap-2" aria-live="polite">
+          <span class="bg-muted inline-flex items-center rounded-2xl rounded-bl-sm px-3 py-2">
+            <TypingIndicator class="text-muted-foreground" />
+          </span>
+          {#if conversation.kind === 'muc'}
+            <span class="text-muted-foreground text-xs">
+              {$LL.typingNames({ names: [...conversation.typers].join(', ') })}
+            </span>
+          {/if}
         </li>
       {/if}
-      <li
-        id={`m-${message.id}`}
-        class={i > 0 ? (grouped ? 'mt-[var(--density-msg-gap)]' : 'mt-0.5') : ''}
-      >
-        <MessageItem
-          {message}
-          showNick={grouped}
-          showAvatar={grouped}
-          avatarName={avatarName(message)}
-          avatarJid={avatarJid(message)}
-          avatarForce={conversation.kind === 'dm'}
-          selfJid={self}
-          {senderLabel}
-          {onQuoteClick}
-          {onReply}
-          {onEdit}
-          onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
-          {onRetract}
-          {onCancelUpload}
-          {canModerate}
-          onModerate={onModerate ? () => onModerate(message) : undefined}
-          {onDismiss}
-          {onLongPress}
-        />
-      </li>
-    {/each}
-    {#if typing}
-      <li class="mt-3 flex items-center gap-2" aria-live="polite">
-        <span class="bg-muted inline-flex items-center rounded-2xl rounded-bl-sm px-3 py-2">
-          <TypingIndicator class="text-muted-foreground" />
-        </span>
-        {#if conversation.kind === 'muc'}
-          <span class="text-muted-foreground text-xs">
-            {$LL.typingNames({ names: [...conversation.typers].join(', ') })}
-          </span>
-        {/if}
-      </li>
-    {/if}
-    {#if conversation.kind === 'dm' && lastMessage?.outgoing && !typing}
-      <li
-        class="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-[0.65rem]"
-        aria-live="polite"
-      >
-        {#if lastMessage.read}
-          <CheckCheck class="text-success size-3" aria-hidden="true" />
-          {$LL.seen()}
-        {:else if lastMessage.delivered}
-          <CheckCheck class="size-3 opacity-60" aria-hidden="true" />
-          {$LL.delivered()}
-        {/if}
-      </li>
-    {/if}
-  </ol>
-</ScrollArea>
+      {#if conversation.kind === 'dm' && lastMessage?.outgoing && !typing}
+        <li
+          class="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-[0.65rem]"
+          aria-live="polite"
+        >
+          {#if lastMessage.read}
+            <CheckCheck class="text-success size-3" aria-hidden="true" />
+            {$LL.seen()}
+          {:else if lastMessage.delivered}
+            <CheckCheck class="size-3 opacity-60" aria-hidden="true" />
+            {$LL.delivered()}
+          {/if}
+        </li>
+      {/if}
+    </ol>
+  </ScrollArea>
+  {#if !pinned}
+    <button
+      type="button"
+      aria-label={$LL.scrollToLatest()}
+      class="bg-popover hover:bg-accent absolute right-3 bottom-3 z-10 flex size-10 items-center justify-center rounded-full border shadow-md"
+      onclick={() => {
+        pinned = true
+        scrollToLatest('smooth')
+      }}
+    >
+      <ArrowDown class="size-4" />
+    </button>
+  {/if}
+</div>
