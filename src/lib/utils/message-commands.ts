@@ -29,3 +29,21 @@ export function parseSpoilerCommand(body: string): { body: string; hint: string 
   if (rest === '') return null
   return { body: rest, hint }
 }
+
+// Conversation-level slash commands (converse-style): /clear, /leave,
+// /nick, /topic, /invite, /join act on the conversation or room and
+// never reach the wire as a body. Message-level commands (/me, /spoiler)
+// are not this parser's business; the caller passes them through.
+export interface SlashCommand {
+  name: string
+  args: string
+}
+
+// Returns the command for input like "/nick new name", null when the
+// body is not a command at all. Multi-line args are kept so /topic can
+// carry a formatted subject.
+export function parseSlashCommand(body: string): SlashCommand | null {
+  const match = /^\/([a-zA-Z][a-zA-Z0-9-]*)(?:\s+([\s\S]*))?$/.exec(body)
+  if (!match) return null
+  return { name: match[1]?.toLowerCase() ?? '', args: match[2]?.trim() ?? '' }
+}

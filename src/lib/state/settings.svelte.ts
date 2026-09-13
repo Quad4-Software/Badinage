@@ -80,6 +80,9 @@ interface Settings {
   // register the web+xmpp protocol handler at runtime (the manifest
   // entry covers installed PWAs regardless of this toggle)
   xmppLinkHandler: boolean
+  // flip presence to away after IDLE_AWAY_MS without input, and back on
+  // the next keystroke or pointer event
+  autoAway: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -99,7 +102,8 @@ const DEFAULT_SETTINGS: Settings = {
   sendRealTimeText: false,
   allowAttention: true,
   mapPreviews: false,
-  xmppLinkHandler: false
+  xmppLinkHandler: false,
+  autoAway: true
 }
 
 class SettingsStore {

@@ -146,3 +146,9 @@ export const SHARE_INBOX_MAX_BYTES = 32 * 1024 * 1024
 // XEP-0080 static tile preview: single tile at this zoom with a pin
 export const GEOLOC_TILE_ZOOM = 15
 export const GEOLOC_TILE_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+// auto-away: no keyboard or pointer input for this long flips every
+// connected, non-invisible account currently 'online' to 'away'; the
+// check runs on this interval
+export const IDLE_AWAY_MS = 10 * 60 * 1000
+export const IDLE_CHECK_MS = 30_000

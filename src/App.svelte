@@ -34,7 +34,9 @@
   } from '$lib/ui/primitives/dialog'
   import { Sonner } from '$lib/ui/primitives/sonner'
   import { TooltipProvider } from '$lib/ui/primitives/tooltip'
+  import { watchIdleAway } from '$lib/ui/idle-away'
   import { normalizeDensity } from '$lib/utils/density'
+  import { updatePageMeta } from '$lib/utils/meta'
 
   $effect(() => {
     const hue = settings.current.accentHue
@@ -138,9 +140,9 @@
     }
   })
 
-  // Badging API: mirror the total unread count onto the app icon for
-  // installed PWA users. Muted conversations still count - the badge is
-  // about unread state, not notification policy.
+  // Badging API + tab title: mirror the total unread count onto the app
+  // icon and the document title. Muted conversations still count - the
+  // badge is about unread state, not notification policy.
   $effect(() => {
     let total = 0
     for (const store of app.chats.values()) {
@@ -148,10 +150,17 @@
         total += conversation.unread
       }
     }
+    updatePageMeta({
+      title: total > 0 ? `(${total}) ${$LL.appName()}` : $LL.appName()
+    })
     if (!('setAppBadge' in navigator)) return
     if (total > 0) void navigator.setAppBadge(total)
     else void navigator.clearAppBadge()
   })
+
+  // auto-away: flips connected 'online' accounts to 'away' after
+  // IDLE_AWAY_MS without input; the next activity restores them
+  $effect(() => watchIdleAway())
 </script>
 
 <TooltipProvider delayDuration={250}>

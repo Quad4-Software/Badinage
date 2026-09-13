@@ -10,9 +10,10 @@ import { app } from '$lib/state/app.svelte'
 import type { Conversation, ConversationKind } from '$lib/state/chats.svelte'
 import type { ComposerContext } from '$lib/state/composer.svelte'
 import { bareJid } from '$lib/utils/jid'
-import { parseSpoilerCommand } from '$lib/utils/message-commands'
+import { parseSlashCommand, parseSpoilerCommand } from '$lib/utils/message-commands'
 import { toast } from '$lib/ui/primitives/sonner'
 
+import { runSlashCommand } from './commands'
 import { mentionRefs } from './mentions'
 
 export interface SendOpts {
@@ -27,6 +28,11 @@ export interface SendOpts {
 export async function sendText(opts: SendOpts): Promise<boolean> {
   const { account, peerJid, kind, conversation, ctx, text } = opts
   const type = kind === 'muc' ? 'groupchat' : 'chat'
+  // conversation-level slash commands (/clear, /leave, /nick, /topic,
+  // /invite, /join) act on the room or store and never become a body;
+  // /me and /spoiler fall through to the normal send path
+  const command = parseSlashCommand(text)
+  if (command && runSlashCommand(opts, command)) return true
   // XEP-0382 slash command: "/spoiler [hint] text" hides text behind a
   // spoiler with the bracketed hint, "/spoiler text" is hintless. A
   // plain "/me ..." stays literal on the wire; the render side splits it.

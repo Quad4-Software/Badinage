@@ -16,6 +16,7 @@
     | 'sendRealTimeText'
     | 'allowAttention'
     | 'mapPreviews'
+    | 'autoAway'
 
   const items = $derived(
     (
@@ -25,7 +26,8 @@
         ['sendReadMarkers', $LL.sendReadMarkers(), 'read seen markers'],
         ['sendRealTimeText', $LL.realTimeText(), $LL.realTimeTextHint() + ' rtt live typing'],
         ['allowAttention', $LL.allowAttention(), $LL.allowAttentionHint() + ' buzz nudge'],
-        ['mapPreviews', $LL.mapPreviews(), $LL.mapPreviewsHint() + ' tiles openstreetmap location']
+        ['mapPreviews', $LL.mapPreviews(), $LL.mapPreviewsHint() + ' tiles openstreetmap location'],
+        ['autoAway', $LL.autoAway(), $LL.autoAwayHint() + ' idle presence']
       ] as [Flag, string, string][]
     ).filter(([, label, keywords]) => matchesQuery(q, label, keywords, $LL.privacy()))
   )
