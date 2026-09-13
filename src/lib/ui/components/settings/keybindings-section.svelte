@@ -31,6 +31,7 @@
     'nav.toggleSidebar': () => $LL.kbToggleSidebar(),
     'chat.focusComposer': () => $LL.kbFocusComposer(),
     'app.commandPalette': () => $LL.kbCommandPalette(),
+    'app.search': () => $LL.kbSearch(),
     'account.1': () => $LL.kbAccount({ n: 1 }),
     'account.2': () => $LL.kbAccount({ n: 2 }),
     'account.3': () => $LL.kbAccount({ n: 3 })

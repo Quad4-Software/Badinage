@@ -5,9 +5,13 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { settings } from '$lib/state/settings.svelte'
+  import { effectiveHue } from '$lib/utils/account'
   import { cn } from '$lib/utils/cn'
+  import { bareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
 
+  import PeerAvatar from '../chat/peer-avatar.svelte'
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
 
@@ -20,7 +24,26 @@
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="w-full justify-between">
-          <span class="truncate">{active?.jid ?? ''}</span>
+          <span class="flex min-w-0 items-center gap-2">
+            {#if active}
+              <span class="relative shrink-0">
+                <PeerAvatar
+                  jid={bareJid(active.jid)}
+                  fallback={active.jid.slice(0, 2)}
+                  account={active}
+                  force
+                  class="size-5"
+                />
+                <span
+                  class="border-background absolute -right-0.5 -bottom-0.5 size-2 rounded-full border"
+                  style={`background: oklch(0.65 0.17 ${effectiveHue(settings.metaFor(active.jid), active.jid)})`}
+                  aria-hidden="true"
+                ></span>
+              </span>
+              <PresenceDot presence={active.status === 'connected' ? 'online' : 'offline'} />
+            {/if}
+            <span class="truncate">{active?.jid ?? ''}</span>
+          </span>
           <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
         </Button>
       {/snippet}
@@ -39,8 +62,27 @@
             )}
             onSelect={() => (accounts.activeJid = account.jid)}
           >
+            <span class="relative shrink-0">
+              <PeerAvatar
+                jid={bareJid(account.jid)}
+                fallback={account.jid.slice(0, 2)}
+                {account}
+                force
+                class="size-5"
+              />
+              <span
+                class="border-background absolute -right-0.5 -bottom-0.5 size-2 rounded-full border"
+                style={`background: oklch(0.65 0.17 ${effectiveHue(settings.metaFor(account.jid), account.jid)})`}
+                aria-hidden="true"
+              ></span>
+            </span>
             <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
             <span class="min-w-0 flex-1 truncate">{account.jid}</span>
+            {#if account.latency !== null}
+              <span class="text-muted-foreground shrink-0 text-xs">
+                {$LL.latencyMs({ ms: account.latency })}
+              </span>
+            {/if}
             {#if account.jid === active?.jid}
               <Check class="size-4 shrink-0" />
             {/if}

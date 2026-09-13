@@ -6,9 +6,8 @@ import { $iq, $msg } from 'strophe.js'
 import { OMEMO_FALLBACK_BODY } from '$lib/constants'
 import { firstNsTag } from '$lib/utils/xml'
 
-import type { SendMessageOptions } from '../types'
 import { NS } from '../ns'
-import { noop, type XmppTransport } from './transport'
+import type { XmppTransport } from './transport'
 
 function domFromXml(xml: string): Element | null {
   return new DOMParser().parseFromString(xml, 'text/xml').documentElement
@@ -30,53 +29,104 @@ export function pepGet(
   )
 }
 
+// XEP-0060 publish-options, sent alongside a publish so the server
+// applies the node config atomically. Omitted options keep the server
+// defaults.
+export interface PepPublishOptions {
+  persistItems?: boolean | undefined
+  maxItems?: string | undefined
+  accessModel?: string | undefined
+  sendLastPublishedItem?: string | undefined
+}
+
 export function pepPublish(
   conn: XmppTransport,
   node: string,
   itemId: string,
-  payloadXml: string
+  payloadXml: string,
+  options?: PepPublishOptions,
+  onDone?: (ok: boolean) => void
 ): void {
   const stanza = $iq({ type: 'set', id: conn.uniqueId('pep-pub') })
     .c('pubsub', { xmlns: NS.PUBSUB })
     .c('publish', { node })
     .c('item', { id: itemId })
   const payload = domFromXml(payloadXml)
-  if (payload) stanza.cnode(payload)
-  conn.sendIq(stanza, noop)
+  if (payload) stanza.cnode(payload).up()
+  stanza.up().up() // item -> publish -> pubsub
+  if (options) {
+    // c() descends into each named child; c() with text does not, so
+    // each field only needs one up() to get back to the form element
+    stanza
+      .c('publish-options')
+      .c('x', { xmlns: NS.FORMS, type: 'submit' })
+      .c('field', { var: 'FORM_TYPE', type: 'hidden' })
+      .c('value', {}, NS.PUBSUB_PUBLISH_OPTIONS)
+      .up()
+    const fields: [string, string][] = []
+    if (options.persistItems) fields.push(['pubsub#persist_items', 'true'])
+    if (options.maxItems) fields.push(['pubsub#max_items', options.maxItems])
+    if (options.sendLastPublishedItem) {
+      fields.push(['pubsub#send_last_published_item', options.sendLastPublishedItem])
+    }
+    if (options.accessModel) fields.push(['pubsub#access_model', options.accessModel])
+    for (const [varName, value] of fields) {
+      stanza.c('field', { var: varName }).c('value', {}, value).up()
+    }
+  }
+  conn.sendIq(
+    stanza,
+    () => onDone?.(true),
+    () => onDone?.(false)
+  )
 }
 
 // The cleartext body is fallback text for clients without OMEMO, so
 // receiving clients that can decrypt replace it with the envelope body.
+// Replies, corrections, reactions and chat states all ride inside the SCE
+// envelope: emitting them in the clear would leak message metadata, so
+// this stanza only carries transport-level bits (origin-id, eme, store
+// hint, receipt request).
 export function sendEncryptedMessage(
   conn: XmppTransport,
   to: string,
-  encryptedXml: string,
-  opts?: SendMessageOptions
+  encryptedXml: string
 ): string {
   const id = conn.uniqueId('msg')
   const originId = conn.uniqueId('origin')
+  const encrypted = domFromXml(encryptedXml)
   const stanza = $msg({ to, type: 'chat', id })
     .c('body')
     .t(OMEMO_FALLBACK_BODY)
     .up()
     .c('origin-id', { xmlns: NS.STANZA_IDS, id: originId })
     .up()
-  if (opts?.replyTo) {
-    const author = 'to' in opts.replyTo ? opts.replyTo.to : opts.replyTo.from
-    stanza.c('reply', { xmlns: NS.REPLY, id: opts.replyTo.id, to: author }).up()
-  }
-  if (opts?.replaceId) {
-    stanza.c('replace', { xmlns: NS.CORRECT, id: opts.replaceId }).up()
-  }
-  stanza
-    .c('encryption', { xmlns: NS.EME, namespace: NS.OMEMO, name: 'OMEMO' })
+    .c('encryption', {
+      xmlns: NS.EME,
+      namespace: encrypted?.namespaceURI ?? NS.OMEMO,
+      name: 'OMEMO'
+    })
     .up()
     .c('store', { xmlns: NS.HINTS })
     .up()
     .c('request', { xmlns: NS.RECEIPTS })
-  const encrypted = domFromXml(encryptedXml)
   if (!encrypted) return id
   stanza.cnode(encrypted)
   conn.send(stanza)
   return id
+}
+
+// Minimal carrier for OMEMO payloads that are not user-visible messages:
+// key transports (empty encrypted elements) and envelopes wrapping only
+// reactions or chat states. No fallback body, no receipt request - the
+// XEP-0384 guidance is that these should not look like missed content to
+// clients that cannot decrypt.
+export function sendEncryptedNotification(
+  conn: XmppTransport,
+  to: string,
+  encryptedXml: string
+): void {
+  const encrypted = domFromXml(encryptedXml)
+  if (!encrypted) return
+  conn.send($msg({ to, type: 'chat', id: conn.uniqueId('omemo') }).cnode(encrypted))
 }

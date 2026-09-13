@@ -24,8 +24,8 @@
   })
 
   async function wipeData() {
-    sessionStorage.clear()
-    localStorage.clear()
+    // every badinage-namespaced key plus all IndexedDB stores; ui/ must
+    // not touch storage globals directly
     await wipeAllData()
     location.reload()
   }

@@ -26,8 +26,30 @@ export function applyReactions(target: ChatMessage, sender: string, emojis: stri
 }
 
 // A correction keeps the message's original position; the timestamp is
-// only used for ordering on the wire and is dropped here.
-export function applyCorrection(target: ChatMessage, body: string): void {
+// only used for ordering on the wire and is dropped here. spoilerHint
+// carries the correction stanza's XEP-0382 state: undefined clears it.
+export function applyCorrection(
+  target: ChatMessage,
+  body: string,
+  spoilerHint?: string | undefined
+): void {
   target.body = body
   target.edited = true
+  target.spoilerHint = spoilerHint
+}
+
+// XEP-0424: scrub everything that could leak the original content but
+// keep the row so replies pointing at it still anchor. Reactions go too.
+export function applyRetraction(target: ChatMessage): void {
+  target.retracted = true
+  target.body = ''
+  target.attachments = undefined
+  target.reactions = {}
+  target.replyTo = undefined
+  target.spoilerHint = undefined
+  target.undecryptable = undefined
+  target.untrustedDevice = undefined
+  target.pending = undefined
+  target.uploadProgress = undefined
+  target.pendingName = undefined
 }

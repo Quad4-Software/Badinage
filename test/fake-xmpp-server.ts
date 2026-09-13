@@ -12,6 +12,10 @@ const NS_STREAM = 'http://etherx.jabber.org/streams'
 const NS_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 const NS_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
 const NS_ROSTER = 'jabber:iq:roster'
+const NS_SM = 'urn:xmpp:sm:3'
+const NS_REGISTER = 'jabber:iq:register'
+const NS_REGISTER_FEATURE = 'http://jabber.org/features/iq-register'
+const NS_STANZA_ERROR = 'urn:ietf:params:xml:ns:xmpp-stanzas'
 
 export interface RosterSeed {
   jid: string
@@ -20,11 +24,32 @@ export interface RosterSeed {
   groups?: string[]
 }
 
+export interface SmOptions {
+  // answer <resume/> with <failed/>, forcing the client back to bind
+  failResume?: boolean
+  // pretend this many of the client's last stanzas never arrived, so the
+  // <resumed h/> response leaves them unacked and the client re-sends them
+  unackedOnResume?: number
+}
+
+export interface RegisterOptions {
+  // usernames answered with a conflict stanza error on register set
+  taken?: string[]
+}
+
 export interface FakeXmppServerOptions {
   // SASL PLAIN is answered with a failure instead of success
   rejectAuth?: boolean
   // items returned in the roster get result
   rosterItems?: RosterSeed[]
+  // advertise XEP-0198 and answer the nonza flow
+  sm?: SmOptions
+  // advertise XEP-0077 pre-auth and answer register iqs
+  registration?: RegisterOptions
+  // advertise OAUTHBEARER and answer per RFC 7628: an empty bearer gets
+  // the json error doc carrying openid-configuration, a bearer equal to
+  // token authenticates, anything else fails
+  oauth?: { discoveryUrl: string; token?: string }
   // custom iq responder, consulted after binding; return xml to send, or
   // null to fall through to the default handling
   respond?: (stanza: string) => string | null
@@ -60,6 +85,11 @@ export class FakeXmppServer {
   private socket: WebSocket | null = null
   private readonly frames: string[] = []
   private streamSeq = 0
+  // XEP-0198 state lives on the server, not the socket: a resumed stream
+  // picks the counters back up on the new connection
+  private smId = ''
+  private smSeq = 0
+  private smH = 0
 
   constructor(opts: FakeXmppServerOptions = {}) {
     this.opts = opts
@@ -97,6 +127,12 @@ export class FakeXmppServer {
     this.socket?.close()
   }
 
+  // start answering <resume/> with <failed/>, as a server does once the
+  // remembered session expired while the client was away
+  expireSmSession(): void {
+    this.opts.sm = { ...this.opts.sm, failResume: true }
+  }
+
   stop(): Promise<void> {
     return new Promise((resolve) => {
       for (const client of this.wss.clients) client.terminate()
@@ -111,6 +147,13 @@ export class FakeXmppServer {
     let authed = false
     let domain = 'example.net'
     let bareJid = ''
+    // RFC 7628 empty-token exchange in progress: the next <response/>
+    // must be answered with a <failure/>
+    let oauthChallengeSent = false
+    // XEP-0198: whether an sm session is live on this stream. The flag is
+    // per socket; the counters and sm id live on the server so a resumed
+    // stream continues where the dropped one left off
+    const sm = { enabled: false }
 
     socket.on('message', (data) => {
       const raw = String(data)
@@ -132,16 +175,42 @@ export class FakeXmppServer {
           socket.close()
           return
         }
+        if (raw.includes('OAUTHBEARER')) {
+          const outcome = this.onOauthAuth(raw, socket, domain)
+          if (outcome.kind === 'challenge') {
+            oauthChallengeSent = true
+            return
+          }
+          if (outcome.kind !== 'ok') return
+          bareJid = outcome.jid
+          authed = true
+          socket.send(`<success xmlns='${NS_SASL}'/>`)
+          return
+        }
         bareJid = this.decodePlainAuth(raw, domain)
         authed = true
         socket.send(`<success xmlns='${NS_SASL}'/>`)
         return
       }
 
+      // RFC 7628: after the json error challenge the client sends an
+      // empty response and only then does the server close with failure
+      if (oauthChallengeSent && raw.startsWith('<response')) {
+        oauthChallengeSent = false
+        socket.send(`<failure xmlns='${NS_SASL}'><not-authorized/></failure>`)
+        return
+      }
+
+      // XEP-0198: countable stanzas bump the server's inbound h once an
+      // sm session is live on this stream
+      if (sm.enabled && /^<(message|presence|iq)[\s>]/.test(raw)) this.smH += 1
+
       if (raw.startsWith('<iq')) {
         this.onIq(raw, socket, bareJid)
         return
       }
+
+      if (this.opts.sm && this.onSm(raw, socket, sm)) return
 
       if (raw.startsWith('<close')) {
         socket.close()
@@ -156,7 +225,10 @@ export class FakeXmppServer {
   private saslFeatures(): string {
     return (
       `<stream:features xmlns:stream='${NS_STREAM}'>` +
-      `<mechanisms xmlns='${NS_SASL}'><mechanism>PLAIN</mechanism></mechanisms>` +
+      `<mechanisms xmlns='${NS_SASL}'><mechanism>PLAIN</mechanism>` +
+      (this.opts.oauth ? `<mechanism>OAUTHBEARER</mechanism>` : '') +
+      `</mechanisms>` +
+      (this.opts.registration ? `<register xmlns='${NS_REGISTER_FEATURE}'/>` : '') +
       `</stream:features>`
     )
   }
@@ -165,8 +237,67 @@ export class FakeXmppServer {
     return (
       `<stream:features xmlns:stream='${NS_STREAM}'>` +
       `<bind xmlns='${NS_BIND}'/>` +
+      `<carbons xmlns='urn:xmpp:carbons:2'/>` +
+      `<csi xmlns='urn:xmpp:csi:0'/>` +
+      (this.opts.sm ? `<sm xmlns='${NS_SM}'/>` : '') +
       `</stream:features>`
     )
+  }
+
+  // XEP-0198 nonza handling. Returns true when the frame was consumed.
+  private onSm(raw: string, socket: WebSocket, sm: { enabled: boolean }): boolean {
+    if (raw.startsWith('<enable')) {
+      this.smSeq += 1
+      this.smId = `sm-${this.smSeq}`
+      sm.enabled = true
+      socket.send(`<enabled xmlns='${NS_SM}' id='${this.smId}' resume='true'/>`)
+      return true
+    }
+    if (raw.startsWith('<resume')) {
+      const previd = attr(raw, 'previd') ?? ''
+      if (previd === this.smId && previd && !this.opts.sm?.failResume) {
+        // report an h that leaves unackedOnResume stanzas unacknowledged
+        const h = Math.max(0, this.smH - (this.opts.sm?.unackedOnResume ?? 0))
+        sm.enabled = true
+        socket.send(`<resumed xmlns='${NS_SM}' previd='${esc(previd)}' h='${h}'/>`)
+      } else {
+        socket.send(`<failed xmlns='${NS_SM}'/>`)
+      }
+      return true
+    }
+    if (raw.startsWith('<r ') || raw.startsWith('<r/')) {
+      socket.send(`<a xmlns='${NS_SM}' h='${this.smH}'/>`)
+      return true
+    }
+    // <a/> needs no reply
+    return raw.startsWith('<a ') || raw.startsWith('<a/')
+  }
+
+  // RFC 7628 OAUTHBEARER. An empty bearer earns the json error document
+  // with the openid-configuration url as a challenge (the client must
+  // still send its empty response before the server closes with a
+  // failure). A bearer matching opts.oauth.token authenticates as the
+  // authzid or falls back to the localpart in the connect jid.
+  private onOauthAuth(
+    raw: string,
+    socket: WebSocket,
+    domain: string
+  ): { kind: 'challenge' } | { kind: 'ok'; jid: string } | { kind: 'fail' } {
+    const payload = /<auth[^>]*>([^<]*)<\/auth>/.exec(raw)?.[1] ?? ''
+    const decoded = atob(payload)
+    const bearer = decoded.split('auth=Bearer ')[1]?.split('\u0001')[0] ?? ''
+    if (!bearer) {
+      const doc = JSON.stringify({ 'openid-configuration': this.opts.oauth?.discoveryUrl })
+      socket.send(`<challenge xmlns='${NS_SASL}'>${btoa(doc)}</challenge>`)
+      return { kind: 'challenge' }
+    }
+    if (bearer !== this.opts.oauth?.token) {
+      socket.send(`<failure xmlns='${NS_SASL}'><not-authorized/></failure>`)
+      return { kind: 'fail' }
+    }
+    // the authzid, when present, selects the account like a bare jid
+    const authzid = decoded.split(',a=')[1]?.split(',')[0]?.split('\u0001')[0]
+    return { kind: 'ok', jid: authzid || `oauth@${domain}` }
   }
 
   // SASL PLAIN payload is base64 of authzid NUL authcid NUL password
@@ -179,6 +310,32 @@ export class FakeXmppServer {
 
   private onIq(raw: string, socket: WebSocket, bareJid: string): void {
     const id = attr(raw, 'id') ?? ''
+
+    // XEP-0077: get returns the required fields, set either registers or
+    // answers conflict for a taken username
+    if (raw.includes(NS_REGISTER)) {
+      const type = attr(raw, 'type') ?? 'get'
+      if (type === 'set') {
+        const user = /<username>([^<]*)<\/username>/.exec(raw)?.[1] ?? ''
+        const taken = this.opts.registration?.taken ?? []
+        if (taken.includes(user)) {
+          socket.send(
+            `<iq type='error' id='${esc(id)}'>` +
+              `<error type='cancel'><conflict xmlns='${NS_STANZA_ERROR}'/></error>` +
+              `</iq>`
+          )
+        } else {
+          socket.send(`<iq type='result' id='${esc(id)}'/>`)
+        }
+      } else {
+        socket.send(
+          `<iq type='result' id='${esc(id)}'>` +
+            `<query xmlns='${NS_REGISTER}'><username/><password/></query>` +
+            `</iq>`
+        )
+      }
+      return
+    }
 
     if (raw.includes(NS_BIND)) {
       const resource = /<resource>([^<]*)<\/resource>/.exec(raw)?.[1] ?? 'res'

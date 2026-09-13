@@ -21,9 +21,32 @@
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((message: ChatMessage, emoji: string) => void) | undefined
+    // maps a reaction sender key (bare jid, nick, or occupant id) to a
+    // display name; identity when absent
+    senderLabel?: ((sender: string) => string) | undefined
+    onRetract?: ((message: ChatMessage) => void) | undefined
+    onCancelUpload?: ((message: ChatMessage) => void) | undefined
+    // XEP-0425 moderation affordance, gated on our own room role
+    canModerate?: boolean
+    onModerate?: ((message: ChatMessage) => void) | undefined
+    // dismisses a message outright - only offered on undecryptable tombstones
+    onDismiss?: ((message: ChatMessage) => void) | undefined
   }
 
-  let { conversation, selfJid = '', onQuoteClick, onReply, onEdit, onReact }: Props = $props()
+  let {
+    conversation,
+    selfJid = '',
+    senderLabel,
+    onQuoteClick,
+    onReply,
+    onEdit,
+    onReact,
+    onRetract,
+    onCancelUpload,
+    canModerate = false,
+    onModerate,
+    onDismiss
+  }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
   // scrollTop under this counts as near the top and shows the pager button
@@ -40,8 +63,13 @@
   // the pager only makes sense while a transport can answer it
   const canLoadOlder = $derived(accounts.active?.status === 'connected')
 
-  // in a muc, our reaction sender entry is our nick rather than our jid
-  const self = $derived(conversation.kind === 'muc' ? (conversation.ourNick ?? selfJid) : selfJid)
+  // in a muc, our reaction sender entry is our XEP-0421 occupant id when
+  // the room assigns one, else our nick; in a dm it is our bare jid
+  const self = $derived(
+    conversation.kind === 'muc'
+      ? (conversation.ourOccupantId ?? conversation.ourNick ?? selfJid)
+      : selfJid
+  )
 
   const lastMessage = $derived(conversation.messages.at(-1))
   const typing = $derived(
@@ -63,6 +91,15 @@
 
   function avatarName(message: ChatMessage): string {
     return message.nick ?? parseJid(message.peerJid).local ?? message.peerJid
+  }
+
+  // the address an avatar is fetched under: the occupant room/nick key in
+  // a room, the peer bare jid in a dm
+  function avatarJid(message: ChatMessage): string {
+    if (conversation.kind === 'muc') {
+      return message.nick ? `${conversation.peerJid}/${message.nick}` : ''
+    }
+    return conversation.peerJid
   }
 
   function loadOlder() {
@@ -127,7 +164,7 @@
 </script>
 
 <ScrollArea bind:viewportRef={viewport} class="flex-1">
-  <ol class="flex flex-col p-4">
+  <ol class="flex flex-col p-[var(--density-list-pad)]">
     {#if canLoadOlder}
       <LoadOlder
         loading={conversation.historyLoading ?? false}
@@ -143,17 +180,28 @@
           {formatDay(message.timestamp, $locale)}
         </li>
       {/if}
-      <li id={`m-${message.id}`} class={i > 0 ? (grouped ? 'mt-3' : 'mt-0.5') : ''}>
+      <li
+        id={`m-${message.id}`}
+        class={i > 0 ? (grouped ? 'mt-[var(--density-msg-gap)]' : 'mt-0.5') : ''}
+      >
         <MessageItem
           {message}
           showNick={grouped}
           showAvatar={grouped}
           avatarName={avatarName(message)}
+          avatarJid={avatarJid(message)}
+          avatarForce={conversation.kind === 'dm'}
           selfJid={self}
+          {senderLabel}
           {onQuoteClick}
           {onReply}
           {onEdit}
           onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
+          {onRetract}
+          {onCancelUpload}
+          {canModerate}
+          onModerate={onModerate ? () => onModerate(message) : undefined}
+          {onDismiss}
         />
       </li>
     {/each}

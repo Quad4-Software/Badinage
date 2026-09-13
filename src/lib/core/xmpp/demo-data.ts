@@ -13,18 +13,22 @@ import {
 } from '$lib/core/omemo'
 
 import type { ConnectionEvents } from './connection'
-import type { IncomingMessage, MucOccupant, RosterItem } from './stanzas'
+import type { Bookmark, DataForm, IncomingMessage, MucOccupant, RosterItem } from './stanzas'
 
 type DemoEmitter = Emitter<ConnectionEvents>
 
 export const ROOM = 'lobby@conference.badinage.local'
 export const ROOM_SUBJECT = 'Badinage lobby: be nice'
+// the invite scheduled a few seconds in points at this room
+const INVITE_ROOM = 'lounge@conference.badinage.local'
 
 // delays for the scripted live traffic emitted by scheduleLiveEvents
 const DEMO_LIVE_MESSAGE_DELAY_MS = 2500
 const DEMO_SUBSCRIPTION_REQUEST_DELAY_MS = 4000
 const DEMO_LIVE_REACTION_DELAY_MS = 5000
 const DEMO_SECOND_LIVE_MESSAGE_DELAY_MS = 5500
+const DEMO_ROOM_INVITE_DELAY_MS = 7000
+const DEMO_LIVE_RETRACT_DELAY_MS = 9000
 
 const CONTACTS: { jid: string; name: string; presence: string; status: string }[] = [
   { jid: 'aria@badinage.local', name: 'Aria', presence: 'online', status: 'around' },
@@ -50,6 +54,7 @@ type DmHistoryEntry = {
   replaceId?: IncomingMessage['replaceId']
   attachments?: IncomingMessage['attachments']
   signed?: boolean
+  spoilerHint?: string
 }
 
 // A one second 8-bit mono PCM sine blip, built at module load so the demo
@@ -106,6 +111,25 @@ const DM_HISTORY: Record<string, DmHistoryEntry[]> = {
       body: 'badinage release notes drafted too',
       agoMin: 118,
       stanzaId: 'd-hist-aria-4'
+    },
+    {
+      who: 'them',
+      body: 'latency graph is *finally* flat, see `_p99` in `grafana`',
+      agoMin: 40,
+      stanzaId: 'd-hist-aria-4b'
+    },
+    {
+      who: 'them',
+      body: '/me celebrates quietly',
+      agoMin: 39,
+      stanzaId: 'd-hist-aria-4c'
+    },
+    {
+      who: 'them',
+      body: 'the butler did it, obviously',
+      agoMin: 30,
+      stanzaId: 'd-hist-aria-4d',
+      spoilerHint: 'book club ending'
     },
     { who: 'them', body: 'nice. review tomorrow?', agoMin: 14, stanzaId: 'd-hist-aria-5' },
     // aria corrects her previous message
@@ -173,6 +197,7 @@ const ROOM_HISTORY: {
   agoMin: number
   stanzaId: string
   attachments?: IncomingMessage['attachments']
+  spoilerHint?: string
 }[] = [
   { nick: 'cleo', body: 'morning all', agoMin: 95, stanzaId: 'room-1' },
   {
@@ -188,6 +213,25 @@ const ROOM_HISTORY: {
     stanzaId: 'room-3'
   },
   { nick: 'wren', body: 'I put a fix in the dev compose file', agoMin: 40, stanzaId: 'room-4' },
+  {
+    nick: 'dmitri',
+    body: 'the failover runs on the *standby* node only',
+    agoMin: 38,
+    stanzaId: 'room-4b'
+  },
+  {
+    nick: 'wren',
+    body: '/me files the follow-up ticket',
+    agoMin: 37,
+    stanzaId: 'room-4c'
+  },
+  {
+    nick: 'cleo',
+    body: 'it was the dns ttl all along',
+    agoMin: 36,
+    stanzaId: 'room-4d',
+    spoilerHint: ''
+  },
   { nick: 'cleo', body: 'merged, thanks', agoMin: 35, stanzaId: 'room-5' },
   {
     nick: 'aria',
@@ -253,18 +297,33 @@ export function demoRosterItems(): RosterItem[] {
   return CONTACTS.map((c) => ({ jid: c.jid, name: c.name, subscription: 'both', groups: [] }))
 }
 
+// seeded PEP bookmarks: the lobby room autojoins, a second room sits in
+// the list waiting, and one contact bookmark shows the contact kind
+export function demoBookmarks(): Bookmark[] {
+  return [
+    { jid: ROOM, kind: 'conference', name: 'Badinage lobby', autojoin: true, nick: 'you' },
+    { jid: 'random@conference.badinage.local', kind: 'conference', name: 'Random' },
+    { jid: 'aria@badinage.local', kind: 'contact', name: 'Aria' }
+  ]
+}
+
 // the occupants a joined room pretends to have: our own self presence
-// plus the fixed lobby cast
-export function roomOccupants(room: string, selfNick: string): MucOccupant[] {
+// plus the fixed lobby cast. We join as owner/moderator so every
+// moderation and configuration control is reachable in demo mode, and
+// everyone carries a real jid plus an XEP-0421 occupant id because the
+// demo room is non-anonymous.
+export function roomOccupants(room: string, selfNick: string, selfJid = ''): MucOccupant[] {
   return [
     {
       room,
       nick: selfNick,
       presence: 'online',
-      affiliation: 'member',
-      role: 'participant',
+      affiliation: 'owner',
+      role: 'moderator',
       self: true,
-      codes: ['110']
+      codes: ['110'],
+      jid: selfJid || undefined,
+      occupantId: 'occ-self'
     },
     ...ROOM_OCCUPANTS.map((o) => ({
       room,
@@ -273,9 +332,82 @@ export function roomOccupants(room: string, selfNick: string): MucOccupant[] {
       affiliation: o.affiliation,
       role: o.role,
       self: false,
-      codes: []
+      codes: [] as string[],
+      jid: `${o.nick}@badinage.local`,
+      occupantId: `occ-${o.nick}`
     }))
   ]
+}
+
+// XEP-0004 fixture for the owner configuration dialog: one field per
+// rendered widget type so every branch of the generic form shows.
+export function demoRoomConfig(): DataForm {
+  return {
+    title: 'Room configuration',
+    instructions: 'Adjust how the lobby behaves.',
+    fields: [
+      {
+        var: 'FORM_TYPE',
+        type: 'hidden',
+        required: false,
+        values: ['http://jabber.org/protocol/muc#roomconfig'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_roomname',
+        type: 'text-single',
+        label: 'Room name',
+        required: false,
+        values: ['Lobby'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_roomdesc',
+        type: 'text-single',
+        label: 'Description',
+        desc: 'Shown in room listings',
+        required: false,
+        values: ['Badinage lobby'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_persistentroom',
+        type: 'boolean',
+        label: 'Persistent room',
+        required: false,
+        values: ['1'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_membersonly',
+        type: 'boolean',
+        label: 'Members only',
+        desc: 'Only members may join',
+        required: false,
+        values: ['0'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_whois',
+        type: 'list-single',
+        label: 'Who can see real addresses',
+        required: false,
+        values: ['moderators'],
+        options: [
+          { value: 'moderators', label: 'Moderators only' },
+          { value: 'anyone', label: 'Anyone' }
+        ]
+      },
+      {
+        var: 'muc#roomconfig_roomadmins',
+        type: 'jid-multi',
+        label: 'Room admins',
+        required: false,
+        values: ['cleo@badinage.local'],
+        options: []
+      }
+    ]
+  }
 }
 
 export function emitContactPresence(events: DemoEmitter): void {
@@ -302,7 +434,8 @@ export function emitDmHistory(events: DemoEmitter, jid: string): void {
         replyTo: m.replyTo,
         replaceId: m.replaceId,
         attachments: m.attachments,
-        signed: m.signed
+        signed: m.signed,
+        spoilerHint: m.spoilerHint
       })
     }
   }
@@ -318,7 +451,8 @@ export function emitRoomHistory(events: DemoEmitter, jid: string): void {
       nick: m.nick,
       stanzaId: m.stanzaId,
       delay: ago(m.agoMin),
-      attachments: m.attachments
+      attachments: m.attachments,
+      spoilerHint: m.spoilerHint
     })
   }
   // cleo reacts to wren's last room message
@@ -343,13 +477,14 @@ export function scheduleLiveEvents(
   uniqueId: (prefix: string) => string,
   schedule: (fn: () => void, ms: number) => void
 ): void {
+  const esmeStanzaId = uniqueId('live')
   schedule(() => {
     events.emit('message', {
       from: 'esme@badinage.local',
       to: jid,
       body: 'hey, is this the new client?',
       type: 'chat',
-      stanzaId: uniqueId('live')
+      stanzaId: esmeStanzaId
     })
   }, DEMO_LIVE_MESSAGE_DELAY_MS)
   schedule(() => {
@@ -379,6 +514,27 @@ export function scheduleLiveEvents(
       stanzaId: uniqueId('live')
     })
   }, DEMO_SECOND_LIVE_MESSAGE_DELAY_MS)
+  schedule(() => {
+    // a direct XEP-0249 invite so the accept/decline flow is visible
+    events.emit('roomInvite', {
+      room: INVITE_ROOM,
+      from: 'aria@badinage.local',
+      kind: 'direct',
+      reason: 'quieter room for release talk'
+    })
+  }, DEMO_ROOM_INVITE_DELAY_MS)
+  schedule(() => {
+    // esme thinks better of her message and retracts it; her stanza id
+    // names the target so the row becomes a tombstone
+    events.emit('message', {
+      from: 'esme@badinage.local',
+      to: jid,
+      body: '',
+      type: 'chat',
+      stanzaId: uniqueId('live'),
+      retractId: esmeStanzaId
+    })
+  }, DEMO_LIVE_RETRACT_DELAY_MS)
 }
 
 // The one older page of history behind every peer, emitted when

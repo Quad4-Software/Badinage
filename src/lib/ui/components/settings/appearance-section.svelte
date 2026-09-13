@@ -4,6 +4,7 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import { settings } from '$lib/state/settings.svelte'
+  import { normalizeDensity, type Density } from '$lib/utils/density'
 
   import { matchesQuery } from './match'
   import { settingsSearch } from './search-state.svelte'
@@ -21,15 +22,21 @@
 
   const hues = [25, 55, 95, 145, 180, 210, 264, 300, 340]
 
+  const densityOptions = $derived<[Density, string][]>([
+    ['comfortable', $LL.densityComfortable()],
+    ['compact', $LL.densityCompact()]
+  ])
+
   let customHue = $state(settings.current.accentHue ?? 264)
 
-  type Row = 'theme' | 'accent'
+  type Row = 'theme' | 'accent' | 'density'
 
   const rows = $derived(
     (
       [
         ['theme', $LL.theme(), 'light dark system mode color'],
-        ['accent', $LL.accentColor(), 'color colour hue tint', $LL.accentHue()]
+        ['accent', $LL.accentColor(), 'color colour hue tint', $LL.accentHue()],
+        ['density', $LL.density(), 'compact comfortable spacing size', $LL.densityCompact()]
       ] as [Row, string, ...string[]][]
     ).filter(([, label, ...keywords]) => matchesQuery(q, label, ...keywords, $LL.appearance()))
   )
@@ -59,6 +66,27 @@
               onclick={() => setMode(value)}
             >
               <Icon class="size-3.5" />
+              {label}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {:else if row === 'density'}
+      {@const current = normalizeDensity(settings.current.density)}
+      <div class="flex items-center justify-between gap-4 text-sm">
+        <span>{$LL.density()}</span>
+        <div class="flex gap-1 rounded-lg border p-1" role="radiogroup" aria-label={$LL.density()}>
+          {#each densityOptions as [value, label] (value)}
+            {@const selected = current === value}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              class="cursor-pointer rounded-md px-2 py-1 text-xs {selected
+                ? 'bg-accent'
+                : 'hover:bg-accent/50'}"
+              onclick={() => settings.set('density', value)}
+            >
               {label}
             </button>
           {/each}

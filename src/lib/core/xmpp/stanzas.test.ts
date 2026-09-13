@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest'
 
 import {
   hasDiscoFeature,
+  parseAvatarHash,
   parseBlockPush,
-  parseDiscoItemJids,
+  parseBookmark,
+  parseBookmarkItems,
+  parseCaps,
+  parseDataForm,
+  parseDiscoInfo,
+  parseDiscoItems,
   parseJidItems,
   parseMamFin,
   parseMessage,
+  parsePepEvent,
   parsePresence,
+  parseRoomDecline,
+  parseRoomInvite,
   parseRosterItems,
   parseUploadSlot,
   parseVcardPhoto
@@ -261,9 +270,146 @@ my answer</body>
     expect(m?.encryptedXml).toContain('sid="123"')
   })
 
+  it('parses a direct message retraction', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat" id="retract-1">
+        <retract xmlns="urn:xmpp:message-retract:1" id="m1"/>
+        <fallback xmlns="urn:xmpp:fallback:0" for="urn:xmpp:message-retract:1"/>
+        <body>/me retracted a message</body>
+        <store xmlns="urn:xmpp:hints"/>
+      </message>`)
+    )
+    expect(m?.retractId).toBe('m1')
+    // the fallback body is parsed but must never render; ingest swallows it
+    expect(m?.body).toBe('/me retracted a message')
+  })
+
+  it('marks a retraction stanza even when the retract element lacks an id', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <retract xmlns="urn:xmpp:message-retract:1"/>
+        <body>secret fallback</body>
+      </message>`)
+    )
+    expect(m?.retractId).toBe('')
+  })
+
+  it('parses a legacy fasten-wrapped retraction', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <apply-to xmlns="urn:xmpp:fasten:0" id="m2">
+          <retract xmlns="urn:xmpp:message-retract:0"/>
+        </apply-to>
+      </message>`)
+    )
+    expect(m?.retractId).toBe('m2')
+  })
+
+  it('marks an archive tombstone on the stanza itself', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat" id="m1">
+        <retracted xmlns="urn:xmpp:message-retract:1" id="retract-9" stamp="2024-03-01T10:00:00Z"/>
+      </message>`)
+    )
+    expect(m?.retracted).toEqual({ reason: undefined, by: undefined })
+    expect(m?.retractId).toBeUndefined()
+  })
+
+  it('parses a spoiler with and without a hint', () => {
+    const hinted = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>the butler did it</body>
+        <spoiler xmlns="urn:xmpp:spoiler:0">book ending</spoiler>
+      </message>`)
+    )
+    expect(hinted?.spoilerHint).toBe('book ending')
+
+    const hintless = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>the butler did it</body>
+        <spoiler xmlns="urn:xmpp:spoiler:0"/>
+      </message>`)
+    )
+    expect(hintless?.spoilerHint).toBe('')
+  })
+
+  it('parses the unstyled opt-out', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>*not bold*</body>
+        <unstyled xmlns="urn:xmpp:styling:0"/>
+      </message>`)
+    )
+    expect(m?.unstyled).toBe(true)
+  })
+
+  it('captures legacy-namespace encrypted elements the same way', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>I sent you an OMEMO encrypted message but your client does not support it.</body>
+        <encrypted xmlns="eu.siacs.conversations.axolotl">
+          <header sid="7"><key rid="9">AAAA</key></header>
+          <payload>BBBB</payload>
+        </encrypted>
+      </message>`)
+    )
+    expect(m).not.toBeNull()
+    expect(m?.encryptedXml).toContain('eu.siacs.conversations.axolotl')
+  })
+
   it('returns null for empty stanzas', () => {
     const m = parseMessage(xml(`<message from="a@b.c" to="x@y.z" type="chat"/>`))
     expect(m).toBeNull()
+  })
+
+  it('parses a XEP-0421 occupant id on groupchat messages', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y/nick1" to="x@y.z" type="groupchat">
+        <body>hi</body>
+        <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-7"/>
+      </message>`)
+    )
+    expect(m?.occupantId).toBe('occ-7')
+  })
+
+  it('parses a XEP-0425 moderation notice as a retraction', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y" to="x@y.z" type="groupchat">
+        <retract xmlns="urn:xmpp:message-retract:1" id="stanza-9">
+          <moderated xmlns="urn:xmpp:message-moderate:1" by="mod@x.y">
+            <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-mod"/>
+          </moderated>
+          <reason>spam</reason>
+        </retract>
+      </message>`)
+    )
+    expect(m?.retraction).toEqual({ id: 'stanza-9', reason: 'spam', by: 'mod@x.y' })
+    expect(m?.body).toBe('')
+  })
+
+  it('reads the moderating occupant id when no by jid is present', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y" to="x@y.z" type="groupchat">
+        <retract xmlns="urn:xmpp:message-retract:1" id="stanza-9">
+          <moderated xmlns="urn:xmpp:message-moderate:1">
+            <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-mod"/>
+          </moderated>
+        </retract>
+      </message>`)
+    )
+    expect(m?.retraction?.by).toBe('occ-mod')
+  })
+
+  it('parses a retracted tombstone on archived messages', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y/nick1" to="x@y.z" type="groupchat">
+        <body>gone</body>
+        <retracted xmlns="urn:xmpp:message-retract:1" stamp="2024-03-03T10:00:00Z">
+          <moderated xmlns="urn:xmpp:message-moderate:1" by="mod@x.y"/>
+        </retracted>
+      </message>`)
+    )
+    expect(m?.retracted).toEqual({ reason: undefined, by: 'mod@x.y' })
   })
 })
 
@@ -306,6 +452,85 @@ describe('parsePresence', () => {
       expect(p.occupant.self).toBe(true)
       expect(p.occupant.role).toBe('participant')
     }
+  })
+
+  it('parses occupant jid, occupant-id and status codes', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <item affiliation="member" role="participant" jid="real@x.y/phone"/>
+          <status code="110"/>
+        </x>
+        <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-1"/>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.jid).toBe('real@x.y/phone')
+    expect(p.occupant.occupantId).toBe('occ-1')
+    expect(p.occupant.codes).toEqual(['110'])
+  })
+
+  it('parses a 303 nick change broadcast', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/old" type="unavailable">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <item affiliation="member" role="none" nick="new"/>
+          <status code="303"/>
+          <status code="110"/>
+        </x>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.presence).toBe('offline')
+    expect(p.occupant.newNick).toBe('new')
+    expect(p.occupant.self).toBe(true)
+  })
+
+  it('parses a kick with the item reason', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1" type="unavailable">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <item affiliation="member" role="none">
+            <reason>flooding</reason>
+          </item>
+          <status code="307"/>
+        </x>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.reason).toBe('flooding')
+    expect(p.occupant.codes).toContain('307')
+  })
+
+  it('handles muc presence without an item element', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1">
+        <x xmlns="http://jabber.org/protocol/muc#user"/>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.affiliation).toBe('none')
+    expect(p.occupant.role).toBe('none')
+  })
+
+  it('parses a presence stanza error', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1" to="x@y.z" type="error">
+        <error type="cancel" code="409">
+          <conflict xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+          <text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">nick in use</text>
+        </error>
+      </presence>`)
+    )
+    expect(p).toEqual({
+      kind: 'presenceError',
+      error: {
+        from: 'room@conference.x.y/nick1',
+        code: '409',
+        condition: 'conflict',
+        text: 'nick in use'
+      }
+    })
   })
 })
 
@@ -362,14 +587,174 @@ describe('parseBlockPush', () => {
   })
 })
 
-describe('parseDiscoItemJids', () => {
-  it('collects item jids from a disco items result', () => {
-    const jids = parseDiscoItemJids(
+describe('parseDiscoItems', () => {
+  it('collects items with jid, node and name', () => {
+    const items = parseDiscoItems(
       xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#items">
-        <item jid="upload.example.net"/><item jid="proxy.example.net"/>
+        <item jid="upload.example.net" name="Uploads"/>
+        <item jid="proxy.example.net" node="proxynode"/>
+        <item/>
       </query></iq>`)
     )
-    expect(jids).toEqual(['upload.example.net', 'proxy.example.net'])
+    expect(items).toEqual([
+      { jid: 'upload.example.net', name: 'Uploads', node: undefined },
+      { jid: 'proxy.example.net', name: undefined, node: 'proxynode' }
+    ])
+  })
+})
+
+describe('parseDiscoInfo', () => {
+  it('reads identities, features and extension forms', () => {
+    const info = parseDiscoInfo(
+      xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#info">
+        <identity category="client" type="pc" name="Exodus 0.9.1"/>
+        <feature var="http://jabber.org/protocol/muc"/>
+        <feature var="http://jabber.org/protocol/caps"/>
+        <x xmlns="jabber:x:data" type="result">
+          <field var="FORM_TYPE" type="hidden">
+            <value>urn:xmpp:dataforms:softwareinfo</value>
+          </field>
+          <field var="software"><value>Exodus</value></field>
+          <field var="ip_version"><value>ipv4</value><value>ipv6</value></field>
+        </x>
+      </query></iq>`)
+    )
+    expect(info.identities).toEqual([
+      { category: 'client', type: 'pc', name: 'Exodus 0.9.1', lang: undefined }
+    ])
+    expect(info.features).toContain('http://jabber.org/protocol/muc')
+    expect(info.forms).toEqual([
+      {
+        formType: 'urn:xmpp:dataforms:softwareinfo',
+        fields: [
+          { var: 'software', values: ['Exodus'] },
+          { var: 'ip_version', values: ['ipv4', 'ipv6'] }
+        ]
+      }
+    ])
+  })
+
+  it('skips submit-type forms and tolerates empty results', () => {
+    const info = parseDiscoInfo(
+      xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#info">
+        <x xmlns="jabber:x:data" type="submit"><field var="FORM_TYPE"><value>x</value></field></x>
+      </query></iq>`)
+    )
+    expect(info).toEqual({ identities: [], features: [], forms: [] })
+  })
+})
+
+describe('parseCaps', () => {
+  it('reads the entity capabilities element', () => {
+    const caps = parseCaps(
+      xml(`<presence from="a@b.c/r">
+        <c xmlns="http://jabber.org/protocol/caps" hash="sha-1" node="https://x.c/caps" ver="abc="/>
+      </presence>`)
+    )
+    expect(caps).toEqual({ node: 'https://x.c/caps', hash: 'sha-1', ver: 'abc=' })
+  })
+
+  it('returns null when attributes are missing', () => {
+    expect(
+      parseCaps(
+        xml(`<presence><c xmlns="http://jabber.org/protocol/caps" hash="sha-1"/></presence>`)
+      )
+    ).toBeNull()
+    expect(parseCaps(xml(`<presence/>`))).toBeNull()
+  })
+})
+
+describe('parseAvatarHash', () => {
+  it('reads the vcard-temp:x:update photo hash', () => {
+    const stanza = xml(`<presence from="a@b.c/r">
+      <x xmlns="vcard-temp:x:update"><photo>  aabbcc  </photo></x>
+    </presence>`)
+    expect(parseAvatarHash(stanza)).toBe('aabbcc')
+  })
+
+  it('returns an empty string for an explicit no-avatar update', () => {
+    const stanza = xml(`<presence from="a@b.c/r">
+      <x xmlns="vcard-temp:x:update"><photo/></x>
+    </presence>`)
+    expect(parseAvatarHash(stanza)).toBe('')
+  })
+
+  it('returns undefined when no update element is present', () => {
+    expect(parseAvatarHash(xml(`<presence from="a@b.c/r"/>`))).toBeUndefined()
+  })
+})
+
+describe('parsePepEvent', () => {
+  it('extracts node, items and retracts from a pubsub event', () => {
+    const event = parsePepEvent(
+      xml(`<message from="me@example.net" type="headline">
+        <event xmlns="http://jabber.org/protocol/pubsub#event">
+          <items node="urn:xmpp:bookmarks:1">
+            <item id="room@conference.example.net">
+              <conference xmlns="urn:xmpp:bookmarks:1" autojoin="true"><nick>me</nick></conference>
+            </item>
+            <retract id="old@conference.example.net"/>
+          </items>
+        </event>
+      </message>`)
+    )
+    expect(event?.node).toBe('urn:xmpp:bookmarks:1')
+    expect(event?.items).toHaveLength(1)
+    expect(event?.retracted).toEqual(['old@conference.example.net'])
+  })
+
+  it('returns null on a plain message', () => {
+    expect(parsePepEvent(xml(`<message from="a@b.c"><body>hi</body></message>`))).toBeNull()
+  })
+})
+
+describe('parseBookmark', () => {
+  it('parses a conference item', () => {
+    const bookmark = parseBookmark(
+      xml(`<item id="room@conference.example.net">
+        <conference xmlns="urn:xmpp:bookmarks:1" name="Room" autojoin="true">
+          <nick>me</nick><password>s3cret</password>
+        </conference>
+      </item>`)
+    )
+    expect(bookmark).toEqual({
+      jid: 'room@conference.example.net',
+      kind: 'conference',
+      name: 'Room',
+      autojoin: true,
+      nick: 'me',
+      password: 's3cret'
+    })
+  })
+
+  it('parses a contact item', () => {
+    const bookmark = parseBookmark(
+      xml(`<item id="friend@example.net">
+        <contact xmlns="urn:xmpp:bookmarks:1" name="Friend"/>
+      </item>`)
+    )
+    expect(bookmark).toEqual({
+      jid: 'friend@example.net',
+      kind: 'contact',
+      name: 'Friend'
+    })
+  })
+
+  it('returns null for unknown payloads', () => {
+    expect(parseBookmark(xml(`<item id="x"><other/></item>`))).toBeNull()
+  })
+})
+
+describe('parseBookmarkItems', () => {
+  it('collects bookmark items and drops jid-less entries', () => {
+    const bookmarks = parseBookmarkItems(
+      xml(`<items node="urn:xmpp:bookmarks:1">
+        <item id="a@conference.x"><conference xmlns="urn:xmpp:bookmarks:1"/></item>
+        <item><conference xmlns="urn:xmpp:bookmarks:1"/></item>
+      </items>`)
+    )
+    expect(bookmarks).toHaveLength(1)
+    expect(bookmarks[0]?.jid).toBe('a@conference.x')
   })
 })
 
@@ -453,5 +838,113 @@ describe('parseMamFin', () => {
     expect(fin.complete).toBe(true)
     expect(fin.first).toBeUndefined()
     expect(fin.last).toBeUndefined()
+  })
+})
+
+describe('parseRoomInvite', () => {
+  it('parses a direct XEP-0249 invite with password, reason and continue', () => {
+    const invite = parseRoomInvite(
+      xml(`<message from="crone@shakespeare.lit" to="me@x.y">
+        <x xmlns="jabber:x:conference" jid="darkcave@macbeth.shakespeare.lit"
+           password="cauldronburn" reason="come chat" continue="true"/>
+      </message>`)
+    )
+    expect(invite).toEqual({
+      room: 'darkcave@macbeth.shakespeare.lit',
+      from: 'crone@shakespeare.lit',
+      kind: 'direct',
+      password: 'cauldronburn',
+      reason: 'come chat',
+      continueSession: true
+    })
+  })
+
+  it('parses a mediated muc#user invite with reason and password', () => {
+    const invite = parseRoomInvite(
+      xml(`<message from="darkcave@chat.shakespeare.lit" to="me@x.y">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <invite from="crone@shakespeare.lit"><reason>blood</reason></invite>
+          <password>cauldronburn</password>
+        </x>
+      </message>`)
+    )
+    expect(invite).toEqual({
+      room: 'darkcave@chat.shakespeare.lit',
+      from: 'crone@shakespeare.lit',
+      kind: 'mediated',
+      password: 'cauldronburn',
+      reason: 'blood'
+    })
+  })
+
+  it('returns null for messages without an invite', () => {
+    expect(
+      parseRoomInvite(xml(`<message from="a@b.c" to="x@y.z"><body>hi</body></message>`))
+    ).toBeNull()
+  })
+})
+
+describe('parseRoomDecline', () => {
+  it('parses a mediated decline relayed by the room', () => {
+    const decline = parseRoomDecline(
+      xml(`<message from="darkcave@chat.shakespeare.lit" to="me@x.y">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <decline from="hag66@shakespeare.lit"><reason>busy</reason></decline>
+        </x>
+      </message>`)
+    )
+    expect(decline).toEqual({
+      room: 'darkcave@chat.shakespeare.lit',
+      from: 'hag66@shakespeare.lit',
+      reason: 'busy'
+    })
+  })
+})
+
+describe('parseDataForm', () => {
+  it('parses a room config form generically', () => {
+    const form = parseDataForm(
+      xml(`<iq type="result" to="me@x.y" from="room@conference.x.y">
+        <query xmlns="http://jabber.org/protocol/muc#owner">
+          <x xmlns="jabber:x:data" type="form">
+            <title>Config</title>
+            <instructions>Fill it in</instructions>
+            <field var="FORM_TYPE" type="hidden"><value>http://jabber.org/protocol/muc#roomconfig</value></field>
+            <field var="muc#roomconfig_persistentroom" type="boolean" label="Persistent">
+              <value>1</value>
+            </field>
+            <field var="muc#roomconfig_whois" type="list-single" label="Whois">
+              <option label="Mods"><value>moderators</value></option>
+              <option label="All"><value>anyone</value></option>
+              <value>moderators</value>
+            </field>
+            <field var="muc#roomconfig_roomadmins" type="jid-multi">
+              <desc>Admin list</desc>
+              <required/>
+              <value>a@x.y</value><value>b@x.y</value>
+            </field>
+          </x>
+        </query>
+      </iq>`)
+    )
+    expect(form?.title).toBe('Config')
+    expect(form?.instructions).toBe('Fill it in')
+    expect(form?.fields).toHaveLength(4)
+    expect(form?.fields[1]).toMatchObject({ type: 'boolean', values: ['1'] })
+    expect(form?.fields[2]?.options).toEqual([
+      { value: 'moderators', label: 'Mods' },
+      { value: 'anyone', label: 'All' }
+    ])
+    expect(form?.fields[3]?.required).toBe(true)
+    expect(form?.fields[3]?.values).toEqual(['a@x.y', 'b@x.y'])
+    expect(form?.fields[3]?.desc).toBe('Admin list')
+  })
+
+  it('returns null when no data form is present', () => {
+    expect(
+      parseDataForm(
+        xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/muc#owner"/></iq>`)
+      )
+    ).toBeNull()
   })
 })

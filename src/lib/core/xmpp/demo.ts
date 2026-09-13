@@ -7,14 +7,20 @@ import { Emitter } from '$lib/core/events'
 
 import type {
   AttachmentMeta,
+  Bookmark,
   ChatConnection,
   ConnectionEvents,
+  DiscoInfo,
+  DiscoItem,
   MamPageResult,
+  PepPublishOptions,
   SendMessageOptions,
   UploadSlot
 } from './connection'
 import {
   DemoOmemoPeers,
+  demoBookmarks,
+  demoRoomConfig,
   demoRosterItems,
   emitArchivePage,
   emitContactPresence,
@@ -30,7 +36,8 @@ import {
   roomOccupants,
   scheduleLiveEvents
 } from './demo-data'
-import type { ChatState, MarkerType } from './stanzas'
+import { DISCO_FEATURES, DISCO_IDENTITY } from './features/disco'
+import type { ChatState, DataForm, MarkerType } from './stanzas'
 
 const DEMO_CONNECT_DELAY_MS = 400
 const DEMO_REPLY_DELAY_MS = 1200
@@ -56,6 +63,9 @@ export class DemoConnection implements ChatConnection {
   // the demo blocklist lives in memory and echoes pushes like a real
   // server would so every connected "resource" stays in sync
   private blocklist = new Set<string>()
+  // in-memory PEP bookmark node, seeded with a couple of entries; built
+  // eagerly so the connect-time fetch already sees them
+  private bookmarks = new Map<string, Bookmark>(demoBookmarks().map((b) => [b.jid, b]))
   private readonly omemoPeers = new DemoOmemoPeers()
 
   connect(jid: string, _password: string): void {
@@ -65,6 +75,9 @@ export class DemoConnection implements ChatConnection {
       setTimeout(() => {
         this.connected = true
         this.events.emit('status', 'connected')
+        // pretend the server answered a ping so the latency indicator has
+        // something to show in demo mode
+        this.events.emit('latency', 24)
         // seed on the next macrotask so listeners bound in reaction to
         // the connected status attach first; a real transport gets this
         // ordering for free from network latency
@@ -156,12 +169,14 @@ export class DemoConnection implements ChatConnection {
     putUrl: string,
     file: Blob,
     headers?: Record<string, string>,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
     // nothing is really uploaded; report completion anyway
     void putUrl
     void file
     void headers
+    void signal
     onProgress?.(1)
     return Promise.resolve()
   }
@@ -170,15 +185,22 @@ export class DemoConnection implements ChatConnection {
     this.omemoPeers.get(node, jid, this.jid, onDone)
   }
 
-  pepPublish(node: string, itemId: string, payloadXml: string): void {
+  pepPublish(
+    node: string,
+    itemId: string,
+    payloadXml: string,
+    options?: PepPublishOptions,
+    onDone?: (ok: boolean) => void
+  ): void {
     void node
     void itemId
     void payloadXml
+    void options
+    onDone?.(true)
   }
 
-  sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string {
+  sendEncryptedMessage(to: string, encryptedXml: string): string {
     void encryptedXml
-    void opts
     const id = this.uniqueId('msg')
     this.timers.push(
       setTimeout(
@@ -187,6 +209,12 @@ export class DemoConnection implements ChatConnection {
       )
     )
     return id
+  }
+
+  sendEncryptedNotification(to: string, encryptedXml: string): void {
+    // key transports and encrypted reactions/states are inert in demo
+    void to
+    void encryptedXml
   }
 
   sendChatState(to: string, state: ChatState, type: 'chat' | 'groupchat' = 'chat'): void {
@@ -205,6 +233,13 @@ export class DemoConnection implements ChatConnection {
     void to
     void id
     void marker
+  }
+
+  sendRetraction(to: string, targetId: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    // the local store already tombstoned the message; nothing to echo
+    void to
+    void targetId
+    void type
   }
 
   sendPresence(): void {
@@ -251,8 +286,11 @@ export class DemoConnection implements ChatConnection {
     this.events.emit('unblocked', jids)
   }
 
-  joinRoom(room: string, nick: string): void {
-    for (const occupant of roomOccupants(room, nick)) this.events.emit('occupant', occupant)
+  joinRoom(room: string, nick: string, password?: string): void {
+    void password
+    for (const occupant of roomOccupants(room, nick, this.jid)) {
+      this.events.emit('occupant', occupant)
+    }
     this.events.emit('message', {
       from: room,
       to: this.jid,
@@ -275,8 +313,112 @@ export class DemoConnection implements ChatConnection {
   }
 
   setRoomSubject(room: string, subject: string): void {
+    // echo the subject back as a room message so the header updates
+    this.events.emit('message', {
+      from: room,
+      to: this.jid,
+      body: '',
+      type: 'groupchat',
+      subject
+    })
+  }
+
+  changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void {
+    void password
+    // the real flow is unavailable-with-303 for the old nick followed by
+    // available presence for the new one
+    this.events.emit('occupant', {
+      room,
+      nick: oldNick,
+      presence: 'offline',
+      affiliation: 'owner',
+      role: 'none',
+      self: true,
+      codes: ['110', '303'],
+      newNick
+    })
+    this.timers.push(
+      setTimeout(() => {
+        this.events.emit('occupant', {
+          room,
+          nick: newNick,
+          presence: 'online',
+          affiliation: 'owner',
+          role: 'moderator',
+          self: true,
+          codes: ['110'],
+          jid: this.jid,
+          occupantId: 'occ-self'
+        })
+      }, 300)
+    )
+  }
+
+  inviteToRoom(room: string, to: string, opts?: { reason?: string; password?: string }): void {
     void room
-    void subject
+    void to
+    void opts
+  }
+
+  declineRoomInvite(room: string, to: string, reason?: string): void {
+    void room
+    void to
+    void reason
+  }
+
+  kickOccupant(room: string, nick: string, reason?: string): void {
+    this.events.emit('occupant', {
+      room,
+      nick,
+      presence: 'offline',
+      affiliation: 'member',
+      role: 'none',
+      self: false,
+      codes: ['307'],
+      reason
+    })
+  }
+
+  banOccupant(room: string, jid: string, reason?: string): void {
+    // the ban iq names a jid; the room then drops the matching occupant
+    const nick = jid.split('@')[0] ?? jid
+    this.events.emit('occupant', {
+      room,
+      nick,
+      presence: 'offline',
+      affiliation: 'none',
+      role: 'none',
+      self: false,
+      codes: ['301'],
+      reason
+    })
+  }
+
+  moderateMessage(room: string, stanzaId: string, reason?: string): void {
+    // the room broadcasts a retraction notice addressed at nobody
+    this.events.emit('message', {
+      from: room,
+      to: this.jid,
+      body: '',
+      type: 'groupchat',
+      retraction: { id: stanzaId, reason }
+    })
+  }
+
+  fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void {
+    void room
+    this.timers.push(setTimeout(() => onDone(demoRoomConfig()), DEMO_MAM_PAGE_DELAY_MS))
+  }
+
+  submitRoomConfig(room: string, form: DataForm): void {
+    void room
+    void form
+  }
+
+  pingOccupant(room: string, nick: string, onDone: (alive: boolean) => void): void {
+    void room
+    void nick
+    onDone(true)
   }
 
   queryArchive(
@@ -316,6 +458,49 @@ export class DemoConnection implements ChatConnection {
 
   enableCarbons(): void {
     // demo mode emits carbon-shaped history directly
+  }
+
+  setClientActive(_active: boolean): void {
+    // no server to notify in demo mode
+  }
+
+  streamManagementEnabled(): boolean {
+    return false
+  }
+
+  sessionResumed(): boolean {
+    return false
+  }
+
+  discoInfo(jid: string, node: string | undefined, onDone: (info: DiscoInfo | null) => void): void {
+    // every demo peer pretends to be Badinage itself
+    void jid
+    void node
+    onDone({ identities: [{ ...DISCO_IDENTITY }], features: [...DISCO_FEATURES], forms: [] })
+  }
+
+  discoItems(jid: string, onDone: (items: DiscoItem[] | null) => void): void {
+    void jid
+    onDone([
+      { jid: 'conference.badinage.local', name: 'Chat rooms' },
+      { jid: 'upload.badinage.local', name: 'File uploads' }
+    ])
+  }
+
+  fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void {
+    // deferred like a real network round trip so listeners bound after
+    // connect still observe the follow-up traffic
+    this.timers.push(setTimeout(() => onDone([...this.bookmarks.values()]), DEMO_CONNECT_DELAY_MS))
+  }
+
+  addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void {
+    this.bookmarks.set(bookmark.jid, bookmark)
+    onDone?.(true)
+  }
+
+  removeBookmark(jid: string, onDone?: (ok: boolean) => void): void {
+    this.bookmarks.delete(jid)
+    onDone?.(true)
   }
 
   private seed(): void {

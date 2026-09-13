@@ -1,9 +1,26 @@
+import { OMEMO_RETRY_QUEUE_MAX } from '$lib/constants'
+import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
 import { accounts, type Account } from './accounts.svelte'
 import { ChatStore } from './chats.svelte'
 import { ComposerStore, type ComposerContext } from './composer.svelte'
+import { RoomSessions } from './muc-session'
+
+// one live incoming message, resolved for ui consumers (notifications,
+// aria-live). sender is already display-ready and encrypted is precomputed
+// so listeners never need to look up roster or conversation state.
+export interface LiveMessage {
+  accountJid: string
+  peer: string
+  sender: string
+  // true when the stanza or conversation is omemo-encrypted: listeners
+  // must show a generic label instead of the body
+  encrypted: boolean
+  body: string
+  attachment?: Attachment | undefined
+}
 
 class AppStore {
   chats = new Map<string, ChatStore>()
@@ -28,15 +45,46 @@ class AppStore {
   // jid -> Account: re-adding a removed account creates a new Account with
   // a new connection, so identity matters more than the jid string
   private bound = new Map<string, Account>()
+  // per-account room watchdog (self-ping, rejoin, join errors)
+  private roomSessions = new Map<string, RoomSessions>()
 
   chatsFor(accountJid: string): ChatStore {
     let store = this.chats.get(accountJid)
     if (!store) {
-      store = new ChatStore(accountJid)
+      // untrusted logins keep conversations in memory only
+      const untrusted = accounts.list.find((a) => a.jid === accountJid)?.options.untrusted === true
+      store = new ChatStore(accountJid, { persist: !untrusted })
+      store.onLive = (peer, message) => this.emitLive(accountJid, peer, message)
       this.chats.set(accountJid, store)
     }
     this.bindAccount(accountJid)
     return store
+  }
+
+  // ui listeners for live incoming traffic (desktop notifications,
+  // aria-live announcements); returns an unsubscribe
+  private liveListeners = new Set<(event: LiveMessage) => void>()
+
+  onLiveMessage(fn: (event: LiveMessage) => void): () => void {
+    this.liveListeners.add(fn)
+    return () => this.liveListeners.delete(fn)
+  }
+
+  private emitLive(accountJid: string, peer: string, message: IncomingMessage): void {
+    if (this.liveListeners.size === 0) return
+    const account = accounts.list.find((a) => a.jid === accountJid)
+    const conversation = this.chats.get(accountJid)?.conversations.get(peer)
+    const rosterName = account?.roster.find((c) => c.jid === bareJid(message.from))?.name
+    const event: LiveMessage = {
+      accountJid,
+      peer,
+      sender:
+        message.type === 'groupchat' ? (message.nick ?? peer) : rosterName || bareJid(message.from),
+      encrypted: Boolean(message.encrypted || message.undecryptable || conversation?.encrypted),
+      body: message.body,
+      attachment: message.attachments?.[0]
+    }
+    for (const listener of this.liveListeners) listener(event)
   }
 
   registerAction(id: string, handler: () => void): () => void {
@@ -46,6 +94,18 @@ class AppStore {
 
   dispatch(id: string): void {
     this.handlers.get(id)?.()
+  }
+
+  // Every join goes through here: the store remembers nick and password
+  // before the presence goes out so the rejoin watchdog can replay them
+  // and presence-error banners can retry without asking again.
+  joinRoom(room: string, nick: string, password?: string): void {
+    const account = accounts.active
+    if (!account) return
+    const bare = bareJid(room)
+    const store = this.chatsFor(account.jid)
+    store.noteJoin(bare, nick, password)
+    account.joinRoom(bare, nick, password)
   }
 
   conversationList(accountJid: string): string[] {
@@ -106,17 +166,9 @@ class AppStore {
     const store = this.chatsFor(account.jid)
     const conversation = store.open(peer)
     conversation.unread = 0
-    // room avatars come from the room vCard, fetched once per session
-    if (
-      conversation.kind === 'muc' &&
-      !conversation.avatarFetched &&
-      account.status === 'connected'
-    ) {
-      conversation.avatarFetched = true
-      account.connection.fetchAvatar(conversation.peerJid, (uri) => {
-        if (uri) conversation.avatar = uri
-      })
-    }
+    // the open conversation always gets its avatar: deduped and cached
+    // by the transport layer so repeat selects cost nothing
+    account.ensureAvatar(conversation.peerJid, true)
     // pull server history once per session per conversation; dedup by
     // stanza-id keeps it from doubling messages we already cached. The
     // first page has no cursor yet so loadOlder fetches the latest page
@@ -145,9 +197,25 @@ class AppStore {
     if (!account || this.bound.get(accountJid) === account) return
     this.bound.set(accountJid, account)
     const store = this.chatsFor(accountJid)
+    this.roomSessions.get(accountJid)?.dispose()
+    const sessions = new RoomSessions(account.connection, store)
+    this.roomSessions.set(accountJid, sessions)
+
+    // undecryptable omemo stanzas waiting on a session repair, keyed by
+    // namespace + sender + sending device. Retried exactly once when a
+    // later stanza from the same device decrypts, then dropped. Internal
+    // bookkeeping only - no reactivity needed.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const undecryptable = new Map<string, IncomingMessage[]>()
+    const queueKey = (ns: string, from: string, sid: number) => `${ns}:${bareJid(from)}/${sid}`
 
     account.connection.events.on('status', (status) => {
+      sessions.noteStatus(status)
       if (status === 'disconnected') void store.flush()
+    })
+
+    account.connection.events.on('presenceError', (error) => {
+      sessions.noteJoinError(error)
     })
 
     account.connection.events.on('message', (message) => {
@@ -166,9 +234,9 @@ class AppStore {
           store.ingest(message, this.activePeer)
           return
         }
-        void omemo.decryptInto(message).then(() => {
+        void omemo.decryptInto(message).then((report) => {
           if (account.blocked.has(bareJid(message.from))) return
-          store.ingest(message, this.activePeer)
+          const stored = store.ingest(message, this.activePeer)
           if (
             settings.current.sendReceipts &&
             message.receiptRequest &&
@@ -177,6 +245,47 @@ class AppStore {
             message.id
           ) {
             account.connection.sendReceipt(bareJid(message.from), message.id)
+          }
+          if (
+            report.status === 'failed' &&
+            report.sid !== undefined &&
+            report.namespace !== undefined &&
+            message.type === 'chat'
+          ) {
+            const key = queueKey(report.namespace, message.from, report.sid)
+            const list = undecryptable.get(key) ?? []
+            list.push(message)
+            if (list.length > OMEMO_RETRY_QUEUE_MAX) list.shift()
+            undecryptable.set(key, list)
+            void omemo.sendKeyTransport(message.from, report.sid, report.namespace).then((sent) => {
+              if (sent && stored) stored.keyRequested = true
+            })
+            return
+          }
+          if (
+            (report.status === 'decrypted' || report.status === 'empty') &&
+            message.type === 'chat'
+          ) {
+            // the session with this device now works; give each queued
+            // stanza from it one retry, then drop it for good
+            const key = queueKey(report.namespace ?? '', message.from, report.sid ?? 0)
+            const queued = undecryptable.get(key)
+            if (!queued?.length) return
+            undecryptable.delete(key)
+            for (const stale of queued) {
+              void omemo.decryptInto(stale).then((retry) => {
+                // 'decrypted' patches the payload in; 'empty' carried no
+                // payload and 'duplicate' means a resend already landed,
+                // so the tombstone is stale either way
+                if (
+                  retry.status === 'decrypted' ||
+                  retry.status === 'empty' ||
+                  retry.status === 'duplicate'
+                ) {
+                  store.resolveDecrypted(stale)
+                }
+              })
+            }
           }
         })
         return
@@ -195,28 +304,41 @@ class AppStore {
       }
     })
     account.connection.events.on('occupant', (occupant) => {
+      sessions.noteOccupant(occupant)
+      // occupant avatars resolve under the room/nick address their
+      // vcard is fetched from
+      account.noteAvatarHash(`${occupant.room}/${occupant.nick}`, occupant.avatarHash)
       store.setOccupant(occupant.room, {
         nick: occupant.nick,
         presence: occupant.presence,
         affiliation: occupant.affiliation,
         role: occupant.role,
-        self: occupant.self
+        self: occupant.self,
+        codes: occupant.codes,
+        jid: occupant.jid,
+        occupantId: occupant.occupantId,
+        newNick: occupant.newNick,
+        reason: occupant.reason
       })
     })
   }
 
   // Called by AccountsStore before an account leaves the list: flush
   // pending writes, drop the stale binding, and clear the view if the
-  // removed account was the active one.
-  releaseAccount(jid: string): void {
+  // removed account was the active one. Returns the flush so removal can
+  // wait for it before deleting the account's persisted data.
+  releaseAccount(jid: string): Promise<void> {
     this.bound.delete(jid)
+    this.roomSessions.get(jid)?.dispose()
+    this.roomSessions.delete(jid)
     const store = this.chats.get(jid)
-    void store?.flush()
+    const flushed = store?.flush() ?? Promise.resolve()
     this.chats.delete(jid)
     if (accounts.active?.jid === jid) {
       this.activePeer = null
       this.splitPeer = null
     }
+    return flushed
   }
 }
 

@@ -3,6 +3,8 @@ export const NS = {
   ROSTER: 'jabber:iq:roster',
   DISCO_INFO: 'http://jabber.org/protocol/disco#info',
   DISCO_ITEMS: 'http://jabber.org/protocol/disco#items',
+  // XEP-0115 entity capabilities presence element
+  CAPS: 'http://jabber.org/protocol/caps',
   MUC: 'http://jabber.org/protocol/muc',
   MUC_USER: 'http://jabber.org/protocol/muc#user',
   MUC_ADMIN: 'http://jabber.org/protocol/muc#admin',
@@ -19,6 +21,10 @@ export const NS = {
   HTTP_UPLOAD: 'urn:xmpp:http:upload:0',
   VCARD_AVATAR: 'urn:xmpp:avatar:metadata',
   VCARD_TEMP: 'vcard-temp',
+  // XEP-0153 presence update element carrying the avatar photo hash
+  VCARD_UPDATE: 'vcard-temp:x:update',
+  // stanza-level error conditions live in this rfc 6120 namespace
+  STANZA_ERRORS: 'urn:ietf:params:xml:ns:xmpp-stanzas',
   BLOCKING: 'urn:xmpp:blocking',
   OMEMO: 'urn:xmpp:omemo:2',
   OMEMO_LEGACY: 'eu.siacs.conversations.axolotl',
@@ -28,6 +34,10 @@ export const NS = {
   HINTS: 'urn:xmpp:hints',
   BOOKMARKS: 'urn:xmpp:bookmarks:1',
   PUBSUB: 'http://jabber.org/protocol/pubsub',
+  PUBSUB_EVENT: 'http://jabber.org/protocol/pubsub#event',
+  // XEP-0060 publish-options FORM_TYPE value (a form field value, kept
+  // with the other pubsub constants rather than with xml namespaces)
+  PUBSUB_PUBLISH_OPTIONS: 'http://jabber.org/protocol/pubsub#publish-options',
   RECEIPTS: 'urn:xmpp:receipts',
   MARKERS: 'urn:xmpp:chat-markers:0',
   REPLY: 'urn:xmpp:reply:0',
@@ -36,7 +46,36 @@ export const NS = {
   OOB: 'jabber:x:oob',
   FILE_METADATA: 'urn:xmpp:file:metadata:0',
   SIMS: 'urn:xmpp:sims:0',
-  REFERENCE: 'urn:xmpp:reference:0'
+  REFERENCE: 'urn:xmpp:reference:0',
+  // XEP-0249 direct invitation payload
+  DIRECT_INVITE: 'jabber:x:conference',
+  // XEP-0199 ping, also used for MUC self-ping
+  PING: 'urn:xmpp:ping',
+  // XEP-0352 client state indication nonzas
+  CSI: 'urn:xmpp:csi:0',
+  // XEP-0077 iq payload and its pre-auth stream feature
+  REGISTER: 'jabber:iq:register',
+  REGISTER_FEATURE: 'http://jabber.org/features/iq-register',
+  // XEP-0421 stable occupant identifiers
+  OCCUPANT_ID: 'urn:xmpp:occupant-id:0',
+  // XEP-0425 moderated message retraction, version 1 of the protocol
+  // dropped the fasten apply-to wrapper in favor of a direct iq
+  MESSAGE_MODERATE: 'urn:xmpp:message-moderate:1',
+  // XEP-0424 message retraction, shared with XEP-0425 tombstones. The
+  // current spec retracts via a direct <retract> child in
+  // urn:xmpp:message-retract:1; older drafts wrapped a
+  // urn:xmpp:message-retract:0 element in a fasten apply-to, which we
+  // still accept on the receive side for interop.
+  MESSAGE_RETRACT: 'urn:xmpp:message-retract:1',
+  MESSAGE_RETRACT_LEGACY: 'urn:xmpp:message-retract:0',
+  FASTEN: 'urn:xmpp:fasten:0',
+  FALLBACK: 'urn:xmpp:fallback:0',
+  // XEP-0382 spoiler hint element
+  SPOILER: 'urn:xmpp:spoiler:0',
+  // XEP-0393 message styling: used for the unstyled opt-out element
+  STYLING: 'urn:xmpp:styling:0',
+  // RFC 6120 stanza error conditions
+  STANZA_ERROR: 'urn:ietf:params:xml:ns:xmpp-stanzas'
 } as const
 
 // XEP-0156 host-meta link relations used by endpoint discovery. These are

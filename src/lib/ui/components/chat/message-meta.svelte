@@ -23,7 +23,12 @@
     <Tooltip>
       <TooltipTrigger>
         {#snippet child({ props })}
-          <span {...props} class="inline-flex">
+          <span
+            {...props}
+            class="inline-flex"
+            role="img"
+            aria-label={message.untrustedDevice ? $LL.untrustedDevice() : $LL.encrypted()}
+          >
             <Lock class={cn('size-3', message.untrustedDevice && 'text-warning')} />
           </span>
         {/snippet}
@@ -37,7 +42,9 @@
     <Tooltip>
       <TooltipTrigger>
         {#snippet child({ props })}
-          <span {...props} class="inline-flex"><ShieldCheck class="text-success size-3" /></span>
+          <span {...props} class="inline-flex" role="img" aria-label={$LL.signed()}>
+            <ShieldCheck class="text-success size-3" />
+          </span>
         {/snippet}
       </TooltipTrigger>
       <TooltipContent>{$LL.signed()}</TooltipContent>
@@ -51,7 +58,9 @@
       <Tooltip>
         <TooltipTrigger>
           {#snippet child({ props })}
-            <span {...props} class="inline-flex"><CheckCheck class="text-success size-3" /></span>
+            <span {...props} class="inline-flex" role="img" aria-label={$LL.read()}>
+              <CheckCheck class="text-success size-3" />
+            </span>
           {/snippet}
         </TooltipTrigger>
         <TooltipContent>{$LL.read()}</TooltipContent>
@@ -60,7 +69,9 @@
       <Tooltip>
         <TooltipTrigger>
           {#snippet child({ props })}
-            <span {...props} class="inline-flex"><CheckCheck class="size-3 opacity-60" /></span>
+            <span {...props} class="inline-flex" role="img" aria-label={$LL.delivered()}>
+              <CheckCheck class="size-3 opacity-60" />
+            </span>
           {/snippet}
         </TooltipTrigger>
         <TooltipContent>{$LL.delivered()}</TooltipContent>
@@ -69,7 +80,9 @@
       <Tooltip>
         <TooltipTrigger>
           {#snippet child({ props })}
-            <span {...props} class="inline-flex"><Check class="size-3 opacity-60" /></span>
+            <span {...props} class="inline-flex" role="img" aria-label={$LL.sent()}>
+              <Check class="size-3 opacity-60" />
+            </span>
           {/snippet}
         </TooltipTrigger>
         <TooltipContent>{$LL.sent()}</TooltipContent>

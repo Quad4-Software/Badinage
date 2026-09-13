@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ChatMessage } from './conversation.svelte'
-import { applyCorrection, applyReactions } from './messages'
+import { applyCorrection, applyReactions, applyRetraction } from './messages'
 
 const THUMBS_UP = '\u{1F44D}'
 const HEART = '\u2764'
@@ -64,5 +64,30 @@ describe('applyCorrection', () => {
     applyCorrection(target, 'fixed text')
     expect(target.body).toBe('fixed text')
     expect(target.edited).toBe(true)
+  })
+
+  it('updates the spoiler state carried by the correction stanza', () => {
+    const target = message()
+    applyCorrection(target, 'still hidden', 'the hint')
+    expect(target.spoilerHint).toBe('the hint')
+    applyCorrection(target, 'now plain', undefined)
+    expect(target.spoilerHint).toBeUndefined()
+  })
+})
+
+describe('applyRetraction', () => {
+  it('scrubs content and reactions but keeps the row', () => {
+    const target = message({ [THUMBS_UP]: ['peer@example.net'] })
+    target.attachments = [{ url: 'https://files.example.net/x.png', mediaType: 'image/png' }]
+    target.replyTo = { id: 'other-1', from: 'peer@example.net' }
+    target.spoilerHint = 'hint'
+    applyRetraction(target)
+    expect(target.id).toBe('m1')
+    expect(target.retracted).toBe(true)
+    expect(target.body).toBe('')
+    expect(target.attachments).toBeUndefined()
+    expect(target.replyTo).toBeUndefined()
+    expect(target.spoilerHint).toBeUndefined()
+    expect(target.reactions).toEqual({})
   })
 })

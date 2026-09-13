@@ -19,7 +19,10 @@ the active JID. Nothing account-scoped may be a singleton.
 
 Storage is namespaced per account via scopedKey(jid, ...) which prefixes
 keys with badinage:<bare-jid>:. IndexedDB stores and sessionStorage keys
-follow the same scheme.
+follow the same scheme. Values that must not rest in plaintext (OMEMO key
+material, conversation snapshots) go through the AES-GCM envelope in
+core/storage/crypto.ts. Account removal deletes every record under the
+account prefix via deleteAccountData in state/storage.ts.
 
 ## Modules
 

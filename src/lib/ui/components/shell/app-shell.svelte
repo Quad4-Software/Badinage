@@ -1,6 +1,8 @@
 <script lang="ts">
   import { Pane, PaneGroup, PaneResizer } from 'paneforge'
 
+  import { SHELL_PANE_AUTOSAVE_ID, SPLIT_PANE_AUTOSAVE_ID } from '$lib/constants'
+  import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
 
@@ -52,6 +54,21 @@
   }
 
   $effect(() => app.registerAction('nav.toggleSidebar', toggleSidebar))
+
+  // XEP-0352 client state indication: every connected account hears about
+  // tab visibility. Reading accounts.list keeps the effect live across
+  // logins so a freshly added account gets the current state at once; the
+  // connection dedupes repeats.
+  $effect(() => {
+    void accounts.list.length
+    const sync = () => {
+      const active = document.visibilityState === 'visible'
+      for (const account of accounts.list) account.setClientActive(active)
+    }
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => document.removeEventListener('visibilitychange', sync)
+  })
 </script>
 
 {#snippet resizer(dimmed = false)}
@@ -78,7 +95,7 @@
     </main>
   </div>
 {:else}
-  <PaneGroup direction="horizontal" class="h-full" autoSaveId="badinage-shell" role="main">
+  <PaneGroup direction="horizontal" class="h-full" autoSaveId={SHELL_PANE_AUTOSAVE_ID} role="main">
     <Pane
       bind:this={sidebarPane}
       defaultSize={SIDEBAR_DEFAULT}
@@ -96,7 +113,7 @@
     {@render resizer(app.sidebarCollapsed)}
     <Pane defaultSize={76} minSize={40} class="min-w-0">
       {#if app.splitPeer !== null}
-        <PaneGroup direction="horizontal" class="h-full" autoSaveId="badinage-split">
+        <PaneGroup direction="horizontal" class="h-full" autoSaveId={SPLIT_PANE_AUTOSAVE_ID}>
           <Pane defaultSize={55} minSize={30} class="min-w-0">
             <ChatView peer={app.activePeer} />
           </Pane>

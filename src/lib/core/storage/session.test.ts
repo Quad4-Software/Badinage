@@ -52,6 +52,12 @@ describe('saveSession', () => {
     saveSession({ jid: 'b@x.org', password: 'p', remember: true, demo: true })
     expect(session.length).toBe(0)
   })
+
+  it('writes nothing for untrusted logins even when remember is set', () => {
+    saveSession({ jid: 'c@x.org', password: 'p', remember: true, untrusted: true })
+    expect(session.length).toBe(0)
+    expect(restoreSessions()).toEqual([])
+  })
 })
 
 describe('restoreSessions', () => {
@@ -99,5 +105,17 @@ describe('clearScopedStorage', () => {
     expect(local.getItem('badinage:a@x.org:kv:setting')).toBeNull()
     expect(session.getItem('unrelated')).toBe('keep')
     expect(local.getItem('other-app:key')).toBe('keep')
+  })
+
+  it('removes our paneforge layout keys but not other apps', () => {
+    local.setItem('paneforge:badinage-shell', '{}')
+    local.setItem('paneforge:badinage-split', '{}')
+    local.setItem('paneforge:other-app', 'keep')
+
+    clearScopedStorage()
+
+    expect(local.getItem('paneforge:badinage-shell')).toBeNull()
+    expect(local.getItem('paneforge:badinage-split')).toBeNull()
+    expect(local.getItem('paneforge:other-app')).toBe('keep')
   })
 })

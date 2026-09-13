@@ -1,7 +1,7 @@
 <script lang="ts">
   import { LOGIN_STATUS_POLL_MS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
-  import { accounts, type AccountOptions } from '$lib/state/accounts.svelte'
+  import { accounts, loginBackoffRemaining, type AccountOptions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { isValidUserJid } from '$lib/utils/jid'
   import { isWebSocketUrl } from '$lib/utils/url'
@@ -19,10 +19,31 @@
   let password = $state('')
   let server = $state('')
   let remember = $state(false)
+  let untrusted = $state(false)
   let submitting = $state(false)
   let error = $state('')
+  // login: sign in to an existing account. register: XEP-0077 creates the
+  // account on the server first, then the same connect flow runs
+  let mode = $state<'login' | 'register'>('login')
+  // authfail backoff: the timestamp the jid may retry at, ticked down by
+  // the interval below so the countdown text stays live
+  let cooldownUntil = $state(0)
+  let now = $state(Date.now())
 
   const jidValid = $derived(isValidUserJid(jid))
+  const cooldownLeft = $derived(Math.ceil(Math.max(0, cooldownUntil - now) / 1000))
+
+  $effect(() => {
+    if (cooldownUntil <= Date.now()) return
+    const timer = setInterval(() => (now = Date.now()), 250)
+    return () => clearInterval(timer)
+  })
+
+  function registerError(reason: string): string {
+    if (reason === 'unsupported') return $LL.registerUnsupported()
+    if (reason === 'conflict') return $LL.registerConflict()
+    return $LL.registerFailed()
+  }
 
   async function startDemo() {
     submitting = true
@@ -34,16 +55,52 @@
     submitting = false
   }
 
+  // XEP-0493: probe the server for OAUTHBEARER, then hand the browser
+  // to the authorization endpoint. The callback resumes in App.svelte.
+  async function startSso() {
+    error = ''
+    submitting = true
+    const result = await accounts.startOAuth(jid, {
+      websocketUrl: isWebSocketUrl(server) ? server : undefined,
+      redirectUri: `${window.location.origin}/`,
+      remember,
+      untrusted
+    })
+    if (result.ok) {
+      window.location.assign(result.url)
+      return
+    }
+    submitting = false
+    error = result.reason === 'unsupported' ? $LL.oauthUnsupported() : $LL.oauthFailed()
+  }
+
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     error = ''
+    const wait = loginBackoffRemaining(jid)
+    if (wait > 0) {
+      cooldownUntil = Date.now() + wait
+      return
+    }
     submitting = true
-    const options: AccountOptions = { jid, password, remember }
+    // remember stays in the options so the session layer can prove the
+    // untrusted flag wins over it
+    const options: AccountOptions = { jid, password, remember, untrusted }
     if (server) {
       if (isWebSocketUrl(server)) {
         options.websocketUrl = server
       } else {
         options.boshUrl = server
+      }
+    }
+    if (mode === 'register') {
+      // registration runs over websocket only: a bosh url falls through to
+      // endpoint discovery on the jid domain
+      const result = await accounts.register(jid, password, options.websocketUrl)
+      if (!result.ok) {
+        submitting = false
+        error = registerError(result.reason)
+        return
       }
     }
     const account = await accounts.add(options)
@@ -60,6 +117,7 @@
         clearInterval(timer)
         submitting = false
         error = account.lastError === 'authfail' ? $LL.authFailed() : $LL.connectionError()
+        cooldownUntil = Date.now() + loginBackoffRemaining(jid)
         accounts.remove(account.jid)
       } else if (started && account.status === 'disconnected') {
         clearInterval(timer)
@@ -94,10 +152,14 @@
       <div class="flex flex-col gap-1">
         <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
         <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
-        <p class="text-muted-foreground text-sm">{$LL.signInTitle()}</p>
+        <p class="text-muted-foreground text-sm">
+          {mode === 'register' ? $LL.registerTitle() : $LL.signInTitle()}
+        </p>
       </div>
     {:else}
-      <p class="text-muted-foreground text-sm">{$LL.signInTitle()}</p>
+      <p class="text-muted-foreground text-sm">
+        {mode === 'register' ? $LL.registerTitle() : $LL.signInTitle()}
+      </p>
     {/if}
 
     <div class="grid gap-2">
@@ -112,6 +174,7 @@
         aria-invalid={jid.length > 0 && !jidValid}
         required
       />
+      <p class="text-muted-foreground text-xs">{$LL.jidHint()}</p>
     </div>
 
     <div class="grid gap-2">
@@ -139,22 +202,66 @@
     </div>
 
     <label class="flex items-center gap-2 text-sm">
-      <Checkbox id="remember" bind:checked={remember} />
+      <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
       {$LL.rememberSession()}
     </label>
+
+    <div class="grid gap-1">
+      <label class="flex items-center gap-2 text-sm">
+        <Checkbox id="untrusted" bind:checked={untrusted} />
+        {$LL.sharedDevice()}
+      </label>
+      {#if untrusted}
+        <p class="text-muted-foreground ps-6 text-xs">{$LL.sharedDeviceHint()}</p>
+      {/if}
+    </div>
 
     {#if error}
       <p role="alert" class="text-destructive text-sm">{error}</p>
     {/if}
+    {#if cooldownLeft > 0}
+      <p role="alert" class="text-muted-foreground text-sm">
+        {$LL.loginBackoffWait({ seconds: cooldownLeft })}
+      </p>
+    {/if}
 
-    <Button type="submit" disabled={submitting || !jidValid || !password}>
+    <Button type="submit" disabled={submitting || !jidValid || !password || cooldownLeft > 0}>
       {#if submitting}
         <LoaderCircle class="size-4 animate-spin" />
-        {$LL.connecting()}
+        {mode === 'register' ? $LL.registering() : $LL.connecting()}
       {:else}
-        {$LL.connect()}
+        {mode === 'register' ? $LL.register() : $LL.connect()}
       {/if}
     </Button>
+
+    <Button
+      type="button"
+      variant="link"
+      class="h-auto min-h-6 p-0"
+      onclick={() => {
+        mode = mode === 'login' ? 'register' : 'login'
+        error = ''
+      }}
+    >
+      {mode === 'login' ? $LL.createAccount() : $LL.signIn()}
+    </Button>
+
+    {#if mode === 'login'}
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full"
+        disabled={submitting || !jidValid || cooldownLeft > 0}
+        onclick={startSso}
+      >
+        {#if submitting}
+          <LoaderCircle class="size-4 animate-spin" />
+          {$LL.ssoWorking()}
+        {:else}
+          {$LL.signInSso()}
+        {/if}
+      </Button>
+    {/if}
 
     {#if !embedded}
       <div class="border-t pt-4">

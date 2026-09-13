@@ -88,6 +88,37 @@
   --sidebar-primary-foreground: oklch(0.2 0.01 285.885);
 }
 
+/* Density scale: comfortable is the default, :root[data-density='compact']
+   tightens it. Spacing shrinks faster than type so compact stays readable
+   and interactive rows keep their minimum target size. Multipliers are
+   mirrored from DENSITY_SCALE in utils/density.ts. */
+:root {
+  --density-row-pad: 0.5rem;
+  --density-list-pad: 1rem;
+  --density-msg-gap: 0.75rem;
+  --density-composer-pad: 0.75rem;
+  --density-font-scale: 1;
+}
+
+:root[data-density='compact'] {
+  --density-row-pad: 0.25rem;
+  --density-list-pad: 0.625rem;
+  --density-msg-gap: 0.5rem;
+  --density-composer-pad: 0.5rem;
+  --density-font-scale: 0.92;
+}
+
+@layer components {
+  /* density-scaled type: matches text-sm / text-xs at comfortable and
+     tightens only under compact */
+  .density-text-sm {
+    font-size: calc(0.875rem * var(--density-font-scale));
+  }
+  .density-text-xs {
+    font-size: calc(0.75rem * var(--density-font-scale));
+  }
+}
+
 @theme inline {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-pixel: 'Silkscreen', monospace;

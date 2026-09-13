@@ -3,6 +3,7 @@
     CircleUserRound,
     Hash,
     MessageCircle,
+    MessageSquareText,
     Palette,
     PanelLeft,
     Search,
@@ -13,10 +14,12 @@
   import { Command } from 'bits-ui'
   import { toggleMode } from 'mode-watcher'
 
+  import { SEARCH_MESSAGE_HITS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { Dialog, DialogContent, DialogTitle } from '$lib/ui/primitives/dialog'
+  import { findMessageHits } from '$lib/utils/search'
 
   interface PaletteItem {
     id: string
@@ -36,6 +39,25 @@
   const MAX_RESULTS = 40
 
   let query = $state('')
+  const tokens = $derived(query.toLowerCase().split(/\s+/).filter(Boolean))
+
+  // after selecting a message hit the list needs a frame to mount the
+  // conversation; retry briefly in case async hydrate is still landing
+  function jumpToMessage(id: string) {
+    let tries = 0
+    const attempt = () => {
+      const el = document.getElementById(`m-${id}`)
+      if (el) {
+        el.scrollIntoView({ block: 'center' })
+        el.animate([{ backgroundColor: 'var(--accent)' }, { backgroundColor: 'transparent' }], {
+          duration: 1500
+        })
+        return
+      }
+      if (tries++ < 20) requestAnimationFrame(attempt)
+    }
+    requestAnimationFrame(attempt)
+  }
 
   // every selectable thing closes the palette first, then runs
   const close = (run: () => void) => () => {
@@ -87,6 +109,25 @@
       icon: User,
       run: close(() => app.selectPeer(c.jid))
     }))
+
+    // body search over loaded conversations; the hit body rides in
+    // keywords so the ranker can still verify every token matched
+    const messages: PaletteItem[] =
+      tokens.length > 0 && store
+        ? findMessageHits([...store.conversations.values()], query, SEARCH_MESSAGE_HITS).map(
+            (hit) => ({
+              id: `msg:${hit.peerJid}:${hit.messageId}`,
+              label: hit.snippet,
+              detail: labelFor(hit.peerJid),
+              keywords: hit.body,
+              icon: MessageSquareText,
+              run: close(() => {
+                app.selectPeer(hit.peerJid)
+                jumpToMessage(hit.messageId)
+              })
+            })
+          )
+        : []
 
     const actions: PaletteItem[] = [
       {
@@ -158,14 +199,13 @@
     return [
       { id: 'conversations', heading: $LL.conversations(), items: conversations },
       { id: 'rooms', heading: $LL.rooms(), items: rooms },
+      { id: 'messages', heading: $LL.messages(), items: messages },
       { id: 'contacts', heading: $LL.contacts(), items: contacts },
       { id: 'actions', heading: $LL.paletteActions(), items: actions },
       { id: 'settings', heading: $LL.settings(), items: sections },
       { id: 'accounts', heading: $LL.accounts(), items: switcher }
     ]
   })
-
-  const tokens = $derived(query.toLowerCase().split(/\s+/).filter(Boolean))
 
   // every token must hit the label or the extra text (jid, keywords);
   // label hits outrank extra hits
@@ -217,33 +257,40 @@
         />
       </div>
       <Command.List class="max-h-72 overflow-x-hidden overflow-y-auto p-1.5">
-        <Command.Empty class="text-muted-foreground py-6 text-center text-sm">
-          {$LL.paletteEmpty()}
-        </Command.Empty>
-        {#each results as group (group.id)}
-          <Command.Group value={group.id}>
-            <Command.GroupHeading class="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-              {group.heading}
-            </Command.GroupHeading>
-            <Command.GroupItems>
-              {#each group.items as item (item.id)}
-                <Command.Item
-                  value={item.id}
-                  class="data-[selected]:bg-accent data-[selected]:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm select-none"
-                  onSelect={item.run}
-                >
-                  <item.icon class="size-4 shrink-0" />
-                  <span class="min-w-0 flex-1 truncate">{item.label}</span>
-                  {#if item.detail}
-                    <span class="text-muted-foreground max-w-[45%] truncate text-xs">
-                      {item.detail}
-                    </span>
-                  {/if}
-                </Command.Item>
-              {/each}
-            </Command.GroupItems>
-          </Command.Group>
-        {/each}
+        <!-- the viewport registers itself with the root so the input's
+          aria-controls resolves; without it the combobox violates
+          aria-required-attr -->
+        <Command.Viewport>
+          <Command.Empty class="text-muted-foreground py-6 text-center text-sm">
+            {$LL.paletteEmpty()}
+          </Command.Empty>
+          {#each results as group (group.id)}
+            <Command.Group value={group.id}>
+              <Command.GroupHeading class="text-muted-foreground px-2 py-1.5 text-xs font-medium">
+                {group.heading}
+              </Command.GroupHeading>
+              <Command.GroupItems>
+                {#each group.items as item (item.id)}
+                  <Command.Item
+                    value={item.id}
+                    class="data-[selected]:bg-accent data-[selected]:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm select-none"
+                    onSelect={item.run}
+                  >
+                    <item.icon class="size-4 shrink-0" />
+                    <span class="min-w-0 flex-1 truncate">{item.label}</span>
+                    {#if item.detail}
+                      <!-- text-foreground/70 clears the 4.5:1 floor that
+                        muted-foreground misses on the popover surface -->
+                      <span class="text-foreground/70 max-w-[45%] truncate text-xs">
+                        {item.detail}
+                      </span>
+                    {/if}
+                  </Command.Item>
+                {/each}
+              </Command.GroupItems>
+            </Command.Group>
+          {/each}
+        </Command.Viewport>
       </Command.List>
     </Command.Root>
   </DialogContent>

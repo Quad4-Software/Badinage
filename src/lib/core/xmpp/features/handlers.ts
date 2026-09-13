@@ -6,12 +6,41 @@ import { $iq } from 'strophe.js'
 
 import type { Emitter } from '$lib/core/events'
 
-import { parseBlockPush, parseMessage, parsePresence, parseRosterItems } from '../stanzas'
+import { NS } from '../ns'
+import {
+  parseBlockPush,
+  parseBookmark,
+  parseMessage,
+  parsePepEvent,
+  parsePresence,
+  parseRoomDecline,
+  parseRoomInvite,
+  parseRosterItems,
+  type Bookmark
+} from '../stanzas'
 import type { ConnectionEvents } from '../types'
+import { noteAvatarHash } from './avatars'
+import { answerDiscoInfo, answerDiscoItems } from './disco'
 import { acceptInstantRoom, ROOM_CREATED_CODE } from './muc'
 import type { XmppTransport } from './transport'
 
 export function handleMessage(stanza: Element, events: Emitter<ConnectionEvents>): boolean {
+  // PEP event notifications arrive as (usually bodiless) headline
+  // messages; the bookmark node fan-outs signal that another resource
+  // changed our bookmarks
+  const pep = parsePepEvent(stanza)
+  if (pep?.node === NS.BOOKMARKS) {
+    const updated = pep.items
+      .map((item) => parseBookmark(item))
+      .filter((b): b is Bookmark => b !== null && b.jid !== '')
+    events.emit('bookmarks', { updated, retracted: pep.retracted })
+  }
+  // invites and declines ride in message stanzas too; emit them as
+  // their own events whether or not the stanza also parses as a message
+  const invite = parseRoomInvite(stanza)
+  if (invite) events.emit('roomInvite', invite)
+  const decline = parseRoomDecline(stanza)
+  if (decline) events.emit('roomDecline', decline)
   const message = parseMessage(stanza)
   if (message) events.emit('message', message)
   return true
@@ -30,10 +59,20 @@ export function handlePresence(
     if (parsed.occupant.self && parsed.occupant.codes.includes(ROOM_CREATED_CODE)) {
       acceptInstantRoom(conn, parsed.occupant.room)
     }
+    // XEP-0153: the occupant photo hash keys the avatar cache under the
+    // room/nick address the vcard is fetched from
+    noteAvatarHash(
+      conn,
+      `${parsed.occupant.room}/${parsed.occupant.nick}`,
+      parsed.occupant.avatarHash
+    )
     events.emit('occupant', parsed.occupant)
+  } else if (parsed.kind === 'presenceError') {
+    events.emit('presenceError', parsed.error)
   } else if (parsed.kind === 'subscribe') {
     events.emit('subscriptionRequest', { from: parsed.from, status: parsed.status })
   } else {
+    noteAvatarHash(conn, parsed.presence.from, parsed.presence.avatarHash)
     events.emit('presence', parsed.presence)
   }
   return true
@@ -68,6 +107,29 @@ export function handleBlockPush(
   if (unblocked) events.emit('unblocked', unblocked)
   replyResult(stanza, conn)
   return true
+}
+
+// XEP-0199: answer incoming pings. Required for MUC self-ping, where
+// the room routes our own ping back at us and expects a result.
+export function handlePing(
+  stanza: Element,
+  _events: Emitter<ConnectionEvents>,
+  conn: XmppTransport
+): boolean {
+  replyResult(stanza, conn)
+  return true
+}
+
+// XEP-0030: answer disco#info iq get stanzas with our identity and the
+// shared feature registry. The same reply serves bare and caps
+// node#ver queries.
+export function handleDiscoInfoGet(stanza: Element, conn: XmppTransport): boolean {
+  return answerDiscoInfo(conn, stanza)
+}
+
+// We host no components: disco#items gets an empty list back.
+export function handleDiscoItemsGet(stanza: Element, conn: XmppTransport): boolean {
+  return answerDiscoItems(conn, stanza)
 }
 
 function replyResult(stanza: Element, conn: XmppTransport): void {

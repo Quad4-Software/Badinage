@@ -2,6 +2,8 @@ import { PersistedState } from 'runed'
 
 import { globalKey } from '$lib/core/storage/keys'
 import { setTelemetryEnabled } from '$lib/core/telemetry'
+import type { Density } from '$lib/utils/density'
+import { bareJid } from '$lib/utils/jid'
 
 export const KEYBINDING_ACTIONS = [
   'app.settings',
@@ -12,6 +14,7 @@ export const KEYBINDING_ACTIONS = [
   'nav.toggleSidebar',
   'chat.focusComposer',
   'app.commandPalette',
+  'app.search',
   'account.1',
   'account.2',
   'account.3'
@@ -28,9 +31,18 @@ export const DEFAULT_KEYBINDINGS: Record<KeybindingAction, string> = {
   'nav.toggleSidebar': 'mod+b',
   'chat.focusComposer': 'alt+c',
   'app.commandPalette': 'mod+k',
+  'app.search': 'mod+f',
   'account.1': 'mod+1',
   'account.2': 'mod+2',
   'account.3': 'mod+3'
+}
+
+// per-account display and alert preferences, keyed by bare jid
+interface AccountMeta {
+  // pinned accent hue for the account badge; unset picks from the jid
+  hue?: number | undefined
+  // per-account desktop notifications; unset follows the global toggle
+  notify?: boolean | undefined
 }
 
 interface Settings {
@@ -49,6 +61,12 @@ interface Settings {
   crashReporting: boolean
   // oklch hue for the accent color; null keeps the theme default
   accentHue: number | null
+  // ui density, applied as data-density on the root element
+  density: Density
+  // preferred account ordering for the switcher; jids not listed keep
+  // their arrival order at the end
+  accountOrder: string[]
+  accountMeta: Record<string, AccountMeta>
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -61,7 +79,10 @@ const DEFAULT_SETTINGS: Settings = {
   sendReadMarkers: true,
   omemoBlindTrust: true,
   crashReporting: true,
-  accentHue: null
+  accentHue: null,
+  density: 'comfortable',
+  accountOrder: [],
+  accountMeta: {}
 }
 
 class SettingsStore {
@@ -88,6 +109,21 @@ class SettingsStore {
     const { [action]: _removed, ...keybindings } = this.persisted.current.keybindings
     void _removed
     this.persisted.current = { ...this.persisted.current, keybindings }
+  }
+
+  metaFor(jid: string): AccountMeta {
+    return this.current.accountMeta[bareJid(jid)] ?? {}
+  }
+
+  setAccountMeta(jid: string, patch: AccountMeta): void {
+    const bare = bareJid(jid)
+    // merge against the defaulted view: older persisted blobs may not
+    // carry accountMeta yet
+    const meta = this.current.accountMeta
+    this.persisted.current = {
+      ...this.persisted.current,
+      accountMeta: { ...meta, [bare]: { ...meta[bare], ...patch } }
+    }
   }
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): void {

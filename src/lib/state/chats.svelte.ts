@@ -8,8 +8,10 @@ import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
 import { MESSAGE_PAGE_SIZE } from '$lib/constants'
 import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
+import { SELF_BANNED_CODE, SELF_KICKED_CODE, SELF_RENAMED_CODE } from '$lib/core/xmpp/features/muc'
 import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
+import { isLiveIncoming } from '$lib/utils/notify'
 
 import {
   createConversation,
@@ -19,7 +21,7 @@ import {
   type ConversationKind,
   type RoomOccupant
 } from './conversation.svelte'
-import { applyCorrection, applyReactions } from './messages'
+import { applyCorrection, applyReactions, applyRetraction } from './messages'
 import { ConversationPersistence } from './persistence.svelte'
 import { TypingTracker } from './typing'
 
@@ -44,9 +46,17 @@ export class ChatStore {
   private seen = new Map<string, Set<string>>()
   private persistence: ConversationPersistence
   private typing = new TypingTracker()
+  // fired once per live incoming message appended; set by the app store,
+  // consumed by the ui layer for notifications and aria-live announces
+  onLive: ((peer: string, message: IncomingMessage) => void) | undefined
 
-  constructor(private readonly accountJid: string) {
-    this.persistence = new ConversationPersistence(accountJid)
+  // options.persist=false is the untrusted-device path: conversations
+  // stay in memory and never reach IndexedDB
+  constructor(
+    private readonly accountJid: string,
+    options?: { persist?: boolean }
+  ) {
+    this.persistence = new ConversationPersistence(accountJid, options?.persist ?? true)
   }
 
   open(peerJid: string, kind: ConversationKind = 'dm'): Conversation {
@@ -103,37 +113,93 @@ export class ChatStore {
     if (target) applyReactions(target, sender, emojis)
   }
 
-  applyCorrection(peer: string, replaceId: string, body: string, timestamp: number): boolean {
+  // Optimistic local apply for a retraction we just sent ourselves; the
+  // wire-side sender check is unnecessary here.
+  retract(peer: string, targetId: string): void {
+    const target = this.findMessage(peer, targetId)
+    if (!target) return
+    applyRetraction(target)
+    const conversation = this.conversations.get(bareJid(peer))
+    if (conversation) this.persistence.schedule(conversation)
+  }
+
+  // Drop a message row outright. Used for pending uploads that get
+  // cancelled or fail: nothing reached the wire, so no tombstone.
+  removeMessage(peer: string, id: string): void {
+    const conversation = this.conversations.get(bareJid(peer))
+    if (!conversation) return
+    const index = conversation.messages.findIndex((m) => m.id === id)
+    if (index === -1) return
+    conversation.messages.splice(index, 1)
+    this.persistence.schedule(conversation)
+  }
+
+  applyCorrection(
+    peer: string,
+    replaceId: string,
+    body: string,
+    timestamp: number,
+    spoilerHint?: string | undefined
+  ): boolean {
     const target = this.findMessage(peer, replaceId)
     if (!target) return false
     // keep original position but reflect the correction time for ordering
     void timestamp
-    applyCorrection(target, body)
+    applyCorrection(target, body, spoilerHint)
     return true
   }
 
-  ingest(message: IncomingMessage, activePeer: string | null): void {
-    // Work out which conversation this stanza belongs to and whether it is ours.
-    let peer: string
-    let outgoing = false
+  // Work out which conversation a stanza belongs to and whether it is ours.
+  private routeMessage(message: IncomingMessage): { peer: string; outgoing: boolean } {
     if (message.carbon === 'sent') {
-      peer = bareJid(message.to)
-      outgoing = true
-    } else if (message.type === 'groupchat') {
-      peer = bareJid(message.from)
-      const ownNick = this.conversations.get(peer)?.ourNick
-      outgoing = message.nick !== undefined && message.nick === ownNick
-    } else if (bareJid(message.from) === this.accountJid) {
-      peer = bareJid(message.to)
-      outgoing = true
-    } else {
-      peer = bareJid(message.from)
+      return { peer: bareJid(message.to), outgoing: true }
     }
+    if (message.type === 'groupchat') {
+      const peer = bareJid(message.from)
+      const room = this.conversations.get(peer)
+      // nicks we held earlier still count as ours so a self-echo sent
+      // before a rename still merges after it lands
+      const outgoing =
+        message.nick !== undefined &&
+        (message.nick === room?.ourNick || (room?.ourNicks.has(message.nick) ?? false))
+      return { peer, outgoing }
+    }
+    if (bareJid(message.from) === this.accountJid) {
+      return { peer: bareJid(message.to), outgoing: true }
+    }
+    return { peer: bareJid(message.from), outgoing: false }
+  }
+
+  // Returns the stored message when the stanza produced one, undefined for
+  // pure signal stanzas (receipts, chat states) and dedup hits.
+  ingest(message: IncomingMessage, activePeer: string | null): ChatMessage | undefined {
+    const { peer, outgoing } = this.routeMessage(message)
 
     const conversation = this.open(peer)
     if (message.type === 'groupchat') conversation.kind = 'muc'
 
     const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
+    // XEP-0421: the stable occupant id keys reactions when the room
+    // assigns one, so a rename does not split a sender's pills
+    const reactionSender = message.type === 'groupchat' ? (message.occupantId ?? sender) : sender
+
+    // XEP-0425: the room itself (never an occupant) announces that a
+    // stanza-id was retracted. Tombstone the stored copy and drop the
+    // notice so it never renders as a message.
+    if (message.retraction) {
+      if (message.type === 'groupchat' && !message.nick) {
+        const target = this.findMessage(peer, message.retraction.id)
+        if (target) {
+          target.retracted = true
+          target.retractReason = message.retraction.reason
+          target.body = ''
+          target.attachments = undefined
+          target.reactions = {}
+          this.persistence.schedule(conversation)
+        }
+      }
+      return
+    }
 
     // stanza-level metadata first so empty stanzas still update state
     if (message.receiptFor) {
@@ -152,8 +218,44 @@ export class ChatStore {
         }
       }
     }
+    // XEP-0424: a retraction names the message id to remove (the stanza
+    // id attribute in a dm, the room stanza-id in a muc). The fallback
+    // body must never render, even when no target matches.
+    if (message.retractId !== undefined) {
+      const target =
+        message.retractId === '' ? undefined : this.findMessage(peer, message.retractId)
+      if (target) {
+        // business rules: only the original author may retract. In a dm
+        // that means the same side of the conversation; in a muc the
+        // same nick, which stands in for the full jid in non-anonymous
+        // rooms (occupant-id verification is not implemented).
+        const sameSender =
+          conversation.kind === 'muc' ? target.nick === sender : target.outgoing === outgoing
+        if (sameSender) {
+          applyRetraction(target)
+          this.persistence.schedule(conversation)
+        }
+      }
+      return
+    }
+    // an archive tombstone is the original stanza with its contents
+    // swapped for a retracted marker, so its own ids name the message it
+    // replaced. Unknown targets are dropped without a row.
+    if (message.retracted) {
+      for (const ref of [message.stanzaId, message.id, message.originId]) {
+        if (!ref) continue
+        const target = this.findMessage(peer, ref)
+        if (target) {
+          applyRetraction(target)
+          this.persistence.schedule(conversation)
+          return
+        }
+      }
+      // no stored copy of the original: fall through and keep the
+      // tombstone itself as a placeholder row
+    }
     if (message.reactionTo) {
-      this.applyReaction(peer, sender, message.reactionTo.id, message.reactionTo.emojis)
+      this.applyReaction(peer, reactionSender, message.reactionTo.id, message.reactionTo.emojis)
     }
     if (message.chatState !== undefined && !outgoing) {
       // muc typers are tracked per nick in the typing tracker; peerState
@@ -171,14 +273,27 @@ export class ChatStore {
     // corrections replace an existing message instead of appending
     if (message.replaceId && message.body) {
       if (
-        this.applyCorrection(peer, message.replaceId, message.body, message.delay ?? Date.now())
+        this.applyCorrection(
+          peer,
+          message.replaceId,
+          message.body,
+          message.delay ?? Date.now(),
+          message.spoilerHint
+        )
       ) {
-        return
+        return undefined
       }
       // target unknown: fall through and show it as a normal message
     }
     if (message.encrypted && conversation.kind === 'dm') conversation.encrypted = true
-    if (!message.body && !message.attachments?.length && !message.undecryptable) return
+    // tombstones carry no body; store them so the placeholder renders
+    if (
+      !message.body &&
+      !message.attachments?.length &&
+      !message.undecryptable &&
+      !message.retracted
+    )
+      return undefined
 
     // MUC self-echo: the room reflects our own message back with a fresh
     // stanza id. Merge it into the locally pushed copy (mark delivered,
@@ -187,10 +302,18 @@ export class ChatStore {
       for (let i = conversation.messages.length - 1; i >= 0; i--) {
         const recent = conversation.messages[i]
         if (!recent || Date.now() - recent.timestamp > 60_000) break
-        if (recent.outgoing && !recent.delivered && recent.body === message.body) {
+        // the nick check pins the merge to the nick the message was
+        // sent under, so echoes of older sends cannot misfire on a
+        // same-body message sent after a rename
+        if (
+          recent.outgoing &&
+          !recent.delivered &&
+          recent.body === message.body &&
+          recent.nick === message.nick
+        ) {
           recent.delivered = true
           if (message.stanzaId) recent.id = message.stanzaId
-          return
+          return undefined
         }
       }
     }
@@ -210,13 +333,93 @@ export class ChatStore {
       delivered: outgoing ? message.carbon === 'sent' : false,
       nick: message.type === 'groupchat' ? message.nick : undefined
     }
+    if (message.type === 'groupchat' && message.occupantId) {
+      stored.occupantId = message.occupantId
+    }
+    if (message.retracted) {
+      stored.retracted = true
+      stored.retractReason = message.retracted.reason
+    }
     if (message.replyTo) stored.replyTo = message.replyTo
     if (message.attachments?.length) stored.attachments = message.attachments
+    if (message.spoilerHint !== undefined) stored.spoilerHint = message.spoilerHint
+    if (message.unstyled) stored.unstyled = true
     if (message.signed) stored.signed = true
     if (message.encrypted) stored.encrypted = true
     if (message.undecryptable) stored.undecryptable = true
     if (message.untrustedDevice) stored.untrustedDevice = true
-    this.push(peer, stored, activePeer === peer, seenIds)
+    const appended = this.push(peer, stored, activePeer === peer, seenIds)
+    // dedup drops return false; only a truly appended live incoming
+    // stanza notifies, so mam pages, delayed deliveries and our own
+    // carbons never reach listeners
+    if (appended && isLiveIncoming(message, outgoing)) this.onLive?.(peer, message)
+    return appended ? stored : undefined
+  }
+
+  // A stanza that failed to decrypt on arrival succeeded on retry: patch
+  // its tombstone in place. Stanzas that carried only signals (reaction,
+  // chat state, key transport) get their effect applied and the tombstone
+  // removed instead.
+  resolveDecrypted(message: IncomingMessage): boolean {
+    const { peer } = this.routeMessage(message)
+    const conversation = this.conversations.get(peer)
+    if (!conversation) return false
+
+    // the tombstone was stored with an empty body, so its fallback id had
+    // an empty body component too
+    const tombstoneFallback = `${peer}:${message.delay ?? ''}:`
+    const stored = conversation.messages.find(
+      (m) =>
+        m.undecryptable === true &&
+        ((message.stanzaId !== undefined && m.id === message.stanzaId) ||
+          (message.originId !== undefined && m.id === message.originId) ||
+          (message.id !== undefined && m.wireId === message.id) ||
+          m.id === tombstoneFallback)
+    )
+    if (!stored) return false
+
+    const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
+    if (message.reactionTo) {
+      this.applyReaction(peer, sender, message.reactionTo.id, message.reactionTo.emojis)
+    }
+    if (message.chatState !== undefined && conversation.kind === 'dm') {
+      conversation.peerState = message.chatState
+    }
+    if (message.replaceId && message.body) {
+      if (this.applyCorrection(peer, message.replaceId, message.body, Date.now())) {
+        this.dropTombstone(conversation, stored)
+        return true
+      }
+    }
+    if (!message.body && !message.attachments?.length) {
+      this.dropTombstone(conversation, stored)
+      return true
+    }
+    stored.body = message.body
+    delete stored.undecryptable
+    delete stored.keyRequested
+    stored.encrypted = true
+    if (message.untrustedDevice) stored.untrustedDevice = true
+    if (message.replyTo) stored.replyTo = message.replyTo
+    if (message.attachments?.length) stored.attachments = message.attachments
+    return true
+  }
+
+  private dropTombstone(conversation: Conversation, stored: ChatMessage): void {
+    const at = conversation.messages.indexOf(stored)
+    if (at < 0) return
+    conversation.messages.splice(at, 1)
+    if (!stored.outgoing && conversation.unread > 0) conversation.unread -= 1
+    this.persistence.schedule(conversation)
+  }
+
+  // Remove one stored message by its display id. The UI uses this to
+  // dismiss undecryptable tombstones that will never resolve.
+  dropMessage(peer: string, id: string): void {
+    const conversation = this.conversations.get(bareJid(peer))
+    const stored = conversation?.messages.find((m) => m.id === id)
+    if (!conversation || !stored) return
+    this.dropTombstone(conversation, stored)
   }
 
   markDelivered(peerJid: string, id: string): void {
@@ -254,17 +457,60 @@ export class ChatStore {
     )
   }
 
+  // remember join parameters so the rejoin watchdog can replay them and
+  // retry banners can re-send them without asking again
+  noteJoin(room: string, nick: string, password?: string): void {
+    const conversation = this.open(room, 'muc')
+    conversation.ourNick = nick
+    conversation.ourNicks.add(nick)
+    conversation.password = password
+    conversation.joinError = undefined
+    conversation.kicked = false
+    conversation.kickReason = undefined
+    conversation.banned = false
+  }
+
   setOccupant(room: string, occupant: RoomOccupant): void {
     const conversation = this.open(room, 'muc')
+    const renamed = occupant.codes.includes(SELF_RENAMED_CODE)
+    // offline stanzas without a 110 still leave our nick in the from
+    // resource; online presence gets no such fallback, or a stranger
+    // taking our nick after a kick would mark us joined
+    const self =
+      occupant.self || (occupant.presence === 'offline' && occupant.nick === conversation.ourNick)
     if (occupant.presence === 'offline') {
       conversation.occupants.delete(occupant.nick)
+      conversation.typers.delete(occupant.nick)
     } else {
       conversation.occupants.set(occupant.nick, occupant)
     }
-    if (occupant.self) {
-      conversation.joined = occupant.presence !== 'offline'
-      conversation.ourNick = occupant.nick
+    if (!self) return
+    if (occupant.presence === 'offline') {
+      if (renamed && occupant.newNick) {
+        // the departing half of a nick change already names the new
+        // nick; adopt it so pending sends use it immediately
+        conversation.ourNick = occupant.newNick
+        conversation.ourNicks.add(occupant.newNick)
+        return
+      }
+      conversation.joined = false
+      if (occupant.codes.includes(SELF_BANNED_CODE)) {
+        conversation.banned = true
+        conversation.kicked = false
+      } else if (occupant.codes.includes(SELF_KICKED_CODE)) {
+        conversation.kicked = true
+        conversation.kickReason = occupant.reason
+      }
+      return
     }
+    conversation.joined = true
+    conversation.joinError = undefined
+    conversation.kicked = false
+    conversation.kickReason = undefined
+    conversation.banned = false
+    conversation.ourNick = occupant.nick
+    conversation.ourNicks.add(occupant.nick)
+    if (occupant.occupantId) conversation.ourOccupantId = occupant.occupantId
   }
 
   private isDuplicate(peer: string, ids: string[]): boolean {
@@ -296,6 +542,8 @@ export class ChatStore {
     for (const raw of stored) {
       // older caches lack newer fields
       raw.reactions ??= {}
+      // a still-pending upload left no wire trace, drop the zombie row
+      if (raw.pending) continue
       batch.push(raw)
       if (seen.size < DEDUP_CAP) seen.add(raw.id)
     }

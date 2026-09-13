@@ -9,10 +9,17 @@ import { $iq, Strophe } from 'strophe.js'
 import { RECONNECT_DELAY_MAX_MS, RECONNECT_DELAY_MS } from '$lib/constants'
 import { Emitter } from '$lib/core/events'
 
+import { fetchAvatar } from './features/avatars'
 import { blockJids, fetchBlocklist, unblockJids } from './features/blocking'
+import { fetchBookmarks, publishBookmark, retractBookmark } from './features/bookmarks'
+import { sendClientState } from './features/csi'
+import { discoInfo, discoItems } from './features/disco'
 import {
   handleBlockPush,
+  handleDiscoInfoGet,
+  handleDiscoItemsGet,
   handleMessage,
+  handlePing,
   handlePresence,
   handleRosterPush
 } from './features/handlers'
@@ -23,21 +30,53 @@ import {
   sendChatState,
   sendMarker,
   sendReaction,
-  sendReceipt
+  sendReceipt,
+  sendRetraction
 } from './features/messaging'
-import { joinRoom, leaveRoom, setRoomSubject } from './features/muc'
-import { pepGet, pepPublish, sendEncryptedMessage } from './features/pep'
-import { fetchAvatar, sendDirectedPresence, sendPresence } from './features/presence'
+import {
+  banOccupant,
+  changeRoomNick,
+  fetchRoomConfig,
+  inviteToRoom,
+  joinRoom,
+  kickOccupant,
+  leaveRoom,
+  moderateMessage,
+  pingOccupant,
+  sendRoomDecline,
+  setRoomSubject,
+  submitRoomConfig
+} from './features/muc'
+import {
+  pepGet,
+  pepPublish,
+  sendEncryptedMessage,
+  sendEncryptedNotification,
+  type PepPublishOptions
+} from './features/pep'
+import { PingManager } from './features/ping'
+import { sendDirectedPresence, sendPresence } from './features/presence'
 import { fetchRoster, rosterRemove, rosterSet } from './features/roster'
+import { smConnectionOptions } from './features/sm'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
 import { discoverUploadService, requestUploadSlot, uploadFile } from './features/upload'
 import { NS } from './ns'
-import type { ChatState, MamPageResult, MarkerType, UploadSlot } from './stanzas'
+import type {
+  Bookmark,
+  ChatState,
+  DataForm,
+  DiscoInfo,
+  DiscoItem,
+  MamPageResult,
+  MarkerType,
+  UploadSlot
+} from './stanzas'
 import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptions } from './types'
 
 // The public contract lives in types.ts and the parsed result shapes in
 // stanzas.ts; re-exported here so importers of this module keep working.
-export type { MamPageResult, UploadSlot } from './stanzas'
+export type { Bookmark, DiscoInfo, DiscoItem, MamPageResult, UploadSlot } from './stanzas'
+export type { PepPublishOptions } from './features/pep'
 export type {
   AttachmentMeta,
   ChatConnection,
@@ -53,23 +92,48 @@ export class XmppConnection implements ChatConnection {
 
   private conn: StropheConnection
   private readonly transport: XmppTransport
+  private readonly ping: PingManager
   private reconnectDelay = RECONNECT_DELAY_MS
   private manualDisconnect = false
+  // XEP-0352 desired and last-sent client state; null means the ui never
+  // told us, so nothing is sent
+  private csiActive: boolean | null = null
+  private csiSent: boolean | null = null
+  // namespaces advertised in stream:features. Nonzas a server does not
+  // know are fatal on strict stacks (prosody closes the stream with
+  // unsupported-stanza-type), so carbons and csi only go out when the
+  // stream advertised them
+  private streamFeatures = new Set<string>()
 
   constructor(
     private readonly service: string,
-    conn?: StropheConnection
+    conn?: StropheConnection,
+    opts?: { oauth?: boolean | undefined }
   ) {
-    this.conn = conn ?? new Strophe.Connection(service)
+    // XEP-0198 stream management is negotiated by strophe itself when the
+    // option is set; a test-supplied connection keeps its own options.
+    // oauth logins restrict the mechanism list to OAUTHBEARER so a token
+    // in the password slot cannot be misread as a scram credential on
+    // servers that offer both
+    const options = { ...smConnectionOptions() }
+    if (opts?.oauth) options.mechanisms = [Strophe.SASLOAuthBearer]
+    this.conn = conn ?? new Strophe.Connection(service, options)
     conn = this.conn
     this.transport = {
       sendIq: (stanza, onResult, onError) => this.sendIq(stanza, onResult, onError),
-      send: (stanza) => conn.send(stanza),
+      // a send racing a teardown hits conn._proto === null inside strophe;
+      // drop the stanza, the stream is gone anyway
+      send: (stanza) => {
+        if (conn.connected) conn.send(stanza)
+      },
       uniqueId: (prefix) => conn.getUniqueId(prefix),
       get jid() {
         return conn.jid ?? ''
       }
     }
+    this.ping = new PingManager(this.transport, (ms) => this.events.emit('latency', ms))
+    // inbound stanzas reset the keepalive silence clock
+    conn.xmlInput = () => this.ping.noteInbound()
   }
 
   get connected(): boolean {
@@ -87,6 +151,7 @@ export class XmppConnection implements ChatConnection {
 
   disconnect(): void {
     this.manualDisconnect = true
+    this.ping.stop()
     this.conn.disconnect()
   }
 
@@ -99,6 +164,14 @@ export class XmppConnection implements ChatConnection {
     onResult: (stanza: Element) => void,
     onError?: (stanza: Element | null) => void
   ): void {
+    if (!this.conn.connected) {
+      // queued iq work (omemo publish, disco) can race a teardown; report
+      // it as a failed send instead of throwing through strophe's dead
+      // transport
+      const fail = onError ?? noop
+      fail(null)
+      return
+    }
     this.conn.sendIQ(stanza, onResult, onError ?? noop)
   }
 
@@ -143,6 +216,10 @@ export class XmppConnection implements ChatConnection {
     sendMarker(this.transport, to, id, marker)
   }
 
+  sendRetraction(to: string, targetId: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    sendRetraction(this.transport, to, targetId, type)
+  }
+
   // ---- HTTP upload, implemented in features/upload.ts -----------------------
 
   discoverUploadService(onDone: (serviceJid: string | null) => void): void {
@@ -162,9 +239,10 @@ export class XmppConnection implements ChatConnection {
     putUrl: string,
     file: Blob,
     headers?: Record<string, string>,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
-    return uploadFile(putUrl, file, headers, onProgress)
+    return uploadFile(putUrl, file, headers, onProgress, signal)
   }
 
   // ---- PEP / OMEMO, implemented in features/pep.ts ---------------------------
@@ -173,12 +251,22 @@ export class XmppConnection implements ChatConnection {
     pepGet(this.transport, node, jid, onDone)
   }
 
-  pepPublish(node: string, itemId: string, payloadXml: string): void {
-    pepPublish(this.transport, node, itemId, payloadXml)
+  pepPublish(
+    node: string,
+    itemId: string,
+    payloadXml: string,
+    options?: PepPublishOptions,
+    onDone?: (ok: boolean) => void
+  ): void {
+    pepPublish(this.transport, node, itemId, payloadXml, options, onDone)
   }
 
-  sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string {
-    return sendEncryptedMessage(this.transport, to, encryptedXml, opts)
+  sendEncryptedMessage(to: string, encryptedXml: string): string {
+    return sendEncryptedMessage(this.transport, to, encryptedXml)
+  }
+
+  sendEncryptedNotification(to: string, encryptedXml: string): void {
+    sendEncryptedNotification(this.transport, to, encryptedXml)
   }
 
   // ---- presence / avatars, implemented in features/presence.ts ----------------
@@ -237,6 +325,42 @@ export class XmppConnection implements ChatConnection {
     setRoomSubject(this.transport, room, subject)
   }
 
+  changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void {
+    changeRoomNick(this.transport, room, oldNick, newNick, password)
+  }
+
+  inviteToRoom(room: string, to: string, opts?: { reason?: string; password?: string }): void {
+    inviteToRoom(this.transport, room, to, opts)
+  }
+
+  declineRoomInvite(room: string, to: string, reason?: string): void {
+    sendRoomDecline(this.transport, room, to, reason)
+  }
+
+  kickOccupant(room: string, nick: string, reason?: string): void {
+    kickOccupant(this.transport, room, nick, reason)
+  }
+
+  banOccupant(room: string, jid: string, reason?: string): void {
+    banOccupant(this.transport, room, jid, reason)
+  }
+
+  moderateMessage(room: string, stanzaId: string, reason?: string): void {
+    moderateMessage(this.transport, room, stanzaId, reason)
+  }
+
+  fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void {
+    fetchRoomConfig(this.transport, room, onDone)
+  }
+
+  submitRoomConfig(room: string, form: DataForm): void {
+    submitRoomConfig(this.transport, room, form)
+  }
+
+  pingOccupant(room: string, nick: string, onDone: (alive: boolean) => void): void {
+    pingOccupant(this.transport, room, nick, onDone)
+  }
+
   // ---- MAM, implemented in features/mam.ts ---------------------------------------
 
   // Results arrive as 'message' events flagged with mam=true; onDone
@@ -250,12 +374,54 @@ export class XmppConnection implements ChatConnection {
   }
 
   enableCarbons(): void {
+    if (!this.streamFeatures.has(NS.CARBONS)) return
     this.sendIq(
       $iq({ type: 'set', id: this.conn.getUniqueId('carbons') }).c('enable', {
         xmlns: NS.CARBONS
       }),
       noop
     )
+  }
+
+  // ---- client state and stream management ------------------------------------
+
+  setClientActive(active: boolean): void {
+    this.csiActive = active
+    if (!this.conn.connected || this.csiSent === active || !this.streamFeatures.has(NS.CSI)) return
+    this.csiSent = active
+    sendClientState(this.transport, active)
+  }
+
+  streamManagementEnabled(): boolean {
+    return this.conn.isStreamManagementEnabled()
+  }
+
+  sessionResumed(): boolean {
+    return this.conn.hasResumed()
+  }
+
+  // ---- service discovery (XEP-0030), implemented in features/disco.ts ----------
+
+  discoInfo(jid: string, node: string | undefined, onDone: (info: DiscoInfo | null) => void): void {
+    discoInfo(this.transport, jid, node, onDone)
+  }
+
+  discoItems(jid: string, onDone: (items: DiscoItem[] | null) => void): void {
+    discoItems(this.transport, jid, onDone)
+  }
+
+  // ---- bookmarks (XEP-0402), implemented in features/bookmarks.ts --------------
+
+  fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void {
+    fetchBookmarks(this.transport, onDone)
+  }
+
+  addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void {
+    publishBookmark(this.transport, bookmark, onDone)
+  }
+
+  removeBookmark(jid: string, onDone?: (ok: boolean) => void): void {
+    retractBookmark(this.transport, jid, onDone)
   }
 
   // ---- internals -----------------------------------------------------------------
@@ -270,6 +436,7 @@ export class XmppConnection implements ChatConnection {
       case Strophe.Status.ATTACHED:
         this.reconnectDelay = RECONNECT_DELAY_MS
         this.onConnected()
+        this.ping.start()
         this.events.emit('status', 'connected')
         break
       case Strophe.Status.DISCONNECTING:
@@ -284,13 +451,27 @@ export class XmppConnection implements ChatConnection {
         this.events.emit('status', 'error')
         break
       case Strophe.Status.DISCONNECTED:
+        this.ping.stop()
         this.events.emit('status', 'disconnected')
         if (!this.manualDisconnect) this.scheduleReconnect()
         break
     }
   }
 
+  private noteStreamFeatures(): void {
+    this.streamFeatures.clear()
+    // strophe stashes the last stream:features element on the connection
+    const features = this.conn.features
+    if (!features) return
+    for (const child of features.childNodes) {
+      if (child.nodeType !== 1) continue
+      const xmlns = (child as Element).getAttribute('xmlns')
+      if (xmlns) this.streamFeatures.add(xmlns)
+    }
+  }
+
   private onConnected(): void {
+    this.noteStreamFeatures()
     this.conn.addHandler((stanza) => handleMessage(stanza, this.events), null, 'message', null)
     this.conn.addHandler(
       (stanza) => handlePresence(stanza, this.events, this.transport),
@@ -310,9 +491,35 @@ export class XmppConnection implements ChatConnection {
       'iq',
       'set'
     )
+    // XEP-0199: answer pings; MUC self-ping relies on the room routing
+    // our own ping back at us
+    this.conn.addHandler(
+      (stanza) => handlePing(stanza, this.events, this.transport),
+      NS.PING,
+      'iq',
+      'get'
+    )
+    // XEP-0030/0115: peers disco us to resolve the caps ver we advertise
+    // in presence into a feature list
+    this.conn.addHandler(
+      (stanza) => handleDiscoInfoGet(stanza, this.transport),
+      NS.DISCO_INFO,
+      'iq',
+      'get'
+    )
+    this.conn.addHandler(
+      (stanza) => handleDiscoItemsGet(stanza, this.transport),
+      NS.DISCO_ITEMS,
+      'iq',
+      'get'
+    )
     this.enableCarbons()
     this.sendPresence()
     this.fetchRoster()
+    // a reconnect re-establishes the csi signal: only a hidden tab needs
+    // re-sending, active is the server's default assumption
+    this.csiSent = null
+    if (this.csiActive === false) this.setClientActive(false)
   }
 
   private scheduleReconnect(): void {

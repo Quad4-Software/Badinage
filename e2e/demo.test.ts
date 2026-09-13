@@ -43,12 +43,16 @@ test('sidebar search filters conversations', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Try the demo' }).click()
   await expect(page.getByRole('button', { name: /Aria/ }).first()).toBeVisible({ timeout: 10_000 })
-  const search = page.getByLabel('Search conversations and contacts')
-  await search.fill('cleo')
-  await expect(page.getByRole('button', { name: /Aria/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Cleo/ }).first()).toBeVisible()
-  await search.fill('')
-  await expect(page.getByRole('button', { name: /Aria/ }).first()).toBeVisible()
+  // the sidebar search field opens the command palette; the palette
+  // combobox does the filtering
+  await page.getByRole('button', { name: 'Search conversations and contacts' }).click()
+  const palette = page.getByRole('dialog')
+  await expect(palette).toBeVisible()
+  await palette.getByRole('combobox').fill('cleo')
+  await expect(palette.getByRole('option', { name: /Aria/ })).toHaveCount(0)
+  await expect(palette.getByRole('option', { name: /Cleo/ }).first()).toBeVisible()
+  await palette.getByRole('combobox').fill('')
+  await expect(palette.getByRole('option', { name: /Aria/ }).first()).toBeVisible()
 })
 
 test('unread badges are circular', async ({ page }) => {
@@ -68,6 +72,13 @@ test('scrolling to top loads an older archive page', async ({ page }) => {
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
   const before = await page.locator('ol li').count()
+  // the pager button only renders near the top; the list opens pinned to
+  // the bottom, so scroll the scrollable ancestor to zero first
+  await page.locator('ol').evaluate((el) => {
+    let p = el.parentElement
+    while (p && p.scrollHeight <= p.clientHeight) p = p.parentElement
+    if (p) p.scrollTop = 0
+  })
   const loadOlder = page.getByRole('button', { name: 'Load older messages' })
   await expect(loadOlder).toBeVisible()
   await loadOlder.click()

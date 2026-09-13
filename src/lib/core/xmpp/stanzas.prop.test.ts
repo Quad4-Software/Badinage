@@ -6,11 +6,17 @@ import { malformed, messageArb, presenceArb, stanzaArb } from '../../../../test/
 import { NS } from './ns'
 import {
   hasDiscoFeature,
+  parseAvatarHash,
   parseBlockPush,
-  parseDiscoItemJids,
+  parseBookmark,
+  parseBookmarkItems,
+  parseCaps,
+  parseDiscoInfo,
+  parseDiscoItems,
   parseJidItems,
   parseMamFin,
   parseMessage,
+  parsePepEvent,
   parsePresence,
   parseRosterItems,
   parseUploadSlot,
@@ -40,7 +46,13 @@ function runReadOnlyParsers(el: Element): void {
   parseRosterItems(el)
   parseJidItems(el)
   parseBlockPush(el)
-  parseDiscoItemJids(el)
+  parseDiscoItems(el)
+  parseDiscoInfo(el)
+  parseCaps(el)
+  parseAvatarHash(el)
+  parsePepEvent(el)
+  parseBookmark(el)
+  parseBookmarkItems(el)
   hasDiscoFeature(el, NS.HTTP_UPLOAD)
   hasDiscoFeature(el, 'urn:xmpp:never')
   parseUploadSlot(el)
@@ -93,7 +105,7 @@ describe('property: structured stanzas', () => {
     fc.assert(
       fc.property(presenceArb, (s) => {
         const p = parsePresence(xml(s.xml))
-        if (p) expect(['occupant', 'subscribe', 'presence']).toContain(p.kind)
+        if (p) expect(['occupant', 'subscribe', 'presence', 'presenceError']).toContain(p.kind)
       })
     )
   })

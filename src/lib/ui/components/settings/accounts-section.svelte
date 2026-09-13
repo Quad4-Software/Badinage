@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { LogOut, UserPlus } from '@lucide/svelte'
+  import { ArrowDown, ArrowUp, Bell, LogOut, UserPlus } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { settings } from '$lib/state/settings.svelte'
+  import { effectiveHue, nextAccountHue } from '$lib/utils/account'
   import { Button } from '$lib/ui/primitives/button'
+  import { Switch } from '$lib/ui/primitives/switch'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
@@ -26,6 +29,10 @@
   )
   let confirmRemove = $state<string | null>(null)
 
+  // ordering acts on the full list so the controls stay correct while a
+  // settings search filters the visible rows
+  const orderIndex = (jid: string) => accounts.list.findIndex((a) => a.jid === jid)
+
   const showAdd = $derived(
     matchesQuery(q, $LL.accounts(), $LL.addAccount(), $LL.removeAccount(), 'sign in login logout')
   )
@@ -42,12 +49,49 @@
 <SettingSection id="accounts" title={$LL.accounts()} visible={hits > 0}>
   <ul class="flex flex-col">
     {#each list as account (account.jid)}
+      {@const meta = settings.metaFor(account.jid)}
       <li class="flex items-center gap-2.5 py-1.5">
+        <button
+          type="button"
+          class="ring-primary ring-offset-background size-6 shrink-0 cursor-pointer rounded-full"
+          style={`background: oklch(0.65 0.17 ${effectiveHue(meta, account.jid)})`}
+          aria-label={$LL.accountColor({ jid: account.jid })}
+          title={$LL.accountColor({ jid: account.jid })}
+          onclick={() => settings.setAccountMeta(account.jid, { hue: nextAccountHue(meta.hue) })}
+        ></button>
         <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
         <span class="min-w-0 flex-1">
           <span class="block truncate text-sm">{account.jid}</span>
           <span class="text-muted-foreground block text-xs">{statusLabel(account.status)}</span>
         </span>
+        <span class="flex shrink-0 items-center" role="group" aria-label={account.jid}>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-6"
+            disabled={orderIndex(account.jid) <= 0}
+            onclick={() => accounts.move(account.jid, -1)}
+            aria-label={$LL.moveAccountUp({ jid: account.jid })}
+          >
+            <ArrowUp class="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-6"
+            disabled={orderIndex(account.jid) === accounts.list.length - 1}
+            onclick={() => accounts.move(account.jid, 1)}
+            aria-label={$LL.moveAccountDown({ jid: account.jid })}
+          >
+            <ArrowDown class="size-3.5" />
+          </Button>
+        </span>
+        <Bell class="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" />
+        <Switch
+          checked={meta.notify !== false}
+          onCheckedChange={(v) => settings.setAccountMeta(account.jid, { notify: v })}
+          aria-label={$LL.accountNotifications({ jid: account.jid })}
+        />
         <Button
           variant="ghost"
           size="sm"
