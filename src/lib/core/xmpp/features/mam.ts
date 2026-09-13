@@ -12,14 +12,23 @@ const DEFAULT_PAGE_SIZE = 50
 
 // Fetches one archive page. For DMs the archive is ours filtered by
 // 'with'; for rooms the iq is addressed to the room and the 'with'
-// field is omitted.
+// field is omitted. The queryid is registered in the caller-owned set
+// for the whole flight so the incoming stanza pipeline can authenticate
+// the result wrappers that echo it; it leaves the set on either
+// outcome.
 export function queryArchive(
   conn: XmppTransport,
+  queries: Set<string>,
+  id: string,
   peerJid: string,
   opts: { max?: number; before?: string | undefined; room?: boolean | undefined },
   onDone: (result: MamPageResult) => void
 ): void {
-  const id = conn.uniqueId('mam')
+  queries.add(id)
+  const done = (result: MamPageResult) => {
+    queries.delete(id)
+    onDone(result)
+  }
   const attrs: Record<string, string> = { type: 'set', id }
   if (opts.room) attrs.to = peerJid
   const query = $iq(attrs).c('query', { xmlns: NS.MAM, queryid: id })
@@ -42,7 +51,7 @@ export function queryArchive(
   if (opts.before) set.c('before').t(opts.before).up()
   conn.sendIq(
     query,
-    (result) => onDone(parseMamFin(result)),
-    () => onDone({ complete: true })
+    (result) => done(parseMamFin(result)),
+    () => done({ complete: true })
   )
 }

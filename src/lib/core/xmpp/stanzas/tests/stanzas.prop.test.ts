@@ -85,11 +85,13 @@ describe('property: structured stanzas', () => {
           m.body ||
           m.chatState ||
           m.receiptFor ||
+          m.receiptRequest ||
           m.marker ||
           m.reactionTo ||
           m.attachments?.length ||
           m.encryptedXml ||
-          m.subject !== undefined
+          m.subject !== undefined ||
+          m.error !== undefined
         )
         expect(meaningful).toBe(true)
         if (s.stanzaId !== undefined) expect(m.stanzaId).toBe(s.stanzaId)

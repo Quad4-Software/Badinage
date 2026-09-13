@@ -1,10 +1,17 @@
 // Chat <message> parsing: the IncomingMessage shape plus the parser and
 // its message-specific helpers.
 
-import { bareJid, jidResource } from '$lib/utils/jid'
-import { allNsTags, firstNsTag, firstTag, firstTagText, serializeElement } from '$lib/utils/xml'
+import { jidResource } from '$lib/utils/jid'
+import {
+  allNsTags,
+  childElements,
+  firstNsTag,
+  firstTagText,
+  serializeElement
+} from '$lib/utils/xml'
 
 import { NS } from '../ns'
+import { unwrapForwarded, type ParseContext } from './forwarding'
 import { parseAttachments, parseGeoloc, parseReferences, parseRtt } from './payloads'
 import type { ChatState, IncomingMessage } from './types'
 
@@ -31,47 +38,17 @@ function stripReplyFallback(body: string): { rest: string; quote?: string | unde
   return { rest: lines.slice(i).join('\n'), quote: quoteLines.join('\n') }
 }
 
-// XEP-0066 out-of-band data, optionally enriched by XEP-0446 file metadata.
-// The metadata element also matches when it sits inside a XEP-0447 SIMS
-// media-sharing wrapper, in which case the url comes from a data reference
-// in the sources element. Returns at most one attachment.
-
-function unwrapForwarded(stanza: Element): {
-  inner: Element
-  kind: 'carbon-sent' | 'carbon-received' | 'mam'
-  delay?: string | undefined
-} | null {
-  const ownBare = bareJid(stanza.getAttribute('to') ?? '')
-  const fromBare = bareJid(stanza.getAttribute('from') ?? '')
-
-  for (const dir of ['sent', 'received'] as const) {
-    const wrapper = firstNsTag(stanza, NS.CARBONS, dir)
-    const forwarded = wrapper ? firstNsTag(wrapper, NS.FORWARD, 'forwarded') : null
-    const inner = forwarded ? firstTag(forwarded, 'message') : null
-    if (inner && forwarded && ownBare === fromBare) {
-      const delay = firstNsTag(forwarded, NS.DELAY, 'delay')?.getAttribute('stamp')
-      return { inner, kind: `carbon-${dir}`, delay: delay ?? undefined }
-    }
-  }
-
-  const result = firstNsTag(stanza, NS.MAM, 'result')
-  const forwarded = result ? firstNsTag(result, NS.FORWARD, 'forwarded') : null
-  const inner = forwarded ? firstTag(forwarded, 'message') : null
-  if (inner && forwarded) {
-    const delay = firstNsTag(forwarded, NS.DELAY, 'delay')?.getAttribute('stamp')
-    return { inner, kind: 'mam', delay: delay ?? undefined }
-  }
-
-  return null
-}
-
 // Parse a <message> (already unwrapped if it was a carbon or MAM result) into
 // our IncomingMessage shape. Returns null when the stanza carries nothing
 // actionable.
-export function parseMessage(stanza: Element): IncomingMessage | null {
-  const forwarded = unwrapForwarded(stanza)
+export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessage | null {
+  const forwarded = unwrapForwarded(stanza, ctx)
+  // a stanza carrying a carbon or result wrapper that fails the sender
+  // checks is a forgery attempt; nothing in it is trustworthy
+  if (forwarded === 'untrusted') return null
   const inner = forwarded?.inner ?? stanza
-  const type = inner.getAttribute('type') === 'groupchat' ? 'groupchat' : 'chat'
+  const wireType = inner.getAttribute('type')
+  const type = wireType === 'groupchat' ? 'groupchat' : 'chat'
 
   const message: IncomingMessage = {
     from: inner.getAttribute('from') ?? '',
@@ -206,6 +183,22 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
   const occupantId = firstNsTag(inner, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
   if (occupantId) message.occupantId = occupantId
 
+  // type='error' bounces: the stanza id echoes a message we sent. Surface
+  // the RFC 6120 condition so the store can mark that message failed;
+  // the stanza's echoed body must never render as a fresh incoming row
+  if (wireType === 'error') {
+    const errorEl = childElements(inner).find((e) => e.localName === 'error')
+    const parsed: NonNullable<IncomingMessage['error']> = {}
+    for (const child of errorEl ? childElements(errorEl) : []) {
+      if (child.localName === 'text') {
+        parsed.text = child.textContent ?? undefined
+      } else {
+        parsed.condition ??= child.localName ?? undefined
+      }
+    }
+    message.error = parsed
+  }
+
   // OMEMO payloads survive as raw xml for the service layer to decrypt;
   // the wire body is only a fallback for clients without encryption.
   const encrypted =
@@ -234,6 +227,7 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     !message.body &&
     !message.chatState &&
     !message.receiptFor &&
+    !message.receiptRequest &&
     !message.marker &&
     !message.reactionTo &&
     message.retractId === undefined &&
@@ -241,12 +235,12 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     !message.attachments?.length &&
     !message.encryptedXml &&
     !message.retraction &&
-    !message.retracted &&
     !message.attention &&
     !message.rtt &&
     message.ephemeralTimer === undefined &&
     !message.geoloc &&
-    message.subject === undefined
+    message.subject === undefined &&
+    message.error === undefined
   ) {
     return null
   }

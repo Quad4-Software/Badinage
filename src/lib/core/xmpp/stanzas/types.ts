@@ -114,6 +114,10 @@ export interface IncomingMessage {
   ephemeralTimer?: number | undefined
   // XEP-0080 location shared by the sender
   geoloc?: Geoloc | undefined
+  // stanza type=error: a bounce referencing our sent message id. The
+  // store marks that message failed; the stanza never becomes a row, so
+  // a forged error cannot inject a body
+  error?: { condition?: string | undefined; text?: string | undefined } | undefined
 }
 
 export interface PresenceUpdate {

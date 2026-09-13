@@ -14,7 +14,11 @@ import { blockJids, fetchBlocklist, unblockJids } from './features/blocking'
 import { fetchBookmarks, publishBookmark, retractBookmark } from './features/pep/bookmarks'
 import { sendClientState } from './features/csi'
 import { discoInfo, discoItems } from './features/disco'
-import { registerStanzaHandlers } from './connection-handlers'
+import {
+  makeTransport,
+  noteStreamFeatures,
+  registerStanzaHandlers
+} from './connection-handlers'
 import { queryArchive } from './features/mam'
 import {
   sendAttachment,
@@ -104,6 +108,9 @@ export class XmppConnection implements ChatConnection {
   // know are fatal on strict stacks, so carbons and csi only go out when
   // the stream advertised them
   private streamFeatures = new Set<string>()
+  // queryids of in-flight MAM queries; the message handler only unwraps
+  // result wrappers echoing one of these or sent by our own bare jid
+  private readonly mamQueries = new Set<string>()
 
   constructor(
     private readonly service: string,
@@ -118,22 +125,10 @@ export class XmppConnection implements ChatConnection {
     const options = { ...smConnectionOptions() }
     if (opts?.oauth) options.mechanisms = [Strophe.SASLOAuthBearer]
     this.conn = conn ?? new Strophe.Connection(service, options)
-    conn = this.conn
-    this.transport = {
-      sendIq: (stanza, onResult, onError) => this.sendIq(stanza, onResult, onError),
-      // a send racing a teardown hits conn._proto === null inside strophe;
-      // drop the stanza, the stream is gone anyway
-      send: (stanza) => {
-        if (conn.connected) conn.send(stanza)
-      },
-      uniqueId: (prefix) => conn.getUniqueId(prefix),
-      get jid() {
-        return conn.jid ?? ''
-      }
-    }
+    this.transport = makeTransport(this.conn, this.sendIq.bind(this))
     this.ping = new PingManager(this.transport, (ms) => this.events.emit('latency', ms))
     // inbound stanzas reset the keepalive silence clock
-    conn.xmlInput = () => this.ping.noteInbound()
+    this.conn.xmlInput = () => this.ping.noteInbound()
   }
 
   get connected(): boolean {
@@ -378,7 +373,14 @@ export class XmppConnection implements ChatConnection {
     opts: { max?: number; before?: string | undefined; room?: boolean | undefined },
     onDone: (result: MamPageResult) => void
   ): void {
-    queryArchive(this.transport, peerJid, opts, onDone)
+    queryArchive(
+      this.transport,
+      this.mamQueries,
+      this.conn.getUniqueId('mam'),
+      peerJid,
+      opts,
+      onDone
+    )
   }
 
   enableCarbons(): void {
@@ -492,27 +494,24 @@ export class XmppConnection implements ChatConnection {
         break
       case Strophe.Status.DISCONNECTED:
         this.ping.stop()
+        // a dead stream never answers: in-flight queryids must not
+        // authenticate results on the next session
+        this.mamQueries.clear()
         this.events.emit('status', 'disconnected')
         if (!this.manualDisconnect) this.scheduleReconnect()
         break
     }
   }
 
-  private noteStreamFeatures(): void {
-    this.streamFeatures.clear()
-    // strophe stashes the last stream:features element on the connection
-    const features = this.conn.features
-    if (!features) return
-    for (const child of features.childNodes) {
-      if (child.nodeType !== 1) continue
-      const xmlns = (child as Element).getAttribute('xmlns')
-      if (xmlns) this.streamFeatures.add(xmlns)
-    }
-  }
-
   private onConnected(): void {
-    this.noteStreamFeatures()
-    registerStanzaHandlers(this.conn, this.transport, this.events, () => bareJid(this.jid))
+    noteStreamFeatures(this.conn, this.streamFeatures)
+    registerStanzaHandlers(
+      this.conn,
+      this.transport,
+      this.events,
+      () => bareJid(this.jid),
+      this.mamQueries
+    )
     this.enableCarbons()
     this.sendPresence()
     this.fetchRoster()

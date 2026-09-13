@@ -69,6 +69,9 @@ export interface ChatMessage {
   // XEP-0372/0492: this muc message names us via a mention reference or
   // a bare nick hit; drives highlight and on-mention notifications
   mentionsMe?: boolean | undefined
+  // stanza type=error bounce: the server or peer refused delivery; holds
+  // the RFC 6120 condition (service-unavailable, remote-server-timeout...)
+  deliveryError?: string | undefined
 }
 
 export interface RoomOccupant {

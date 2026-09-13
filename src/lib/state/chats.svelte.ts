@@ -41,7 +41,15 @@ import {
   saveMeta,
   sweepExpired
 } from './chats/meta'
-import { applyCorrection, applyReactions, applyRetraction } from './messages'
+import {
+  applyDeliveryError,
+  clearConversation,
+  correctStored,
+  dropMessage,
+  findIn,
+  reactStored,
+  retractStored
+} from './chats/mutations'
 import { ConversationPersistence } from './persistence.svelte'
 import { TypingTracker } from './typing'
 
@@ -147,34 +155,23 @@ export class ChatStore {
   // find a stored message by wire id (what remote references in
   // reply/replace/reactions) or by our dedup id
   findMessage(peer: string, ref: string): ChatMessage | undefined {
-    const messages = this.conversations.get(bareJid(peer))?.messages
-    return messages?.find((m) => m.wireId === ref || m.id === ref)
+    return findIn(this.conversations, peer, ref)
   }
 
   applyReaction(peer: string, sender: string, targetId: string, emojis: string[]): void {
-    const target = this.findMessage(peer, targetId)
-    if (target) applyReactions(target, sender, emojis)
+    reactStored(this.conversations, peer, sender, targetId, emojis)
   }
 
-  // Optimistic local apply for a retraction we just sent ourselves; the
-  // wire-side sender check is unnecessary here.
   retract(peer: string, targetId: string): void {
-    const target = this.findMessage(peer, targetId)
-    if (!target) return
-    applyRetraction(target)
-    const conversation = this.conversations.get(bareJid(peer))
-    if (conversation) this.persistence.schedule(conversation)
+    retractStored(this.conversations, this.persistence, peer, targetId)
   }
 
-  // Drop a message row outright. Used for pending uploads that get
-  // cancelled or fail: nothing reached the wire, so no tombstone.
+  clearHistory(peerJid: string): void {
+    clearConversation(this.conversations, this.persistence, peerJid)
+  }
+
   removeMessage(peer: string, id: string): void {
-    const conversation = this.conversations.get(bareJid(peer))
-    if (!conversation) return
-    const index = conversation.messages.findIndex((m) => m.id === id)
-    if (index === -1) return
-    conversation.messages.splice(index, 1)
-    this.persistence.schedule(conversation)
+    dropMessage(this.conversations, this.persistence, peer, id)
   }
 
   applyCorrection(
@@ -184,12 +181,9 @@ export class ChatStore {
     timestamp: number,
     spoilerHint?: string | undefined
   ): boolean {
-    const target = this.findMessage(peer, replaceId)
-    if (!target) return false
     // keep original position but reflect the correction time for ordering
     void timestamp
-    applyCorrection(target, body, spoilerHint)
-    return true
+    return correctStored(this.conversations, peer, replaceId, body, spoilerHint)
   }
 
   // Work out which conversation a stanza belongs to and whether it is ours.
@@ -204,6 +198,11 @@ export class ChatStore {
 
     const conversation = this.open(peer)
     if (message.type === 'groupchat') conversation.kind = 'muc'
+
+    if (applyDeliveryError(this.conversations, this.persistence, conversation, peer, message)) {
+      return undefined
+    }
+
     // remember the peer's resource so feature probes (disco#info for
     // rtt and friends) target the client that is actually talking, not
     // the bare account
@@ -298,7 +297,11 @@ export class ChatStore {
 
     const fallbackId = `${peer}:${message.delay ?? ''}:${message.body}`
     const id = message.stanzaId ?? message.originId ?? fallbackId
-    const seenIds = [message.stanzaId, message.originId, message.id, fallbackId].filter(
+    // the fallback is deliberately not an alias: it only dedups stanzas
+    // that carry no id at all, where it becomes the chosen key. Keeping
+    // it in seenIds would drop legit repeats of the same body that do
+    // carry real ids.
+    const seenIds = [message.stanzaId, message.originId, message.id].filter(
       (candidate): candidate is string => candidate !== undefined && candidate !== id
     )
     const stored: ChatMessage = {

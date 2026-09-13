@@ -30,7 +30,8 @@ import type { XmppTransport } from './transport'
 export function handleMessage(
   stanza: Element,
   events: Emitter<ConnectionEvents>,
-  ownBareJid: string
+  ownBareJid: string,
+  mamQueries?: ReadonlySet<string>
 ): boolean {
   // PEP event notifications arrive as (usually bodiless) headline
   // messages. They are only trustworthy when they come from our own
@@ -62,7 +63,7 @@ export function handleMessage(
   if (invite) events.emit('roomInvite', invite)
   const decline = parseRoomDecline(stanza)
   if (decline) events.emit('roomDecline', decline)
-  const message = parseMessage(stanza)
+  const message = parseMessage(stanza, { ownBareJid, mamQueryIds: mamQueries })
   if (message) events.emit('message', message)
   return true
 }
@@ -99,11 +100,25 @@ export function handlePresence(
   return true
 }
 
+// RFC 6121 2.1.6 and the XEP-0191 push rules share one sender check:
+// a server-originated push carries either no from or our own bare jid.
+// Anything else is a forgery - refuse it with a stanza error instead of
+// letting a stranger edit our roster or blocklist view.
+function trustedPush(stanza: Element, ownBareJid: string): boolean {
+  const from = stanza.getAttribute('from')
+  return from === null || bareJid(from) === ownBareJid
+}
+
 export function handleRosterPush(
   stanza: Element,
   events: Emitter<ConnectionEvents>,
-  conn: XmppTransport
+  conn: XmppTransport,
+  ownBareJid: string
 ): boolean {
+  if (!trustedPush(stanza, ownBareJid)) {
+    replyError(stanza, conn, 'service-unavailable')
+    return true
+  }
   for (const item of parseRosterItems(stanza)) {
     if (item.subscription === 'remove') {
       events.emit('rosterRemove', item.jid)
@@ -121,8 +136,13 @@ export function handleRosterPush(
 export function handleBlockPush(
   stanza: Element,
   events: Emitter<ConnectionEvents>,
-  conn: XmppTransport
+  conn: XmppTransport,
+  ownBareJid: string
 ): boolean {
+  if (!trustedPush(stanza, ownBareJid)) {
+    replyError(stanza, conn, 'service-unavailable')
+    return true
+  }
   const { blocked, unblocked } = parseBlockPush(stanza)
   if (blocked) events.emit('blocked', blocked)
   if (unblocked) events.emit('unblocked', unblocked)
@@ -158,4 +178,11 @@ function replyResult(stanza: Element, conn: XmppTransport): void {
   const attrs: Record<string, string> = { type: 'result', id: stanza.getAttribute('id') ?? '' }
   if (from) attrs.to = from
   conn.send($iq(attrs))
+}
+
+function replyError(stanza: Element, conn: XmppTransport, condition: string): void {
+  const from = stanza.getAttribute('from')
+  const attrs: Record<string, string> = { type: 'error', id: stanza.getAttribute('id') ?? '' }
+  if (from) attrs.to = from
+  conn.send($iq(attrs).c('error', { type: 'cancel' }).c(condition, { xmlns: NS.STANZA_ERROR }))
 }

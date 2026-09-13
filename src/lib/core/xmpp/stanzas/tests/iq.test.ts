@@ -191,6 +191,17 @@ describe('parseVcardPhoto', () => {
     const stanza = xml(`<iq type="result"><vCard xmlns="vcard-temp"/></iq>`)
     expect(parseVcardPhoto(stanza)).toBeUndefined()
   })
+
+  it('drops non-image media types so text/html never becomes a data uri', () => {
+    for (const type of ['text/html', 'application/xhtml+xml', 'image', 'text/plain']) {
+      const uri = parseVcardPhoto(
+        xml(`<iq type="result"><vCard xmlns="vcard-temp"><PHOTO>
+          <TYPE>${type}</TYPE><BINVAL>PHNjcmlwdD4=</BINVAL>
+        </PHOTO></vCard></iq>`)
+      )
+      expect(uri).toBeUndefined()
+    }
+  })
 })
 
 describe('parseMamFin', () => {

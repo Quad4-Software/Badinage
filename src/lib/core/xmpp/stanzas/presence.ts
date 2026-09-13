@@ -116,6 +116,3 @@ export function parsePresence(
     }
   }
 }
-
-// XEP-0030 disco#info result. Reads identities, feature vars and any
-// XEP-0128 extension forms; tolerates missing query or empty results.

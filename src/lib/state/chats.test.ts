@@ -147,6 +147,44 @@ describe('ChatStore ingest', () => {
     expect(store.conversations.get('peer@example.net')?.messages).toHaveLength(1)
   })
 
+  it('flags an outgoing message failed on a type=error bounce', () => {
+    const sent = { ...emptyMessage('peer@example.net'), id: 'local-1', wireId: 'w1' }
+    store.push('peer@example.net', sent)
+    connection.events.emit(
+      'message',
+      incoming({
+        type: 'chat',
+        id: 'w1',
+        body: 'echoed',
+        error: { condition: 'service-unavailable', text: 'user gone' }
+      })
+    )
+    const conversation = store.conversations.get('peer@example.net')
+    expect(sent.deliveryError).toBe('service-unavailable')
+    // the bounced stanza never becomes a second row
+    expect(conversation?.messages).toHaveLength(1)
+    expect(conversation?.unread).toBe(0)
+  })
+
+  it('ignores a type=error bounce for a message we never sent', () => {
+    connection.events.emit(
+      'message',
+      incoming({ id: 'unknown', body: 'echoed', error: { condition: 'gone' } })
+    )
+    const conversation = store.conversations.get('peer@example.net')
+    expect(conversation?.messages ?? []).toHaveLength(0)
+  })
+
+  it('wipes local history without touching the archive', () => {
+    connection.events.emit('message', incoming({ stanzaId: 's1' }))
+    connection.events.emit('message', incoming({ stanzaId: 's2' }))
+    const conversation = store.conversations.get('peer@example.net')
+    expect(conversation?.messages).toHaveLength(2)
+    store.clearHistory('peer@example.net')
+    expect(conversation?.messages).toHaveLength(0)
+    expect(conversation?.unread).toBe(0)
+  })
+
   it('reflects a composing peer then clears it when a body arrives', () => {
     connection.events.emit('message', incoming({ body: '', chatState: 'composing' }))
     const conversation = store.conversations.get('peer@example.net')

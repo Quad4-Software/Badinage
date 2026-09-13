@@ -77,4 +77,84 @@ describe('adversarial inputs', () => {
     </item>`)
     expect(parseMdsItem(item)).toBeNull()
   })
+
+  // CVE-2017-5858 class: a forwarded payload wrapped in carbon markup
+  // only unwraps when the outer stanza is addressed to and from the
+  // same account; a failed wrapper poisons the whole stanza so the
+  // nested body cannot leak through the descendant-search helpers.
+  it('drops a carbon whose from and to differ', () => {
+    const m = parseMessage(
+      xml(`<message from="evil@example.net" to="me@example.net/home">
+        <received xmlns="urn:xmpp:carbons:2">
+          <forwarded xmlns="urn:xmpp:forward:0">
+            <message from="boss@example.net" to="me@example.net" type="chat">
+              <body>wire the money</body>
+            </message>
+          </forwarded>
+        </received>
+      </message>`)
+    )
+    expect(m).toBeNull()
+  })
+
+  it('drops a carbon with no from and to at all', () => {
+    const m = parseMessage(
+      xml(`<message>
+        <sent xmlns="urn:xmpp:carbons:2">
+          <forwarded xmlns="urn:xmpp:forward:0">
+            <message from="me@example.net" to="peer@example.net" type="chat">
+              <body>forged</body>
+            </message>
+          </forwarded>
+        </sent>
+      </message>`)
+    )
+    expect(m).toBeNull()
+  })
+
+  // a forged <result> can smuggle a fabricated archive row; once the
+  // pipeline passes context the wrapper only unwraps for an in-flight
+  // queryid or our own bare jid.
+  it('drops a MAM result with an unknown queryid from a stranger', () => {
+    const stanza = xml(`<message from="evil@example.net" to="me@example.net/home">
+      <result xmlns="urn:xmpp:mam:2" queryid="forged" id="a1">
+        <forwarded xmlns="urn:xmpp:forward:0">
+          <message from="alice@example.net" to="me@example.net" type="chat">
+            <body>fake archive row</body>
+          </message>
+        </forwarded>
+      </result>
+    </message>`)
+    const ctx = { ownBareJid: 'me@example.net', mamQueryIds: new Set(['real-q']) }
+    expect(parseMessage(stanza, ctx)).toBeNull()
+  })
+
+  it('unwraps a MAM result whose queryid answers a live query', () => {
+    const stanza = xml(`<message from="archive.example.net" to="me@example.net/home">
+      <result xmlns="urn:xmpp:mam:2" queryid="real-q" id="a1">
+        <forwarded xmlns="urn:xmpp:forward:0">
+          <message from="alice@example.net" to="me@example.net" type="chat">
+            <body>archived</body>
+          </message>
+        </forwarded>
+      </result>
+    </message>`)
+    const ctx = { ownBareJid: 'me@example.net', mamQueryIds: new Set(['real-q']) }
+    expect(parseMessage(stanza, ctx)?.mam).toBe(true)
+    expect(parseMessage(stanza, ctx)?.body).toBe('archived')
+  })
+
+  it('unwraps a MAM result sent by our own account', () => {
+    const stanza = xml(`<message from="me@example.net" to="me@example.net/home">
+      <result xmlns="urn:xmpp:mam:2" queryid="any" id="a1">
+        <forwarded xmlns="urn:xmpp:forward:0">
+          <message from="alice@example.net" to="me@example.net" type="chat">
+            <body>archived</body>
+          </message>
+        </forwarded>
+      </result>
+    </message>`)
+    const ctx = { ownBareJid: 'me@example.net', mamQueryIds: new Set<string>() }
+    expect(parseMessage(stanza, ctx)?.mam).toBe(true)
+  })
 })

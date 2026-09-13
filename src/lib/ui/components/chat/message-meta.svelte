@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, CheckCheck, Lock, ShieldCheck, Timer } from '@lucide/svelte'
+  import { Check, CheckCheck, Lock, ShieldCheck, Timer, TriangleAlert } from '@lucide/svelte'
 
   import LL, { locale } from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
@@ -66,7 +66,23 @@
     {formatTime(message.timestamp, $locale)}
   </time>
   {#if message.outgoing}
-    {#if message.read}
+    {#if message.deliveryError}
+      <Tooltip>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <span
+              {...props}
+              class="inline-flex items-center gap-0.5"
+              role="img"
+              aria-label={`${$LL.deliveryFailed()}: ${message.deliveryError}`}
+            >
+              <TriangleAlert class="text-warning size-3" />
+            </span>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent>{$LL.deliveryFailed()}: {message.deliveryError}</TooltipContent>
+      </Tooltip>
+    {:else if message.read}
       <Tooltip>
         <TooltipTrigger>
           {#snippet child({ props })}

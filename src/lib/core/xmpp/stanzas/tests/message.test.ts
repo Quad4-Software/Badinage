@@ -233,4 +233,27 @@ my answer</body>
     expect(m?.body).toBe('https://files.example.net/doc.pdf')
     expect(m?.attachments?.[0]?.url).toBe('https://files.example.net/doc.pdf')
   })
+
+  it('parses a type=error bounce into condition and text', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="error" id="m-fail">
+        <body>echoed body</body>
+        <error type="cancel" code="503">
+          <service-unavailable xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+          <text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">user gone</text>
+        </error>
+      </message>`)
+    )
+    expect(m?.error).toEqual({ condition: 'service-unavailable', text: 'user gone' })
+    expect(m?.id).toBe('m-fail')
+  })
+
+  it('parses a type=error stanza without an error element', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="error" id="m-fail">
+        <body>echoed</body>
+      </message>`)
+    )
+    expect(m?.error).toEqual({})
+  })
 })

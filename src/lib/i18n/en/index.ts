@@ -389,6 +389,15 @@ const en = {
   invisible: 'Invisible',
   invisibleHint:
     'You appear offline to your contacts. Joining rooms is blocked while invisible.',
+  autoAway: 'Auto-away when idle',
+  autoAwayHint:
+    'Sets your presence to away after ten minutes without input and restores it on the next keystroke or click.',
+
+  cmdUnknown: 'Unknown command: /{name:string}',
+  cmdRoomOnly: '/{name:string} only works inside a room',
+  cmdUsage: 'Usage: {usage:string}',
+  historyCleared: 'Local history cleared',
+  deliveryFailed: 'Not delivered',
 
   verifyAll: 'Verify all',
   verifyAllDescription: 'Mark every device of {jid:string} as verified?',

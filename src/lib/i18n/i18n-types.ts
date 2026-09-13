@@ -1445,6 +1445,37 @@ type RootTranslation = {
 	 */
 	invisibleHint: string
 	/**
+	 * A​u​t​o​-​a​w​a​y​ ​w​h​e​n​ ​i​d​l​e
+	 */
+	autoAway: string
+	/**
+	 * S​e​t​s​ ​y​o​u​r​ ​p​r​e​s​e​n​c​e​ ​t​o​ ​a​w​a​y​ ​a​f​t​e​r​ ​t​e​n​ ​m​i​n​u​t​e​s​ ​w​i​t​h​o​u​t​ ​i​n​p​u​t​ ​a​n​d​ ​r​e​s​t​o​r​e​s​ ​i​t​ ​o​n​ ​t​h​e​ ​n​e​x​t​ ​k​e​y​s​t​r​o​k​e​ ​o​r​ ​c​l​i​c​k​.
+	 */
+	autoAwayHint: string
+	/**
+	 * U​n​k​n​o​w​n​ ​c​o​m​m​a​n​d​:​ ​/​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	cmdUnknown: RequiredParams<'name'>
+	/**
+	 * /​{​n​a​m​e​}​ ​o​n​l​y​ ​w​o​r​k​s​ ​i​n​s​i​d​e​ ​a​ ​r​o​o​m
+	 * @param {string} name
+	 */
+	cmdRoomOnly: RequiredParams<'name'>
+	/**
+	 * U​s​a​g​e​:​ ​{​u​s​a​g​e​}
+	 * @param {string} usage
+	 */
+	cmdUsage: RequiredParams<'usage'>
+	/**
+	 * L​o​c​a​l​ ​h​i​s​t​o​r​y​ ​c​l​e​a​r​e​d
+	 */
+	historyCleared: string
+	/**
+	 * N​o​t​ ​d​e​l​i​v​e​r​e​d
+	 */
+	deliveryFailed: string
+	/**
 	 * V​e​r​i​f​y​ ​a​l​l
 	 */
 	verifyAll: string
@@ -2857,6 +2888,34 @@ export type TranslationFunctions = {
 	 * You appear offline to your contacts. Joining rooms is blocked while invisible.
 	 */
 	invisibleHint: () => LocalizedString
+	/**
+	 * Auto-away when idle
+	 */
+	autoAway: () => LocalizedString
+	/**
+	 * Sets your presence to away after ten minutes without input and restores it on the next keystroke or click.
+	 */
+	autoAwayHint: () => LocalizedString
+	/**
+	 * Unknown command: /{name}
+	 */
+	cmdUnknown: (arg: { name: string }) => LocalizedString
+	/**
+	 * /{name} only works inside a room
+	 */
+	cmdRoomOnly: (arg: { name: string }) => LocalizedString
+	/**
+	 * Usage: {usage}
+	 */
+	cmdUsage: (arg: { usage: string }) => LocalizedString
+	/**
+	 * Local history cleared
+	 */
+	historyCleared: () => LocalizedString
+	/**
+	 * Not delivered
+	 */
+	deliveryFailed: () => LocalizedString
 	/**
 	 * Verify all
 	 */

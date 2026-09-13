@@ -58,9 +58,6 @@ export function parseRosterItems(stanza: Element): RosterItem[] {
   return items
 }
 
-// Unwrap a carbon or MAM result to the real stanza inside <forwarded>.
-// Returns null when the stanza is not wrapped.
-
 export function parseDiscoInfo(stanza: Element): DiscoInfo {
   const identities: DiscoIdentity[] = []
   for (const el of allNsTags(stanza, NS.DISCO_INFO, 'identity')) {
@@ -124,13 +121,15 @@ export function parseUploadSlot(stanza: Element): UploadSlot | null {
 }
 
 // vcard-temp PHOTO as a data uri, or undefined when the stanza carries
-// no usable photo.
+// no usable photo. TYPE is sender-controlled, so only image media types
+// become a uri - anything else (text/html and friends) is dropped.
 export function parseVcardPhoto(stanza: Element): string | undefined {
   const vcard = firstTag(stanza, 'vCard')
   const photo = vcard ? firstTag(vcard, 'PHOTO') : null
-  const type = photo ? firstTagText(photo, 'TYPE') : null
+  const type = photo ? firstTagText(photo, 'TYPE')?.trim().toLowerCase() : null
   const binval = photo ? firstTagText(photo, 'BINVAL') : null
-  return type && binval ? `data:${type};base64,${binval.trim()}` : undefined
+  if (!type?.startsWith('image/') || !binval) return undefined
+  return `data:${type};base64,${binval.trim()}`
 }
 
 // A pubsub event notification (XEP-0163) on a message stanza: the node
