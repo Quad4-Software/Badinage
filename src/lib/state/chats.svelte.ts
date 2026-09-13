@@ -10,6 +10,7 @@ import { MESSAGE_PAGE_SIZE } from '$lib/constants'
 import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
 import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
+import { isLiveIncoming } from '$lib/utils/notify'
 
 import {
   createConversation,
@@ -44,6 +45,9 @@ export class ChatStore {
   private seen = new Map<string, Set<string>>()
   private persistence: ConversationPersistence
   private typing = new TypingTracker()
+  // fired once per live incoming message appended; set by the app store,
+  // consumed by the ui layer for notifications and aria-live announces
+  onLive: ((peer: string, message: IncomingMessage) => void) | undefined
 
   constructor(private readonly accountJid: string) {
     this.persistence = new ConversationPersistence(accountJid)
@@ -216,7 +220,11 @@ export class ChatStore {
     if (message.encrypted) stored.encrypted = true
     if (message.undecryptable) stored.undecryptable = true
     if (message.untrustedDevice) stored.untrustedDevice = true
-    this.push(peer, stored, activePeer === peer, seenIds)
+    const appended = this.push(peer, stored, activePeer === peer, seenIds)
+    // dedup drops return false; only a truly appended live incoming
+    // stanza notifies, so mam pages, delayed deliveries and our own
+    // carbons never reach listeners
+    if (appended && isLiveIncoming(message, outgoing)) this.onLive?.(peer, message)
   }
 
   markDelivered(peerJid: string, id: string): void {

@@ -112,6 +112,7 @@
         aria-invalid={jid.length > 0 && !jidValid}
         required
       />
+      <p class="text-muted-foreground text-xs">{$LL.jidHint()}</p>
     </div>
 
     <div class="grid gap-2">

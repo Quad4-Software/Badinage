@@ -90,7 +90,7 @@
     <div class="relative max-w-full">
       <div
         class={cn(
-          'rounded-2xl px-3 py-2 text-sm',
+          'density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
           message.outgoing
             ? 'bg-primary text-primary-foreground rounded-br-sm'
             : 'bg-muted rounded-bl-sm'

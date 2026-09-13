@@ -127,7 +127,7 @@
 </script>
 
 <ScrollArea bind:viewportRef={viewport} class="flex-1">
-  <ol class="flex flex-col p-4">
+  <ol class="flex flex-col p-[var(--density-list-pad)]">
     {#if canLoadOlder}
       <LoadOlder
         loading={conversation.historyLoading ?? false}
@@ -143,7 +143,10 @@
           {formatDay(message.timestamp, $locale)}
         </li>
       {/if}
-      <li id={`m-${message.id}`} class={i > 0 ? (grouped ? 'mt-3' : 'mt-0.5') : ''}>
+      <li
+        id={`m-${message.id}`}
+        class={i > 0 ? (grouped ? 'mt-[var(--density-msg-gap)]' : 'mt-0.5') : ''}
+      >
         <MessageItem
           {message}
           showNick={grouped}

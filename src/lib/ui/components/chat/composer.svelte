@@ -287,7 +287,7 @@
     </div>
   {/if}
 
-  <div class="flex items-end gap-1.5 p-3">
+  <div class="flex items-end gap-1.5 p-[var(--density-composer-pad)]">
     <input
       bind:this={fileEl}
       type="file"

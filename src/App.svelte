@@ -19,6 +19,7 @@
   import DemoBadge from '$lib/ui/components/shell/demo-badge.svelte'
   import Keyboard from '$lib/ui/components/shell/keyboard.svelte'
   import LoginForm from '$lib/ui/components/shell/login-form.svelte'
+  import Notifications from '$lib/ui/components/shell/notifications.svelte'
   import StatusToasts from '$lib/ui/components/shell/status-toasts.svelte'
   import {
     Dialog,
@@ -29,6 +30,7 @@
   } from '$lib/ui/primitives/dialog'
   import { Sonner } from '$lib/ui/primitives/sonner'
   import { TooltipProvider } from '$lib/ui/primitives/tooltip'
+  import { normalizeDensity } from '$lib/utils/density'
 
   $effect(() => {
     const hue = settings.current.accentHue
@@ -40,6 +42,12 @@
       root.dataset.accent = 'custom'
       root.style.setProperty('--accent-h', String(hue))
     }
+  })
+
+  // density lands as an attribute so the css tokens in app.css can scale
+  // spacing and type off it
+  $effect(() => {
+    document.documentElement.dataset.density = normalizeDensity(settings.current.density)
   })
 
   onMount(() => {
@@ -74,6 +82,7 @@
   <Sonner />
   <Keyboard />
   <StatusToasts />
+  <Notifications />
   {#if accounts.active?.options.demo}
     <DemoBadge />
   {/if}

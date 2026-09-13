@@ -308,6 +308,7 @@ class AccountsStore {
       if (status === 'connected') {
         off()
         this.list.push(account)
+        this.applyOrder()
         this.activeJid ??= account.jid
         saveSession(options)
       } else if (status === 'authfail' || status === 'error' || status === 'disconnected') {
@@ -329,6 +330,37 @@ class AccountsStore {
     this.list.splice(index, 1)
     clearSession(jid)
     if (this.activeJid === jid) this.activeJid = this.list[0]?.jid ?? null
+    const order = settings.current.accountOrder
+    if (order.includes(jid)) {
+      settings.set(
+        'accountOrder',
+        order.filter((entry) => entry !== jid)
+      )
+    }
+  }
+
+  // move an account one step in the switcher order and persist the new
+  // arrangement; activeJid is untouched so the view does not jump
+  move(jid: string, delta: -1 | 1): void {
+    const from = this.list.findIndex((a) => a.jid === jid)
+    const to = from + delta
+    if (from < 0 || to < 0 || to >= this.list.length) return
+    const [item] = this.list.splice(from, 1)
+    if (!item) return
+    this.list.splice(to, 0, item)
+    settings.set(
+      'accountOrder',
+      this.list.map((a) => a.jid)
+    )
+  }
+
+  // sort the live list by the persisted preference; unlisted jids keep
+  // their arrival order at the end (sort is stable)
+  private applyOrder(): void {
+    const order = settings.current.accountOrder
+    if (order.length === 0) return
+    const rank = new Map(order.map((jid, i) => [jid, i]))
+    this.list.sort((a, b) => (rank.get(a.jid) ?? order.length) - (rank.get(b.jid) ?? order.length))
   }
 }
 

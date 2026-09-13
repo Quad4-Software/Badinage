@@ -5,6 +5,8 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { settings } from '$lib/state/settings.svelte'
+  import { effectiveHue } from '$lib/utils/account'
   import { cn } from '$lib/utils/cn'
   import { Button } from '$lib/ui/primitives/button'
 
@@ -20,7 +22,16 @@
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="w-full justify-between">
-          <span class="truncate">{active?.jid ?? ''}</span>
+          <span class="flex min-w-0 items-center gap-2">
+            {#if active}
+              <span
+                class="size-2.5 shrink-0 rounded-full"
+                style={`background: oklch(0.65 0.17 ${effectiveHue(settings.metaFor(active.jid), active.jid)})`}
+                aria-hidden="true"
+              ></span>
+            {/if}
+            <span class="truncate">{active?.jid ?? ''}</span>
+          </span>
           <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
         </Button>
       {/snippet}
@@ -39,6 +50,11 @@
             )}
             onSelect={() => (accounts.activeJid = account.jid)}
           >
+            <span
+              class="size-2.5 shrink-0 rounded-full"
+              style={`background: oklch(0.65 0.17 ${effectiveHue(settings.metaFor(account.jid), account.jid)})`}
+              aria-hidden="true"
+            ></span>
             <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
             <span class="min-w-0 flex-1 truncate">{account.jid}</span>
             {#if account.jid === active?.jid}

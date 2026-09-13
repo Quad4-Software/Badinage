@@ -1,9 +1,24 @@
+import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
 import { accounts, type Account } from './accounts.svelte'
 import { ChatStore } from './chats.svelte'
 import { ComposerStore, type ComposerContext } from './composer.svelte'
+
+// one live incoming message, resolved for ui consumers (notifications,
+// aria-live). sender is already display-ready and encrypted is precomputed
+// so listeners never need to look up roster or conversation state.
+export interface LiveMessage {
+  accountJid: string
+  peer: string
+  sender: string
+  // true when the stanza or conversation is omemo-encrypted: listeners
+  // must show a generic label instead of the body
+  encrypted: boolean
+  body: string
+  attachment?: Attachment | undefined
+}
 
 class AppStore {
   chats = new Map<string, ChatStore>()
@@ -33,10 +48,41 @@ class AppStore {
     let store = this.chats.get(accountJid)
     if (!store) {
       store = new ChatStore(accountJid)
+      store.onLive = (peer, message) => this.emitLive(accountJid, peer, message)
       this.chats.set(accountJid, store)
     }
     this.bindAccount(accountJid)
     return store
+  }
+
+  // ui listeners for live incoming traffic (desktop notifications,
+  // aria-live announcements); returns an unsubscribe
+  private liveListeners = new Set<(event: LiveMessage) => void>()
+
+  onLiveMessage(fn: (event: LiveMessage) => void): () => void {
+    this.liveListeners.add(fn)
+    return () => this.liveListeners.delete(fn)
+  }
+
+  private emitLive(accountJid: string, peer: string, message: IncomingMessage): void {
+    if (this.liveListeners.size === 0) return
+    const account = accounts.list.find((a) => a.jid === accountJid)
+    const conversation = this.chats.get(accountJid)?.conversations.get(peer)
+    const rosterName = account?.roster.find((c) => c.jid === bareJid(message.from))?.name
+    const event: LiveMessage = {
+      accountJid,
+      peer,
+      sender:
+        message.type === 'groupchat'
+          ? (message.nick ?? peer)
+          : rosterName || bareJid(message.from),
+      encrypted: Boolean(
+        message.encrypted || message.undecryptable || conversation?.encrypted
+      ),
+      body: message.body,
+      attachment: message.attachments?.[0]
+    }
+    for (const listener of this.liveListeners) listener(event)
   }
 
   registerAction(id: string, handler: () => void): () => void {

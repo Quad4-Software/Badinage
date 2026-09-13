@@ -38,6 +38,10 @@ type RootTranslation = {
 	 */
 	jidPlaceholder: string
 	/**
+	 * L​o​o​k​s​ ​l​i​k​e​ ​a​n​ ​e​m​a​i​l​ ​a​d​d​r​e​s​s​.​ ​T​h​e​ ​s​e​r​v​e​r​ ​i​s​ ​d​i​s​c​o​v​e​r​e​d​ ​a​u​t​o​m​a​t​i​c​a​l​l​y​ ​f​r​o​m​ ​t​h​e​ ​d​o​m​a​i​n​.
+	 */
+	jidHint: string
+	/**
 	 * P​a​s​s​w​o​r​d
 	 */
 	password: string
@@ -267,6 +271,10 @@ type RootTranslation = {
 	 * S​e​a​r​c​h​ ​c​o​n​v​e​r​s​a​t​i​o​n​s​ ​a​n​d​ ​c​o​n​t​a​c​t​s
 	 */
 	search: string
+	/**
+	 * M​e​s​s​a​g​e​s
+	 */
+	messages: string
 	/**
 	 * S​e​a​r​c​h​ ​c​o​n​v​e​r​s​a​t​i​o​n​s​,​ ​c​o​n​t​a​c​t​s​,​ ​a​c​t​i​o​n​s
 	 */
@@ -513,9 +521,41 @@ type RootTranslation = {
 	 */
 	accentHue: string
 	/**
+	 * D​e​n​s​i​t​y
+	 */
+	density: string
+	/**
+	 * C​o​m​f​o​r​t​a​b​l​e
+	 */
+	densityComfortable: string
+	/**
+	 * C​o​m​p​a​c​t
+	 */
+	densityCompact: string
+	/**
 	 * A​c​c​o​u​n​t​s
 	 */
 	accounts: string
+	/**
+	 * C​h​a​n​g​e​ ​c​o​l​o​r​ ​f​o​r​ ​{​j​i​d​}
+	 * @param {string} jid
+	 */
+	accountColor: RequiredParams<'jid'>
+	/**
+	 * M​o​v​e​ ​{​j​i​d​}​ ​u​p
+	 * @param {string} jid
+	 */
+	moveAccountUp: RequiredParams<'jid'>
+	/**
+	 * M​o​v​e​ ​{​j​i​d​}​ ​d​o​w​n
+	 * @param {string} jid
+	 */
+	moveAccountDown: RequiredParams<'jid'>
+	/**
+	 * D​e​s​k​t​o​p​ ​n​o​t​i​f​i​c​a​t​i​o​n​s​ ​f​o​r​ ​{​j​i​d​}
+	 * @param {string} jid
+	 */
+	accountNotifications: RequiredParams<'jid'>
 	/**
 	 * G​e​n​e​r​a​l
 	 */
@@ -529,9 +569,22 @@ type RootTranslation = {
 	 */
 	notifications: string
 	/**
+	 * N​o​t​i​f​i​c​a​t​i​o​n​s​ ​a​r​e​ ​b​l​o​c​k​e​d​ ​b​y​ ​t​h​e​ ​b​r​o​w​s​e​r​.​ ​A​l​l​o​w​ ​t​h​e​m​ ​i​n​ ​t​h​e​ ​s​i​t​e​ ​p​e​r​m​i​s​s​i​o​n​s​ ​t​o​ ​u​s​e​ ​t​h​i​s​.
+	 */
+	notificationsBlocked: string
+	/**
 	 * N​o​t​i​f​i​c​a​t​i​o​n​ ​s​o​u​n​d​s
 	 */
 	sounds: string
+	/**
+	 * N​e​w​ ​m​e​s​s​a​g​e​ ​f​r​o​m​ ​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	newMessageFrom: RequiredParams<'name'>
+	/**
+	 * E​n​c​r​y​p​t​e​d​ ​m​e​s​s​a​g​e
+	 */
+	encryptedMessage: string
 	/**
 	 * K​e​y​b​o​a​r​d​ ​s​h​o​r​t​c​u​t​s
 	 */
@@ -585,6 +638,10 @@ type RootTranslation = {
 	 * O​p​e​n​ ​c​o​m​m​a​n​d​ ​p​a​l​e​t​t​e
 	 */
 	kbCommandPalette: string
+	/**
+	 * S​e​a​r​c​h​ ​m​e​s​s​a​g​e​s
+	 */
+	kbSearch: string
 	/**
 	 * S​w​i​t​c​h​ ​t​o​ ​a​c​c​o​u​n​t​ ​{​n​}
 	 * @param {number} n
@@ -931,6 +988,10 @@ export type TranslationFunctions = {
 	 */
 	jidPlaceholder: () => LocalizedString
 	/**
+	 * Looks like an email address. The server is discovered automatically from the domain.
+	 */
+	jidHint: () => LocalizedString
+	/**
 	 * Password
 	 */
 	password: () => LocalizedString
@@ -1154,6 +1215,10 @@ export type TranslationFunctions = {
 	 * Search conversations and contacts
 	 */
 	search: () => LocalizedString
+	/**
+	 * Messages
+	 */
+	messages: () => LocalizedString
 	/**
 	 * Search conversations, contacts, actions
 	 */
@@ -1399,9 +1464,37 @@ export type TranslationFunctions = {
 	 */
 	accentHue: () => LocalizedString
 	/**
+	 * Density
+	 */
+	density: () => LocalizedString
+	/**
+	 * Comfortable
+	 */
+	densityComfortable: () => LocalizedString
+	/**
+	 * Compact
+	 */
+	densityCompact: () => LocalizedString
+	/**
 	 * Accounts
 	 */
 	accounts: () => LocalizedString
+	/**
+	 * Change color for {jid}
+	 */
+	accountColor: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Move {jid} up
+	 */
+	moveAccountUp: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Move {jid} down
+	 */
+	moveAccountDown: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Desktop notifications for {jid}
+	 */
+	accountNotifications: (arg: { jid: string }) => LocalizedString
 	/**
 	 * General
 	 */
@@ -1415,9 +1508,21 @@ export type TranslationFunctions = {
 	 */
 	notifications: () => LocalizedString
 	/**
+	 * Notifications are blocked by the browser. Allow them in the site permissions to use this.
+	 */
+	notificationsBlocked: () => LocalizedString
+	/**
 	 * Notification sounds
 	 */
 	sounds: () => LocalizedString
+	/**
+	 * New message from {name}
+	 */
+	newMessageFrom: (arg: { name: string }) => LocalizedString
+	/**
+	 * Encrypted message
+	 */
+	encryptedMessage: () => LocalizedString
 	/**
 	 * Keyboard shortcuts
 	 */
@@ -1470,6 +1575,10 @@ export type TranslationFunctions = {
 	 * Open command palette
 	 */
 	kbCommandPalette: () => LocalizedString
+	/**
+	 * Search messages
+	 */
+	kbSearch: () => LocalizedString
 	/**
 	 * Switch to account {n}
 	 */

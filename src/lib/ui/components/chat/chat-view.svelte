@@ -96,7 +96,25 @@
     if (split) app.splitPeer = null
     else app.activePeer = null
   }
+
+  // polite announcements for live incoming traffic; onLive already filters
+  // out mam pages, delayed deliveries and our own carbons, and the split
+  // pane skips mounting so messages never announce twice
+  let liveSeq = $state(0)
+  let liveText = $state('')
+  $effect(() =>
+    app.onLiveMessage((event) => {
+      liveText = $LL.newMessageFrom({ name: event.sender })
+      liveSeq += 1
+    })
+  )
 </script>
+
+{#if !split}
+  <div class="sr-only" role="status">
+    {#key liveSeq}{liveText}{/key}
+  </div>
+{/if}
 
 {#snippet paneContent()}
   {#if conversation}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
   import { settings } from '$lib/state/settings.svelte'
+  import { notifyPermission, requestNotifyPermission } from '$lib/ui/notify'
   import { Switch } from '$lib/ui/primitives/switch'
 
   import { matchesQuery } from './match'
@@ -10,6 +11,9 @@
   let { q }: { q: string } = $props()
 
   type Flag = 'sendWithEnter' | 'notifications' | 'sounds'
+
+  // tracked so the denied hint appears the moment the browser refuses
+  let permission = $state(notifyPermission())
 
   const items = $derived(
     (
@@ -27,13 +31,27 @@
       delete settingsSearch.hits.general
     }
   })
+
+  function toggle(key: Flag, value: boolean) {
+    settings.set(key, value)
+    // enabling notifications is the natural moment to ask for permission:
+    // the request rides a user gesture instead of firing unprompted
+    if (key === 'notifications' && value) {
+      void requestNotifyPermission().then((result) => (permission = result))
+    }
+  }
 </script>
 
 <SettingSection id="general" title={$LL.general()} visible={items.length > 0}>
   {#each items as [key, label] (key)}
-    <label class="flex items-center justify-between gap-4 text-sm">
-      {label}
-      <Switch checked={settings.current[key]} onCheckedChange={(v) => settings.set(key, v)} />
-    </label>
+    <div>
+      <label class="flex items-center justify-between gap-4 text-sm">
+        {label}
+        <Switch checked={settings.current[key]} onCheckedChange={(v) => toggle(key, v)} />
+      </label>
+      {#if key === 'notifications' && settings.current.notifications && permission === 'denied'}
+        <p class="text-muted-foreground mt-1 text-xs">{$LL.notificationsBlocked()}</p>
+      {/if}
+    </div>
   {/each}
 </SettingSection>

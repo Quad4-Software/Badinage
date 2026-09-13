@@ -3,6 +3,7 @@
     CircleUserRound,
     Hash,
     MessageCircle,
+    MessageSquareText,
     Palette,
     PanelLeft,
     Search,
@@ -13,10 +14,12 @@
   import { Command } from 'bits-ui'
   import { toggleMode } from 'mode-watcher'
 
+  import { SEARCH_MESSAGE_HITS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { Dialog, DialogContent, DialogTitle } from '$lib/ui/primitives/dialog'
+  import { findMessageHits } from '$lib/utils/search'
 
   interface PaletteItem {
     id: string
@@ -36,6 +39,25 @@
   const MAX_RESULTS = 40
 
   let query = $state('')
+  const tokens = $derived(query.toLowerCase().split(/\s+/).filter(Boolean))
+
+  // after selecting a message hit the list needs a frame to mount the
+  // conversation; retry briefly in case async hydrate is still landing
+  function jumpToMessage(id: string) {
+    let tries = 0
+    const attempt = () => {
+      const el = document.getElementById(`m-${id}`)
+      if (el) {
+        el.scrollIntoView({ block: 'center' })
+        el.animate([{ backgroundColor: 'var(--accent)' }, { backgroundColor: 'transparent' }], {
+          duration: 1500
+        })
+        return
+      }
+      if (tries++ < 20) requestAnimationFrame(attempt)
+    }
+    requestAnimationFrame(attempt)
+  }
 
   // every selectable thing closes the palette first, then runs
   const close = (run: () => void) => () => {
@@ -87,6 +109,25 @@
       icon: User,
       run: close(() => app.selectPeer(c.jid))
     }))
+
+    // body search over loaded conversations; the hit body rides in
+    // keywords so the ranker can still verify every token matched
+    const messages: PaletteItem[] =
+      tokens.length > 0 && store
+        ? findMessageHits([...store.conversations.values()], query, SEARCH_MESSAGE_HITS).map(
+            (hit) => ({
+              id: `msg:${hit.peerJid}:${hit.messageId}`,
+              label: hit.snippet,
+              detail: labelFor(hit.peerJid),
+              keywords: hit.body,
+              icon: MessageSquareText,
+              run: close(() => {
+                app.selectPeer(hit.peerJid)
+                jumpToMessage(hit.messageId)
+              })
+            })
+          )
+        : []
 
     const actions: PaletteItem[] = [
       {
@@ -158,14 +199,13 @@
     return [
       { id: 'conversations', heading: $LL.conversations(), items: conversations },
       { id: 'rooms', heading: $LL.rooms(), items: rooms },
+      { id: 'messages', heading: $LL.messages(), items: messages },
       { id: 'contacts', heading: $LL.contacts(), items: contacts },
       { id: 'actions', heading: $LL.paletteActions(), items: actions },
       { id: 'settings', heading: $LL.settings(), items: sections },
       { id: 'accounts', heading: $LL.accounts(), items: switcher }
     ]
   })
-
-  const tokens = $derived(query.toLowerCase().split(/\s+/).filter(Boolean))
 
   // every token must hit the label or the extra text (jid, keywords);
   // label hits outrank extra hits

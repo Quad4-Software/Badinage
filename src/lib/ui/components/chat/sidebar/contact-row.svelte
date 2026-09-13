@@ -19,7 +19,7 @@
 </script>
 
 <button
-  class="hover:bg-accent flex min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left"
+  class="hover:bg-accent flex min-w-0 items-center gap-3 rounded-md px-2 py-[var(--density-row-pad)] text-left"
   title={contact.jid}
   onclick={onSelect}
 >
@@ -33,13 +33,13 @@
     />
   </span>
   <span class="min-w-0 flex-1">
-    <span class="block truncate text-sm">
+    <span class="density-text-sm block truncate">
       {name}
       {#if blocked}
-        <span class="text-muted-foreground text-xs">· {$LL.blockedBadge()}</span>
+        <span class="text-muted-foreground density-text-xs">· {$LL.blockedBadge()}</span>
       {/if}
     </span>
-    <span class="text-muted-foreground block truncate text-xs">
+    <span class="text-muted-foreground density-text-xs block truncate">
       {contact.presenceStatus || presenceLabel(contact.presence)}
     </span>
   </span>

@@ -42,7 +42,7 @@
 </script>
 
 <button
-  class="hover:bg-accent flex min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left"
+  class="hover:bg-accent flex min-w-0 items-center gap-3 rounded-md px-2 py-[var(--density-row-pad)] text-left"
   class:bg-accent={selected}
   onclick={onSelect}
 >
@@ -53,10 +53,10 @@
     <AvatarFallback>{isRoom ? '#' : initials}</AvatarFallback>
   </Avatar>
   <span class="min-w-0 flex-1">
-    <span class="block truncate text-sm font-medium">{name}</span>
+    <span class="density-text-sm block truncate font-medium">{name}</span>
     <span
       class={cn(
-        'block truncate text-xs',
+        'density-text-xs block truncate',
         selected ? 'text-foreground/70' : 'text-muted-foreground'
       )}
     >

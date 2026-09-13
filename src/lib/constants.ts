@@ -31,3 +31,16 @@ export const INLINE_ATTACHMENT_LIMIT = 512 * 1024
 // cleartext body on omemo stanzas for clients that cannot decrypt
 export const OMEMO_FALLBACK_BODY =
   'I sent you an OMEMO encrypted message but your client does not support it.'
+
+// at most one desktop notification per conversation inside this window
+export const NOTIFICATION_COALESCE_MS = 4_000
+
+// character cap for the notification body preview
+export const NOTIFICATION_SNIPPET_CHARS = 120
+
+// at most this many message-body hits listed in the command palette
+export const SEARCH_MESSAGE_HITS = 10
+
+// oklch hues offered for per-account badge colors; also the pool the
+// jid-hash auto color picks from
+export const ACCOUNT_HUES = [25, 95, 145, 180, 210, 264, 300, 340] as const
