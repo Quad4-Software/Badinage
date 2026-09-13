@@ -24,6 +24,7 @@
     "test:coverage": "vitest run --coverage",
     "test:omemo": "pnpm -F @quad4-software/omemo test",
     "bench": "vitest bench",
+    "perf": "lhci autorun",
     "mutate": "stryker run",
     "knip": "knip",
     "icons": "node scripts/generate-icons.mjs",
@@ -51,6 +52,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
+    "@lhci/cli": "0.15.1",
     "@playwright/test": "1.63.0",
     "@sentry/browser": "10.73.0",
     "@stryker-mutator/core": "10.0.0",

@@ -6,8 +6,8 @@
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
-import { EPHEMERAL_SWEEP_MS, MESSAGE_PAGE_SIZE } from '$lib/constants'
-import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
+import { EPHEMERAL_SWEEP_MS } from '$lib/constants'
+import type { ChatConnection } from '$lib/core/xmpp/connection'
 import { SELF_BANNED_CODE, SELF_KICKED_CODE, SELF_RENAMED_CODE } from '$lib/core/xmpp/features/muc'
 import type { Attachment, IncomingMessage, NotifySetting } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
@@ -32,6 +32,7 @@ import {
   mergeSelfEcho,
   routeMessage
 } from './chats/signals'
+import { loadOlder } from './chats/archive'
 import {
   canBuzz,
   hydrateConversation,
@@ -39,7 +40,8 @@ import {
   markDisplayedRemote,
   noteBuzz,
   saveMeta,
-  sweepExpired
+  sweepExpired,
+  trimLive
 } from './chats/meta'
 import {
   applyDeliveryError,
@@ -132,12 +134,16 @@ export class ChatStore {
   push(peerJid: string, message: ChatMessage, active = false, seenIds: string[] = []): boolean {
     const bare = bareJid(peerJid)
     const conversation = this.open(bare)
-    if (isDuplicate(this.seen, bare, [message.id, ...seenIds])) return false
+    const ids = [message.id, ...seenIds]
+    if (isDuplicate(this.seen, bare, ids)) return false
+    message.dedupIds = ids
     // keep messages ordered by timestamp so archive pages and delayed
     // stanzas land in the right place instead of at the tail
     let at = conversation.messages.length
     while (at > 0 && (conversation.messages[at - 1]?.timestamp ?? 0) > message.timestamp) at--
+    const appended = at === conversation.messages.length
     conversation.messages.splice(at, 0, message)
+    if (appended) trimLive(conversation, this.seen.get(bare))
     // locally pushed messages (outgoing sends) pick up the negotiated
     // ephemeral timer too so they self-destruct like their wire copies
     if (
@@ -461,34 +467,8 @@ export class ChatStore {
     if (message) message.delivered = true
   }
 
-  // Record the rsm cursor from a finished archive page. The archive is
-  // treated as exhausted when the fin says complete or the page carried
-  // no first uid to page before.
-  noteHistoryPage(conversation: Conversation, result: MamPageResult): void {
-    conversation.historyCursor = result.first
-    conversation.historyComplete = result.complete || !result.first
-  }
-
-  // Fetch the next older archive page. No-ops while a page is in flight
-  // or once the archive is exhausted. With no cursor yet the server
-  // returns its latest page, which is what the initial selectPeer fetch
-  // uses too.
   loadOlder(conversation: Conversation, connection: ChatConnection): void {
-    if (!connection.connected) return
-    if (conversation.historyLoading || conversation.historyComplete) return
-    conversation.historyLoading = true
-    connection.queryArchive(
-      conversation.peerJid,
-      {
-        max: MESSAGE_PAGE_SIZE,
-        before: conversation.historyCursor,
-        room: conversation.kind === 'muc'
-      },
-      (result) => {
-        this.noteHistoryPage(conversation, result)
-        conversation.historyLoading = false
-      }
-    )
+    loadOlder(conversation, connection)
   }
 
   // remember join parameters so the rejoin watchdog can replay them and

@@ -103,10 +103,10 @@ export default defineConfig({
         'src/lib/ui/**'
       ],
       thresholds: {
-        lines: 35,
-        statements: 35,
-        branches: 40,
-        functions: 20
+        lines: 60,
+        statements: 58,
+        branches: 55,
+        functions: 45
       }
     },
     benchmark: {

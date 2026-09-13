@@ -3,6 +3,7 @@ name: publish-omemo
 on:
   push:
     tags: ['omemo-v*.*.*']
+  workflow_dispatch:
 
 permissions:
   contents: read

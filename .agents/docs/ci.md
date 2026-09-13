@@ -16,6 +16,13 @@
   E2E_PROSODY=1 pnpm test:e2e.
   pnpm store is cached through setup-node.
   PR runs cancel in progress on new pushes, main never cancels.
+- perf.yml: PRs, weekly cron plus manual dispatch. Builds dist and runs
+  Lighthouse CI (lighthouserc.json, pnpm perf) against the static output.
+  Assertions gate a11y and best-practices scores, total-blocking-time,
+  layout shift and per-resource transfer budgets. Timing metrics warn
+  rather than fail because runner speed varies. Reports upload as the
+  lighthouse-reports artifact. Local runs need a Chrome binary, point
+  CHROME_PATH at it if chrome-launcher cannot find one.
 - mutation.yml: weekly cron plus manual dispatch. Runs stryker with the
   vitest runner on root and packages/omemo, uploads the html/json report
   as an artifact. The vitest runner is patched (pnpm-workspace.yaml
@@ -45,6 +52,8 @@
   (.github/dependabot.yml) bumps them weekly.
 - No pull_request_target, no run steps on untrusted PR input, no secrets
   in logs.
+- Every workflow stays manually triggerable through workflow_dispatch so
+  a job can be re-run on demand without pushing a commit.
 - permissions: blocks stay minimal per job. docker.yml needs id-token:
   write for cosign keyless signing, nothing else does.
 

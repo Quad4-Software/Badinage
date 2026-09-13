@@ -1,23 +1,21 @@
 <script lang="ts">
-  import { Copy, Pencil, Reply, Smile, SmilePlus, Trash2, X } from '@lucide/svelte'
+  import { Check, Copy, Pencil, Reply, Smile, SmilePlus, Trash2, X } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
   import { copyText } from '$lib/ui/clipboard'
+  import { tick } from '$lib/ui/interactions'
   import { cn } from '$lib/utils/cn'
-
-  import EmojiPicker from '../emoji-picker.svelte'
 
   interface Props {
     message: ChatMessage
     canModerate?: boolean
-    // picker state lives in the parent because a second trigger in the
-    // reaction row shares it
+    // picker state and positioning live in the parent because a second
+    // trigger in the reaction row shares them
     pickerOpen?: boolean
-    pickerAnchor?: 'top' | 'bottom'
+    onOpenPicker?: ((anchor: 'top' | 'bottom', trigger: HTMLElement) => void) | undefined
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
-    onReact?: ((emoji: string) => void) | undefined
     onRetract?: ((message: ChatMessage) => void) | undefined
     // XEP-0425: shown only when our own room role allows moderation
     onModerate?: ((message: ChatMessage) => void) | undefined
@@ -28,28 +26,27 @@
   let {
     message,
     canModerate = false,
-    pickerOpen = $bindable(false),
-    pickerAnchor = $bindable('top'),
+    pickerOpen = false,
+    onOpenPicker,
     onReply,
     onEdit,
-    onReact,
     onRetract,
     onModerate,
     onDismiss
   }: Props = $props()
 
   const actionClass =
-    'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded'
+    'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded transition-transform active:scale-90'
 
-  function copyBody() {
-    void copyText(message.body)
-  }
+  let copied = $state(false)
 
-  // anchor follows the trigger: the action bar sits above the bubble, the
-  // quick-react buttons below it
-  function openPicker(anchor: 'top' | 'bottom') {
-    pickerAnchor = anchor
-    pickerOpen = !pickerOpen
+  // success feedback is a check flash on the button itself: the write
+  // happened, no toast needed
+  async function copyBody() {
+    if (!(await copyText(message.body))) return
+    copied = true
+    tick()
+    setTimeout(() => (copied = false), 1200)
   }
 </script>
 
@@ -73,7 +70,7 @@
       class={actionClass}
       aria-label={$LL.react()}
       aria-expanded={pickerOpen}
-      onclick={() => openPicker('top')}
+      onclick={(event) => onOpenPicker?.('top', event.currentTarget)}
     >
       <Smile class="size-3.5" />
     </button>
@@ -96,7 +93,11 @@
       </button>
     {/if}
     <button type="button" class={actionClass} aria-label={$LL.copyMessage()} onclick={copyBody}>
-      <Copy class="size-3.5" />
+      {#if copied}
+        <Check class="text-success size-3.5" />
+      {:else}
+        <Copy class="size-3.5" />
+      {/if}
     </button>
     {#if canModerate}
       <button
@@ -120,19 +121,6 @@
     {/if}
   </div>
 
-  {#if pickerOpen}
-    <div
-      class={cn(
-        'absolute z-30',
-        pickerAnchor === 'top'
-          ? 'right-0 bottom-full mb-1'
-          : cn('top-full mt-1', message.outgoing ? 'right-0' : 'left-0')
-      )}
-    >
-      <EmojiPicker onPick={(emoji) => onReact?.(emoji)} onClose={() => (pickerOpen = false)} />
-    </div>
-  {/if}
-
   {#if Object.keys(message.reactions).length === 0}
     <button
       type="button"
@@ -141,7 +129,7 @@
         message.outgoing ? 'right-1' : 'left-1'
       )}
       aria-label={$LL.react()}
-      onclick={() => openPicker('bottom')}
+      onclick={(event) => onOpenPicker?.('bottom', event.currentTarget)}
     >
       <SmilePlus class="size-3.5" />
     </button>

@@ -222,6 +222,24 @@
   animation: typing-bounce 1.2s ease-in-out infinite;
 }
 
+/* snappy overshoot when a reaction lands or its count bumps: short,
+   springy and only on the emoji glyph so the pill itself never moves */
+@keyframes reaction-pop {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.reaction-pop {
+  animation: reaction-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 /* XEP-0392 peer colors: the raw consistent color sits under the 4.5:1
    wcag aa floor at small text sizes on both schemes, so callers pass the
    same hue at a darker and a lighter step as custom properties and the
@@ -240,7 +258,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .typing-dot {
+  .typing-dot,
+  .reaction-pop {
     animation: none;
   }
 }

@@ -18,6 +18,8 @@
   import MessageBody from './message-body.svelte'
   import MessageMeta from './message-meta.svelte'
   import MessageItemActions from './message-item/actions.svelte'
+  import EmojiPicker from './emoji-picker.svelte'
+  import { anchorStyle, portal, tick } from '$lib/ui/interactions'
   import { longPress } from '$lib/ui/long-press'
 
   interface Props {
@@ -99,13 +101,36 @@
     'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded'
 
   // picker state is shared between the action bar trigger and the
-  // reaction-row trigger, so it lives here and binds into the child
+  // reaction-row trigger, so it lives here and binds into the child.
+  // The picker itself portals to body and anchors to the trigger rect:
+  // inside the scrollable list an absolute wrapper got clipped against
+  // the composer and could stack under sibling panes
   let pickerOpen = $state(false)
-  let pickerAnchor = $state<'top' | 'bottom'>('top')
+  let pickerStyle = $state('')
+  let pickerTrigger = $state<HTMLElement | null>(null)
+  let pickerEl = $state<HTMLElement | null>(null)
 
-  function openPicker(anchor: 'top' | 'bottom') {
-    pickerAnchor = anchor
-    pickerOpen = !pickerOpen
+  function openPicker(anchor: 'top' | 'bottom', trigger: HTMLElement) {
+    if (pickerOpen) {
+      closePicker()
+      return
+    }
+    pickerTrigger = trigger
+    pickerStyle = anchorStyle(trigger.getBoundingClientRect(), {
+      anchor,
+      width: 288,
+      height: 300,
+      alignRight: anchor === 'top' || message.outgoing
+    })
+    pickerOpen = true
+  }
+
+  // the picker autofocuses its search on open, so closing while focus is
+  // inside has to hand it back to the trigger or it drops to the body
+  function closePicker() {
+    if (pickerEl?.contains(document.activeElement)) pickerTrigger?.focus()
+    pickerOpen = false
+    pickerTrigger = null
   }
 
   function senderNames(senders: string[]): string {
@@ -326,16 +351,21 @@
       <MessageItemActions
         {message}
         {canModerate}
-        bind:pickerOpen
-        bind:pickerAnchor
+        {pickerOpen}
+        onOpenPicker={openPicker}
         {onReply}
         {onEdit}
-        {onReact}
         {onRetract}
         {onModerate}
         {onDismiss}
       />
     </div>
+
+    {#if pickerOpen}
+      <div {@attach portal} bind:this={pickerEl} class="fixed z-50" style={pickerStyle}>
+        <EmojiPicker onPick={(emoji) => onReact?.(emoji)} onClose={closePicker} />
+      </div>
+    {/if}
 
     {#if reactionEntries.length > 0}
       <div class={cn('mt-1 flex flex-wrap gap-1', message.outgoing && 'justify-end')}>
@@ -348,15 +378,20 @@
                   {...props}
                   type="button"
                   class={cn(
-                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs',
+                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-transform active:scale-95',
                     mine
                       ? 'bg-primary/15 text-primary ring-primary/40 ring-1 ring-inset'
                       : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                   )}
                   aria-pressed={mine}
-                  onclick={() => onReact?.(emoji)}
+                  onclick={() => {
+                    tick()
+                    onReact?.(emoji)
+                  }}
                 >
-                  <span>{emoji}</span>
+                  {#key senders.length}
+                    <span class="reaction-pop inline-block">{emoji}</span>
+                  {/key}
                   <span class="tabular-nums">{senders.length}</span>
                 </button>
               {/snippet}
@@ -369,7 +404,7 @@
             type="button"
             class="msg-hover-only text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             aria-label={$LL.react()}
-            onclick={() => openPicker('bottom')}
+            onclick={(event) => openPicker('bottom', event.currentTarget)}
           >
             <SmilePlus class="size-3.5" />
           </button>

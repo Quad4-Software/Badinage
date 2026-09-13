@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { enterDemo } from './helpers'
+
 test.describe('layout metrics', () => {
   for (const width of [375, 768, 1280]) {
     test(`no horizontal overflow at ${width}px`, async ({ page }) => {
@@ -171,5 +173,51 @@ test.describe('settings dialog', () => {
       buffer: Buffer.from('{"not":"ours"}')
     })
     await expect(page.getByText('Could not import that file')).toBeVisible()
+  })
+})
+
+test.describe('reaction picker', () => {
+  // desktop only: on touch the hover action bar does not exist and the
+  // sheet renders an embedded picker instead of the portaled one
+  test.skip(({ isMobile }) => Boolean(isMobile), 'touch uses the action sheet')
+  test('stays fully inside the viewport near the composer', async ({ page }) => {
+    await enterDemo(page)
+    await page.getByRole('button', { name: /Aria/ }).first().click()
+    const input = page.getByLabel(/Message Aria/)
+    // the newest row sits directly against the composer, which is the
+    // clip case: a bottom-anchored picker has no room to open below
+    await input.fill('clip check')
+    await input.press('Enter')
+    const row = page.locator('li').filter({ hasText: 'clip check' })
+    await row.hover()
+    // the bottom trigger anchors the picker below the bubble, the path
+    // that used to clip against the composer
+    await row.getByRole('button', { name: 'Add reaction' }).last().click()
+    const picker = page.getByRole('dialog', { name: 'Pick an emoji' })
+    await expect(picker).toBeVisible()
+    const box = await picker.boundingBox()
+    const viewport = page.viewportSize()
+    expect(box?.x).toBeGreaterThanOrEqual(0)
+    expect(box?.y).toBeGreaterThanOrEqual(0)
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport?.width ?? 0)
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(viewport?.height ?? 0)
+  })
+})
+
+test.describe('dom stability', () => {
+  // run before login so no demo traffic or message rendering can move
+  // the baseline. The settings dialog is a portaled overlay: nodes left
+  // behind after close are a leak
+  test('repeated overlays do not leak nodes', async ({ page }) => {
+    await page.goto('/')
+    const nodeCount = () => page.evaluate(() => document.getElementsByTagName('*').length)
+    const before = await nodeCount()
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('Control+,')
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toBeHidden()
+    }
+    expect((await nodeCount()) - before).toBeLessThanOrEqual(4)
   })
 })

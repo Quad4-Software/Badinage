@@ -19,6 +19,11 @@ export const DEFAULT_TELEMETRY_DSN = 'https://a33cf09841e94ba38d1efea79bf620f5@b
 
 export const MESSAGE_PAGE_SIZE = 50
 
+// live messages kept per conversation. Older entries drop off the front
+// and are re-fetched from the archive on scroll-back, so the DOM stays
+// bounded in long-running sessions
+export const LIVE_MESSAGE_CAP = MESSAGE_PAGE_SIZE * 20
+
 export const RECONNECT_DELAY_MS = 5_000
 export const RECONNECT_DELAY_MAX_MS = 60_000
 

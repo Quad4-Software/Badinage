@@ -5,7 +5,7 @@
 
 import type { SvelteMap } from 'svelte/reactivity'
 
-import { ATTENTION_COOLDOWN_MS, RTT_TTL_MS } from '$lib/constants'
+import { ATTENTION_COOLDOWN_MS, LIVE_MESSAGE_CAP, RTT_TTL_MS } from '$lib/constants'
 import { bareJid } from '$lib/utils/jid'
 
 import type { ConversationPersistence, ConversationMeta } from '../persistence.svelte'
@@ -119,7 +119,23 @@ export async function hydrateConversation(
     if (raw.pending) continue
     if (raw.expiresAt !== undefined && raw.expiresAt <= Date.now()) continue
     batch.push(raw)
-    if (seenSet.size < DEDUP_CAP) seenSet.add(raw.id)
+    if (seenSet.size < DEDUP_CAP) {
+      for (const id of raw.dedupIds ?? [raw.id]) seenSet.add(id)
+    }
   }
   conversation.messages.splice(0, 0, ...batch)
+}
+
+// Bound the live list. Called only on tail appends: archive pages land
+// at the front and must not evict themselves. Dropped ids leave the
+// dedup set too, so scroll-back refetches of trimmed history are not
+// swallowed as duplicates.
+export function trimLive(conversation: Conversation, dedup: Set<string> | undefined): void {
+  const excess = conversation.messages.length - LIVE_MESSAGE_CAP
+  if (excess <= 0) return
+  const dropped = conversation.messages.splice(0, excess)
+  if (!dedup) return
+  for (const message of dropped) {
+    for (const id of message.dedupIds ?? [message.id]) dedup.delete(id)
+  }
 }

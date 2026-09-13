@@ -10,6 +10,7 @@
   import { cn } from '$lib/utils/cn'
   import { bareJid } from '$lib/utils/jid'
   import { toast } from '$lib/ui/primitives/sonner'
+  import { tick } from '$lib/ui/interactions'
   import { Button } from '$lib/ui/primitives/button'
 
   import EmojiPicker from './emoji-picker.svelte'
@@ -160,6 +161,7 @@
       text
     })
     if (!sent) return
+    tick()
     body = ''
     app.setComposer(peerJid, {})
     // the message is out. Any in-flight rtt session ends with a cancel
@@ -373,7 +375,12 @@
         <Square class="size-4" />
       </Button>
     {:else if body.trim()}
-      <Button size="icon" class="max-md:size-10" onclick={send} aria-label={$LL.send()}>
+      <Button
+        size="icon"
+        class="transition-transform active:scale-90 max-md:size-10"
+        onclick={send}
+        aria-label={$LL.send()}
+      >
         <SendHorizontal class="size-4" />
       </Button>
     {:else}

@@ -30,6 +30,7 @@
   import { onMount } from 'svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
+  import { tick } from '$lib/ui/interactions'
   import { Input } from '$lib/ui/primitives/input'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
@@ -78,6 +79,7 @@
   let loading = $state(true)
   let query = $state('')
   let searchRef = $state<HTMLInputElement | null>(null)
+  let pickerEl = $state<HTMLDivElement | null>(null)
 
   const favorites = $derived(
     EMOJIS.map(
@@ -103,7 +105,6 @@
   })
 
   onMount(() => {
-    if (!embedded) searchRef?.focus()
     void loadDataset()
       .then((items) => {
         all = items
@@ -113,6 +114,22 @@
       .catch(() => {
         datasetPromise = null
       })
+
+    if (embedded) return
+    searchRef?.focus()
+    // the picker is anchored to a trigger rect, so a scroll or resize
+    // that moves the anchor would leave it floating detached. Scroll
+    // inside the picker itself does not count
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Node && pickerEl?.contains(event.target)) return
+      onClose()
+    }
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    window.addEventListener('resize', onClose)
+    return () => {
+      window.removeEventListener('scroll', onScroll, { capture: true })
+      window.removeEventListener('resize', onClose)
+    }
   })
 
   function onKeydown(event: KeyboardEvent) {
@@ -120,6 +137,7 @@
   }
 
   function pick(emoji: string) {
+    tick()
     onPick(emoji)
     onClose()
   }
@@ -139,6 +157,7 @@
 {/if}
 
 <div
+  bind:this={pickerEl}
   role={embedded ? undefined : 'dialog'}
   aria-label={embedded ? undefined : $LL.addReactionEmoji()}
   class="bg-popover relative z-50 w-72 rounded-lg border p-2 shadow-md"

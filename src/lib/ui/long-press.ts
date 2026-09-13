@@ -1,5 +1,7 @@
 import type { Attachment } from 'svelte/attachments'
 
+import { tick } from './interactions'
+
 const HOLD_MS = 500
 const MOVE_CANCEL_PX = 10
 // a contextmenu that lands right after the touch timer fired is the same
@@ -29,7 +31,7 @@ export function longPress(handler: () => void): Attachment<HTMLElement> {
       timer = setTimeout(() => {
         timer = null
         firedAt = Date.now()
-        navigator.vibrate?.(10)
+        tick()
         handler()
       }, HOLD_MS)
     }

@@ -25,3 +25,5 @@ packages/omemo/docs/
 test-results/
 playwright-report/
 .stryker-tmp/
+.lhci/
+.lighthouseci/

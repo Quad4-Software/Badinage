@@ -17,6 +17,10 @@ interface ReplyRef {
 export interface ChatMessage {
   // dedup key: stanza-id when present, else origin-id, else a fallback
   id: string
+  // every alias this message registered in the dedup set. Kept so a
+  // live-cap trim can release them and archive refetches are not
+  // swallowed as duplicates
+  dedupIds?: string[] | undefined
   // the stanza's wire id attribute - used for receipts and chat markers
   wireId?: string | undefined
   peerJid: string
