@@ -156,12 +156,14 @@ export class DemoConnection implements ChatConnection {
     putUrl: string,
     file: Blob,
     headers?: Record<string, string>,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
     // nothing is really uploaded; report completion anyway
     void putUrl
     void file
     void headers
+    void signal
     onProgress?.(1)
     return Promise.resolve()
   }
@@ -205,6 +207,13 @@ export class DemoConnection implements ChatConnection {
     void to
     void id
     void marker
+  }
+
+  sendRetraction(to: string, targetId: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    // the local store already tombstoned the message; nothing to echo
+    void to
+    void targetId
+    void type
   }
 
   sendPresence(): void {

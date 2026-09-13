@@ -25,6 +25,7 @@ const DEMO_LIVE_MESSAGE_DELAY_MS = 2500
 const DEMO_SUBSCRIPTION_REQUEST_DELAY_MS = 4000
 const DEMO_LIVE_REACTION_DELAY_MS = 5000
 const DEMO_SECOND_LIVE_MESSAGE_DELAY_MS = 5500
+const DEMO_LIVE_RETRACT_DELAY_MS = 9000
 
 const CONTACTS: { jid: string; name: string; presence: string; status: string }[] = [
   { jid: 'aria@badinage.local', name: 'Aria', presence: 'online', status: 'around' },
@@ -50,6 +51,7 @@ type DmHistoryEntry = {
   replaceId?: IncomingMessage['replaceId']
   attachments?: IncomingMessage['attachments']
   signed?: boolean
+  spoilerHint?: string
 }
 
 // A one second 8-bit mono PCM sine blip, built at module load so the demo
@@ -106,6 +108,25 @@ const DM_HISTORY: Record<string, DmHistoryEntry[]> = {
       body: 'badinage release notes drafted too',
       agoMin: 118,
       stanzaId: 'd-hist-aria-4'
+    },
+    {
+      who: 'them',
+      body: 'latency graph is *finally* flat, see `_p99` in `grafana`',
+      agoMin: 40,
+      stanzaId: 'd-hist-aria-4b'
+    },
+    {
+      who: 'them',
+      body: '/me celebrates quietly',
+      agoMin: 39,
+      stanzaId: 'd-hist-aria-4c'
+    },
+    {
+      who: 'them',
+      body: 'the butler did it, obviously',
+      agoMin: 30,
+      stanzaId: 'd-hist-aria-4d',
+      spoilerHint: 'book club ending'
     },
     { who: 'them', body: 'nice. review tomorrow?', agoMin: 14, stanzaId: 'd-hist-aria-5' },
     // aria corrects her previous message
@@ -173,6 +194,7 @@ const ROOM_HISTORY: {
   agoMin: number
   stanzaId: string
   attachments?: IncomingMessage['attachments']
+  spoilerHint?: string
 }[] = [
   { nick: 'cleo', body: 'morning all', agoMin: 95, stanzaId: 'room-1' },
   {
@@ -188,6 +210,25 @@ const ROOM_HISTORY: {
     stanzaId: 'room-3'
   },
   { nick: 'wren', body: 'I put a fix in the dev compose file', agoMin: 40, stanzaId: 'room-4' },
+  {
+    nick: 'dmitri',
+    body: 'the failover runs on the *standby* node only',
+    agoMin: 38,
+    stanzaId: 'room-4b'
+  },
+  {
+    nick: 'wren',
+    body: '/me files the follow-up ticket',
+    agoMin: 37,
+    stanzaId: 'room-4c'
+  },
+  {
+    nick: 'cleo',
+    body: 'it was the dns ttl all along',
+    agoMin: 36,
+    stanzaId: 'room-4d',
+    spoilerHint: ''
+  },
   { nick: 'cleo', body: 'merged, thanks', agoMin: 35, stanzaId: 'room-5' },
   {
     nick: 'aria',
@@ -302,7 +343,8 @@ export function emitDmHistory(events: DemoEmitter, jid: string): void {
         replyTo: m.replyTo,
         replaceId: m.replaceId,
         attachments: m.attachments,
-        signed: m.signed
+        signed: m.signed,
+        spoilerHint: m.spoilerHint
       })
     }
   }
@@ -318,7 +360,8 @@ export function emitRoomHistory(events: DemoEmitter, jid: string): void {
       nick: m.nick,
       stanzaId: m.stanzaId,
       delay: ago(m.agoMin),
-      attachments: m.attachments
+      attachments: m.attachments,
+      spoilerHint: m.spoilerHint
     })
   }
   // cleo reacts to wren's last room message
@@ -343,13 +386,14 @@ export function scheduleLiveEvents(
   uniqueId: (prefix: string) => string,
   schedule: (fn: () => void, ms: number) => void
 ): void {
+  const esmeStanzaId = uniqueId('live')
   schedule(() => {
     events.emit('message', {
       from: 'esme@badinage.local',
       to: jid,
       body: 'hey, is this the new client?',
       type: 'chat',
-      stanzaId: uniqueId('live')
+      stanzaId: esmeStanzaId
     })
   }, DEMO_LIVE_MESSAGE_DELAY_MS)
   schedule(() => {
@@ -379,6 +423,18 @@ export function scheduleLiveEvents(
       stanzaId: uniqueId('live')
     })
   }, DEMO_SECOND_LIVE_MESSAGE_DELAY_MS)
+  schedule(() => {
+    // esme thinks better of her message and retracts it; her stanza id
+    // names the target so the row becomes a tombstone
+    events.emit('message', {
+      from: 'esme@badinage.local',
+      to: jid,
+      body: '',
+      type: 'chat',
+      stanzaId: uniqueId('live'),
+      retractId: esmeStanzaId
+    })
+  }, DEMO_LIVE_RETRACT_DELAY_MS)
 }
 
 // The one older page of history behind every peer, emitted when

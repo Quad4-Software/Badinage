@@ -17,13 +17,27 @@
     conversation: Conversation
     // our own bare jid (dm) - used to mark our reaction pills
     selfJid?: string
+    // maps a reaction sender key (bare jid or muc nick) to a display name
+    senderLabel?: ((sender: string) => string) | undefined
     onQuoteClick?: ((id: string) => void) | undefined
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((message: ChatMessage, emoji: string) => void) | undefined
+    onRetract?: ((message: ChatMessage) => void) | undefined
+    onCancelUpload?: ((message: ChatMessage) => void) | undefined
   }
 
-  let { conversation, selfJid = '', onQuoteClick, onReply, onEdit, onReact }: Props = $props()
+  let {
+    conversation,
+    selfJid = '',
+    senderLabel,
+    onQuoteClick,
+    onReply,
+    onEdit,
+    onReact,
+    onRetract,
+    onCancelUpload
+  }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
   // scrollTop under this counts as near the top and shows the pager button
@@ -150,10 +164,13 @@
           showAvatar={grouped}
           avatarName={avatarName(message)}
           selfJid={self}
+          {senderLabel}
           {onQuoteClick}
           {onReply}
           {onEdit}
           onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
+          {onRetract}
+          {onCancelUpload}
         />
       </li>
     {/each}

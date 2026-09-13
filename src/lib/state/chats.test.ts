@@ -168,6 +168,128 @@ describe('ChatStore ingest', () => {
     expect(conversation?.messages[0]?.outgoing).toBe(false)
   })
 
+  it('tombstones a message when its author retracts it', () => {
+    connection.events.emit('message', incoming({ id: 'w1', stanzaId: 's1', body: 'oops' }))
+    connection.events.emit('message', incoming({ body: '', retractId: 'w1' }))
+    const messages = store.conversations.get('peer@example.net')?.messages
+    expect(messages).toHaveLength(1)
+    expect(messages?.[0]?.retracted).toBe(true)
+    expect(messages?.[0]?.body).toBe('')
+  })
+
+  it('clears reactions when a message is retracted', () => {
+    connection.events.emit('message', incoming({ id: 'w1', stanzaId: 's1' }))
+    connection.events.emit(
+      'message',
+      incoming({ body: '', reactionTo: { id: 'w1', emojis: ['\u{1F44D}'] } })
+    )
+    connection.events.emit('message', incoming({ body: '', retractId: 'w1' }))
+    const target = store.conversations.get('peer@example.net')?.messages[0]
+    expect(target?.retracted).toBe(true)
+    expect(target?.reactions).toEqual({})
+  })
+
+  it('never stores the retraction fallback body, even for unknown targets', () => {
+    connection.events.emit(
+      'message',
+      incoming({ retractId: 'no-such-message', body: '/me retracted a message' })
+    )
+    expect(store.conversations.get('peer@example.net')?.messages ?? []).toHaveLength(0)
+  })
+
+  it('does not let a peer retract our outgoing message', () => {
+    const sent = { ...emptyMessage('peer@example.net'), id: 'local-1', wireId: 'w1' }
+    store.push('peer@example.net', sent)
+    connection.events.emit('message', incoming({ body: '', retractId: 'w1' }))
+    expect(sent.retracted).toBeUndefined()
+  })
+
+  it('retracts our own message when the retraction arrives as a sent carbon', () => {
+    connection.events.emit(
+      'message',
+      incoming({ from: 'me@example.net/phone', to: 'peer@example.net', carbon: 'sent', id: 'w1' })
+    )
+    connection.events.emit(
+      'message',
+      incoming({
+        from: 'me@example.net/phone',
+        to: 'peer@example.net',
+        carbon: 'sent',
+        body: '',
+        retractId: 'w1'
+      })
+    )
+    const messages = store.conversations.get('peer@example.net')?.messages
+    expect(messages).toHaveLength(1)
+    expect(messages?.[0]?.retracted).toBe(true)
+  })
+
+  it('honours a muc retraction only from the same nick', () => {
+    connection.events.emit(
+      'message',
+      incoming({ from: `${ROOM}/nick1`, type: 'groupchat', stanzaId: 's1', nick: 'nick1' })
+    )
+    connection.events.emit(
+      'message',
+      incoming({
+        from: `${ROOM}/nick2`,
+        type: 'groupchat',
+        nick: 'nick2',
+        body: '',
+        retractId: 's1'
+      })
+    )
+    const target = store.conversations.get(ROOM)?.messages[0]
+    expect(target?.retracted).toBeUndefined()
+
+    connection.events.emit(
+      'message',
+      incoming({
+        from: `${ROOM}/nick1`,
+        type: 'groupchat',
+        nick: 'nick1',
+        body: '',
+        retractId: 's1'
+      })
+    )
+    expect(target?.retracted).toBe(true)
+  })
+
+  it('marks the stored message on a MAM tombstone', () => {
+    connection.events.emit('message', incoming({ id: 'w1', stanzaId: 's1', body: 'later gone' }))
+    connection.events.emit(
+      'message',
+      incoming({ stanzaId: 's1', body: '', retracted: true, mam: true, delay: 2000 })
+    )
+    const messages = store.conversations.get('peer@example.net')?.messages
+    expect(messages).toHaveLength(1)
+    expect(messages?.[0]?.retracted).toBe(true)
+    expect(messages?.[0]?.body).toBe('')
+  })
+
+  it('stores the spoiler hint and the unstyled flag', () => {
+    connection.events.emit(
+      'message',
+      incoming({ body: 'the butler did it', spoilerHint: 'ending', stanzaId: 's9' })
+    )
+    const target = store.conversations.get('peer@example.net')?.messages[0]
+    expect(target?.spoilerHint).toBe('ending')
+
+    connection.events.emit('message', incoming({ body: 'plain', unstyled: true, stanzaId: 's10' }))
+    expect(store.conversations.get('peer@example.net')?.messages[1]?.unstyled).toBe(true)
+  })
+
+  it('lets a correction update the spoiler state of its target', () => {
+    connection.events.emit(
+      'message',
+      incoming({ id: 'w1', stanzaId: 's1', body: 'hidden', spoilerHint: 'h' })
+    )
+    connection.events.emit('message', incoming({ replaceId: 'w1', body: 'now plain' }))
+    const target = store.conversations.get('peer@example.net')?.messages[0]
+    expect(target?.body).toBe('now plain')
+    expect(target?.spoilerHint).toBeUndefined()
+  })
+
   it('merges a muc self-echo into the locally sent copy', () => {
     store.setOccupant(ROOM, {
       nick: 'me',

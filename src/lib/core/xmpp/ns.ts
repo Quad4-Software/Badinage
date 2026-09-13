@@ -36,7 +36,19 @@ export const NS = {
   OOB: 'jabber:x:oob',
   FILE_METADATA: 'urn:xmpp:file:metadata:0',
   SIMS: 'urn:xmpp:sims:0',
-  REFERENCE: 'urn:xmpp:reference:0'
+  REFERENCE: 'urn:xmpp:reference:0',
+  // XEP-0424 message retraction. The current spec retracts via a direct
+  // <retract> child in urn:xmpp:message-retract:1; older drafts wrapped a
+  // urn:xmpp:message-retract:0 element in a fasten apply-to, which we
+  // still accept on the receive side for interop.
+  MESSAGE_RETRACT: 'urn:xmpp:message-retract:1',
+  MESSAGE_RETRACT_LEGACY: 'urn:xmpp:message-retract:0',
+  FASTEN: 'urn:xmpp:fasten:0',
+  FALLBACK: 'urn:xmpp:fallback:0',
+  // XEP-0382 spoiler hint element
+  SPOILER: 'urn:xmpp:spoiler:0',
+  // XEP-0393 message styling: used for the unstyled opt-out element
+  STYLING: 'urn:xmpp:styling:0'
 } as const
 
 // XEP-0156 host-meta link relations used by endpoint discovery. These are

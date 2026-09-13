@@ -1,6 +1,6 @@
 // Outgoing <message> senders: chat bodies, reactions, attachments, chat
-// states, receipts and markers. Each builds the stanza and pushes it
-// through the transport.
+// states, receipts, markers and retractions. Each builds the stanza and
+// pushes it through the transport.
 
 import { $msg } from 'strophe.js'
 
@@ -30,6 +30,13 @@ export function sendChatMessage(
   }
   if (opts?.replaceId) {
     stanza.c('replace', { xmlns: NS.CORRECT, id: opts.replaceId }).up()
+  }
+  // XEP-0382: an empty hint still emits the element so receivers hide
+  // the body behind a reveal control
+  if (opts?.spoilerHint !== undefined) {
+    stanza.c('spoiler', { xmlns: NS.SPOILER })
+    if (opts.spoilerHint) stanza.t(opts.spoilerHint)
+    stanza.up()
   }
   // a correction is already acked by the round trip it replies to
   if (!opts?.replaceId) stanza.c('request', { xmlns: NS.RECEIPTS })
@@ -104,4 +111,25 @@ export function sendReceipt(conn: XmppTransport, to: string, id: string): void {
 
 export function sendMarker(conn: XmppTransport, to: string, id: string, marker: MarkerType): void {
   conn.send($msg({ to, type: 'chat' }).c(marker, { xmlns: NS.MARKERS, id }))
+}
+
+// XEP-0424: ask receivers to retract the message with the given id. The
+// fallback body and store hint keep the stanza archived and readable on
+// clients without retraction support.
+export function sendRetraction(
+  conn: XmppTransport,
+  to: string,
+  targetId: string,
+  type: 'chat' | 'groupchat' = 'chat'
+): void {
+  const stanza = $msg({ to, type, id: conn.uniqueId('retract') })
+    .c('retract', { xmlns: NS.MESSAGE_RETRACT, id: targetId })
+    .up()
+    .c('fallback', { xmlns: NS.FALLBACK, for: NS.MESSAGE_RETRACT })
+    .up()
+    .c('body')
+    .t('/me retracted a message')
+    .up()
+    .c('store', { xmlns: NS.HINTS })
+  conn.send(stanza)
 }

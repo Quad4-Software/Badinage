@@ -68,6 +68,13 @@ export function sendEncryptedMessage(
   if (opts?.replaceId) {
     stanza.c('replace', { xmlns: NS.CORRECT, id: opts.replaceId }).up()
   }
+  // XEP-0382: the hint element travels in the clear like the fallback
+  // body so supporting clients still hide the message behind a reveal
+  if (opts?.spoilerHint !== undefined) {
+    stanza.c('spoiler', { xmlns: NS.SPOILER })
+    if (opts.spoilerHint) stanza.t(opts.spoilerHint)
+    stanza.up()
+  }
   stanza
     .c('encryption', { xmlns: NS.EME, namespace: NS.OMEMO, name: 'OMEMO' })
     .up()

@@ -28,6 +28,10 @@ export const LOGIN_STATUS_POLL_MS = 250
 // attachments larger than this are never inlined as data uris
 export const INLINE_ATTACHMENT_LIMIT = 512 * 1024
 
+// reaction tooltips list at most this many sender names before a
+// "+N more" tail
+export const REACTION_TOOLTIP_CAP = 8
+
 // cleartext body on omemo stanzas for clients that cannot decrypt
 export const OMEMO_FALLBACK_BODY =
   'I sent you an OMEMO encrypted message but your client does not support it.'

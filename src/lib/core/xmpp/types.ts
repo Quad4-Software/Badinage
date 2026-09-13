@@ -35,6 +35,9 @@ export interface SendMessageOptions {
   replyTo?: ReplyRef | undefined
   // XEP-0308: id of the stanza this message corrects
   replaceId?: string | undefined
+  // XEP-0382: mark the body as a spoiler; the string is the optional
+  // hint shown before reveal, empty for a hintless spoiler
+  spoilerHint?: string | undefined
 }
 
 // XEP-0446 file metadata, all fields optional on the wire.
@@ -95,7 +98,8 @@ export interface ChatConnection {
     putUrl: string,
     file: Blob,
     headers?: Record<string, string>,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void>
   sendChatState(to: string, state: ChatState, type?: 'chat' | 'groupchat'): void
   sendReceipt(to: string, id: string): void
@@ -126,4 +130,8 @@ export interface ChatConnection {
     onDone: (result: MamPageResult) => void
   ): void
   enableCarbons(): void
+  // XEP-0424: retract a message we sent. targetId is the stanza id
+  // attribute for a dm, the room stanza-id (or origin-id when the room
+  // does not assign them) for a muc message.
+  sendRetraction(to: string, targetId: string, type?: 'chat' | 'groupchat'): void
 }

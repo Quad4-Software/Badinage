@@ -55,6 +55,21 @@ export interface IncomingMessage {
   reactionTo?: { id: string; emojis: string[] } | undefined
   // XEP-0308: this body replaces the stanza with this id.
   replaceId?: string | undefined
+  // XEP-0424: this stanza asks receivers to retract the message whose id
+  // it names (the stanza id attribute in a dm, the room stanza-id in a
+  // muc). An empty string means a retract element that carried no usable
+  // id; the fallback body must still never render. The older draft form
+  // wrapped message-retract:0 in a fasten apply-to and is also accepted.
+  retractId?: string | undefined
+  // XEP-0424: this stanza is an archive tombstone, ie the original
+  // message with its contents replaced by a <retracted> marker. The
+  // stanza's own ids name the message it stands in for.
+  retracted?: boolean | undefined
+  // XEP-0382: the body is a spoiler; the element text is an optional
+  // hint. An empty string means a spoiler without a hint.
+  spoilerHint?: string | undefined
+  // XEP-0393: the sender asked receivers to render the body unstyled.
+  unstyled?: boolean | undefined
   attachments?: Attachment[] | undefined
   // signature state for the UI: set by transports that can prove it
   // (OMEMO once verification lands, OpenPGP later). Not parsed here.
@@ -296,6 +311,37 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
   }
   const replace = firstNsTag(inner, NS.CORRECT, 'replace')
   if (replace) message.replaceId = replace.getAttribute('id') ?? undefined
+
+  // XEP-0424 retraction: a direct <retract id> child is the current
+  // form; older drafts wrapped message-retract:0 inside a fasten
+  // apply-to whose own id names the target. A missing id still marks
+  // the stanza as a retraction so its fallback body never renders.
+  const retract = firstNsTag(inner, NS.MESSAGE_RETRACT, 'retract')
+  if (retract) {
+    message.retractId = retract.getAttribute('id') ?? ''
+  } else {
+    for (const applyTo of allNsTags(inner, NS.FASTEN, 'apply-to')) {
+      const legacy =
+        firstNsTag(applyTo, NS.MESSAGE_RETRACT, 'retract') ??
+        firstNsTag(applyTo, NS.MESSAGE_RETRACT_LEGACY, 'retract')
+      if (legacy) {
+        message.retractId = legacy.getAttribute('id') ?? applyTo.getAttribute('id') ?? ''
+        break
+      }
+    }
+  }
+  // an archive tombstone carries <retracted> in place of the body
+  if (
+    firstNsTag(inner, NS.MESSAGE_RETRACT, 'retracted') ??
+    firstNsTag(inner, NS.MESSAGE_RETRACT_LEGACY, 'retracted')
+  ) {
+    message.retracted = true
+  }
+
+  const spoiler = firstNsTag(inner, NS.SPOILER, 'spoiler')
+  if (spoiler) message.spoilerHint = spoiler.textContent ?? ''
+  if (firstNsTag(inner, NS.STYLING, 'unstyled')) message.unstyled = true
+
   const attachments = parseAttachments(inner)
   if (attachments.length > 0) message.attachments = attachments
 
@@ -329,6 +375,8 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     !message.receiptFor &&
     !message.marker &&
     !message.reactionTo &&
+    message.retractId === undefined &&
+    !message.retracted &&
     !message.attachments?.length &&
     !message.encryptedXml &&
     message.subject === undefined

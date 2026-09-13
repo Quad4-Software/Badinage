@@ -83,16 +83,28 @@ export function requestUploadSlot(
   })
 }
 
+function abortError(): DOMException {
+  return new DOMException('upload aborted', 'AbortError')
+}
+
 // Plain PUT of the blob to the slot url. fetch cannot report upload
-// progress, so a progress callback switches to XMLHttpRequest.
+// progress, so a progress callback switches to XMLHttpRequest. Aborting
+// the signal rejects with an AbortError so callers can tell a cancel
+// apart from a failure.
 export function uploadFile(
   putUrl: string,
   file: Blob,
   headers: Record<string, string> = {},
-  onProgress?: (fraction: number) => void
+  onProgress?: (fraction: number) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   if (!onProgress) {
-    return fetch(putUrl, { method: 'PUT', headers, body: file }).then((res) => {
+    return fetch(putUrl, {
+      method: 'PUT',
+      headers,
+      body: file,
+      signal: signal ?? null
+    }).then((res) => {
       if (!res.ok) throw new Error(`upload failed: ${res.status}`)
     })
   }
@@ -106,6 +118,14 @@ export function uploadFile(
       else reject(new Error(`upload failed: ${xhr.status}`))
     }
     xhr.onerror = () => reject(new Error('upload failed'))
+    xhr.onabort = () => reject(abortError())
+    if (signal) {
+      if (signal.aborted) {
+        reject(abortError())
+        return
+      }
+      signal.addEventListener('abort', () => xhr.abort(), { once: true })
+    }
     xhr.open('PUT', putUrl)
     for (const [key, value] of Object.entries(headers)) xhr.setRequestHeader(key, value)
     xhr.send(file)

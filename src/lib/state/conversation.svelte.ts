@@ -38,6 +38,21 @@ export interface ChatMessage {
   edited?: boolean
   // signing state placeholder: 'signed' once verification lands
   signed?: boolean
+  // XEP-0424: the sender retracted this message; body, attachments and
+  // reactions are cleared, the row stays so replies still anchor
+  retracted?: boolean | undefined
+  // XEP-0382: the body is a spoiler hidden behind a reveal control; the
+  // string is the sender's optional hint, empty for a hintless spoiler
+  spoilerHint?: string | undefined
+  // XEP-0393: the sender asked for the body to render unstyled
+  unstyled?: boolean | undefined
+  // local-only upload state for an outgoing attachment that is still in
+  // flight; never persists meaningfully across restarts
+  pending?: boolean | undefined
+  // 0..1 upload progress while pending
+  uploadProgress?: number | undefined
+  // file name shown on the pending upload row
+  pendingName?: string | undefined
 }
 
 export interface RoomOccupant {

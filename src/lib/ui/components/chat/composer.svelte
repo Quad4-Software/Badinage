@@ -9,6 +9,7 @@
   import type { ConversationKind } from '$lib/state/chats.svelte'
   import { sendFileMessage } from '$lib/state/upload'
   import { bareJid } from '$lib/utils/jid'
+  import { parseSpoilerCommand } from '$lib/utils/message-commands'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Button } from '$lib/ui/primitives/button'
 
@@ -83,6 +84,11 @@
 
     const type = kind === 'muc' ? 'groupchat' : 'chat'
     const ctx = app.composerFor(peerJid)
+    // XEP-0382 slash command: "/spoiler [hint] text" hides text behind a
+    // spoiler with the bracketed hint, "/spoiler text" is hintless. A
+    // plain "/me ..." stays literal on the wire; the render side splits it.
+    const spoiler = parseSpoilerCommand(text)
+    const sendText = spoiler?.body ?? text
 
     if (ctx.editing) {
       const ref = ctx.editing.wireId ?? ctx.editing.id
@@ -91,9 +97,12 @@
         const omemo = account.omemo ?? (await account.omemoService())
         if (omemo) {
           try {
-            const xml = await omemo.encryptBody(peerJid, text, { replaceId: ref })
+            const xml = await omemo.encryptBody(peerJid, sendText, { replaceId: ref })
             if (xml !== null) {
-              account.connection.sendEncryptedMessage(peerJid, xml, { replaceId: ref })
+              account.connection.sendEncryptedMessage(peerJid, xml, {
+                replaceId: ref,
+                spoilerHint: spoiler?.hint
+              })
               sent = true
             }
           } catch {
@@ -104,9 +113,14 @@
         }
       }
       if (!sent) {
-        account.connection.sendChatMessage(peerJid, text, type, { replaceId: ref })
+        account.connection.sendChatMessage(peerJid, sendText, type, {
+          replaceId: ref,
+          spoilerHint: spoiler?.hint
+        })
       }
-      app.chatsFor(account.jid).applyCorrection(peerJid, ctx.editing.id, text, Date.now())
+      app
+        .chatsFor(account.jid)
+        .applyCorrection(peerJid, ctx.editing.id, sendText, Date.now(), spoiler?.hint)
     } else {
       const replyTo = ctx.replyTo
       // XEP-0461: in MUC the referenced id is the room stanza-id (stored as
@@ -129,7 +143,7 @@
           try {
             // null means the peer publishes no usable devices; a thrown
             // error is a real failure and must not downgrade to plaintext
-            encryptedXml = await omemo.encryptBody(peerJid, text)
+            encryptedXml = await omemo.encryptBody(peerJid, sendText)
           } catch {
             toast.error($LL.encryptFailed())
             return
@@ -138,8 +152,14 @@
       }
       const encrypted = encryptedXml !== null
       const id = encryptedXml
-        ? account.connection.sendEncryptedMessage(peerJid, encryptedXml, { replyTo: replyRef })
-        : account.connection.sendChatMessage(peerJid, text, type, { replyTo: replyRef })
+        ? account.connection.sendEncryptedMessage(peerJid, encryptedXml, {
+            replyTo: replyRef,
+            spoilerHint: spoiler?.hint
+          })
+        : account.connection.sendChatMessage(peerJid, sendText, type, {
+            replyTo: replyRef,
+            spoilerHint: spoiler?.hint
+          })
       const store = app.chatsFor(account.jid)
       const conversation = store.open(peerJid)
       if (encrypted) conversation.encrypted = true
@@ -147,13 +167,14 @@
         id,
         wireId: id,
         peerJid,
-        body: text,
+        body: sendText,
         outgoing: true,
         timestamp: Date.now(),
         encrypted,
         delivered: false,
         read: false,
         reactions: {},
+        spoilerHint: spoiler?.hint,
         replyTo: replyTo
           ? {
               id: replyTo.id,
