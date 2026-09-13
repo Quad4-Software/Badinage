@@ -13,6 +13,9 @@ const en = {
   serverPlaceholder: 'wss://example.org/xmpp-websocket',
   serverHint: 'Leave empty to discover the server automatically',
   rememberSession: 'Keep me signed in until I close this tab',
+  sharedDevice: 'This is a public or shared device',
+  sharedDeviceHint:
+    'Nothing is kept on this device: no saved session, no message history, no encryption keys.',
   connect: 'Connect',
   connecting: 'Connecting',
   authFailed: 'Authentication failed',

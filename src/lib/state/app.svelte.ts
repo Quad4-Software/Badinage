@@ -47,7 +47,9 @@ class AppStore {
   chatsFor(accountJid: string): ChatStore {
     let store = this.chats.get(accountJid)
     if (!store) {
-      store = new ChatStore(accountJid)
+      // untrusted logins keep conversations in memory only
+      const untrusted = accounts.list.find((a) => a.jid === accountJid)?.options.untrusted === true
+      store = new ChatStore(accountJid, { persist: !untrusted })
       store.onLive = (peer, message) => this.emitLive(accountJid, peer, message)
       this.chats.set(accountJid, store)
     }
@@ -253,16 +255,18 @@ class AppStore {
 
   // Called by AccountsStore before an account leaves the list: flush
   // pending writes, drop the stale binding, and clear the view if the
-  // removed account was the active one.
-  releaseAccount(jid: string): void {
+  // removed account was the active one. Returns the flush so removal can
+  // wait for it before deleting the account's persisted data.
+  releaseAccount(jid: string): Promise<void> {
     this.bound.delete(jid)
     const store = this.chats.get(jid)
-    void store?.flush()
+    const flushed = store?.flush() ?? Promise.resolve()
     this.chats.delete(jid)
     if (accounts.active?.jid === jid) {
       this.activePeer = null
       this.splitPeer = null
     }
+    return flushed
   }
 }
 

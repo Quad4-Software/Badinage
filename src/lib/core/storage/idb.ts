@@ -1,7 +1,7 @@
 import { IDB_NAME, IDB_VERSION } from '$lib/constants'
 
-const STORES = ['kv', 'messages', 'omemo'] as const
-export type StoreName = (typeof STORES)[number]
+export const IDB_STORES = ['kv', 'messages', 'omemo'] as const
+export type StoreName = (typeof IDB_STORES)[number]
 
 let dbPromise: Promise<IDBDatabase> | undefined
 
@@ -10,7 +10,7 @@ function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(IDB_NAME, IDB_VERSION)
     request.onupgradeneeded = () => {
       const db = request.result
-      for (const name of STORES) {
+      for (const name of IDB_STORES) {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name)
         }

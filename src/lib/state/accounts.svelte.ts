@@ -1,7 +1,8 @@
 import { SvelteSet } from 'svelte/reactivity'
 
 import { DEFAULT_RESOURCE } from '$lib/constants'
-import { omemoModule, OmemoService } from '$lib/core/omemo'
+import { InMemoryOmemoStore, omemoModule, OmemoService } from '$lib/core/omemo'
+import { InMemoryTrustStore } from '$lib/core/omemo/trust'
 import { ModuleRegistry } from '$lib/core/module'
 import { clearSession, saveSession, type SessionOptions } from '$lib/core/storage/session'
 import {
@@ -14,6 +15,7 @@ import type { RosterItem } from '$lib/core/xmpp/stanzas'
 import { discoverEndpoints } from '$lib/core/xmpp/discovery'
 import { bareJid, jidDomain } from '$lib/utils/jid'
 import { settings } from '$lib/state/settings.svelte'
+import { deleteAccountData } from '$lib/state/storage'
 
 export type AccountOptions = SessionOptions
 
@@ -165,7 +167,12 @@ export class Account {
     this.omemoInit ??= OmemoService.create({
       connection: this.connection,
       accountJid: this.jid,
-      blindTrust: settings.current.omemoBlindTrust
+      blindTrust: settings.current.omemoBlindTrust,
+      // untrusted devices keep key material and trust decisions in memory
+      // only; nothing OMEMO-shaped reaches IndexedDB
+      ...(this.options.untrusted
+        ? { omemoStore: new InMemoryOmemoStore(), trustStore: new InMemoryTrustStore() }
+        : {})
     }).catch((err: unknown) => {
       this.omemoInitError = err instanceof Error ? err.message : String(err)
       console.warn('omemo init failed:', this.omemoInitError)
@@ -277,11 +284,12 @@ class AccountsStore {
   list = $state<Account[]>([])
   activeJid = $state<string | null>(null)
 
-  private removeListeners: ((jid: string) => void)[] = []
+  private removeListeners: ((jid: string) => void | Promise<void>)[] = []
 
   // subscribers (the app store) get a chance to flush and unbind before
-  // the account leaves the list
-  onRemoved(fn: (jid: string) => void): void {
+  // the account leaves the list; returned promises are awaited before
+  // the account's persisted data is deleted
+  onRemoved(fn: (jid: string) => void | Promise<void>): void {
     this.removeListeners.push(fn)
   }
 
@@ -322,21 +330,36 @@ class AccountsStore {
   }
 
   remove(jid: string): void {
-    const index = this.list.findIndex((a) => a.jid === jid)
-    const account = this.list[index]
+    const account = this.list.find((a) => a.jid === jid)
     if (!account) return
-    for (const fn of this.removeListeners) fn(jid)
-    account.disconnect()
-    this.list.splice(index, 1)
-    clearSession(jid)
-    if (this.activeJid === jid) this.activeJid = this.list[0]?.jid ?? null
-    const order = settings.current.accountOrder
-    if (order.includes(jid)) {
-      settings.set(
-        'accountOrder',
-        order.filter((entry) => entry !== jid)
-      )
+    void this.teardown(account)
+  }
+
+  // Let listeners flush pending writes first, then disconnect, drop the
+  // account and delete its persisted data. The delete runs after the
+  // flush so a late debounced snapshot cannot outlive the removal.
+  private async teardown(account: Account): Promise<void> {
+    try {
+      await Promise.all(this.removeListeners.map((fn) => fn(account.jid)))
+    } finally {
+      account.disconnect()
+      this.list = this.list.filter((a) => a !== account)
+      clearSession(account.jid)
+      if (this.activeJid === account.jid) this.activeJid = this.list[0]?.jid ?? null
+      const order = settings.current.accountOrder
+      if (order.includes(account.jid)) {
+        settings.set(
+          'accountOrder',
+          order.filter((entry) => entry !== account.jid)
+        )
+      }
     }
+    await deleteAccountData(account.jid).catch((error: unknown) => {
+      console.warn(
+        `failed to delete local data for ${account.jid}:`,
+        error instanceof Error ? error.message : String(error)
+      )
+    })
   }
 
   // move an account one step in the switcher order and persist the new

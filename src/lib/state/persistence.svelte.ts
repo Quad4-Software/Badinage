@@ -1,8 +1,24 @@
 // IndexedDB snapshots of conversation messages. Writes are debounced so
 // a 50-message MAM page lands as one transaction, not fifty, and only
 // the newest slice is retained so the cache stays bounded.
+//
+// Snapshots are wrapped with the per-account AES-GCM key from
+// core/storage/crypto so a stolen IndexedDB dump yields ciphertext. As
+// documented there, the wrap key lives in the same database, so this is
+// a barrier against casual inspection, not a vault.
+//
+// Reads fail closed: a record that cannot be unwrapped (lost or rotated
+// key, corrupted data) is deleted and the conversation hydrates empty
+// rather than surfacing garbage. Unwrapped records predate the envelope
+// and are migrated by rewriting them wrapped.
 
 import { MESSAGE_PAGE_SIZE, PERSIST_DEBOUNCE_MS } from '$lib/constants'
+import {
+  decryptRecord,
+  encryptRecord,
+  isWrappedRecord,
+  loadWrapKey
+} from '$lib/core/storage/crypto'
 import { idb } from '$lib/core/storage/idb'
 import { scopedKey } from '$lib/core/storage/keys'
 import { bareJid } from '$lib/utils/jid'
@@ -18,13 +34,41 @@ export class ConversationPersistence {
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
   private pending = new Map<string, Conversation>()
 
-  constructor(private readonly accountJid: string) {}
+  // persist=false is the untrusted-device path: the store becomes a pure
+  // no-op so nothing conversation-shaped ever reaches IndexedDB.
+  constructor(
+    private readonly accountJid: string,
+    private readonly persist = true
+  ) {}
 
   async load(peerJid: string): Promise<ChatMessage[] | undefined> {
-    return idb.get<ChatMessage[]>('messages', this.key(peerJid))
+    if (!this.persist) return undefined
+    const storageKey = this.key(peerJid)
+    const raw = await idb.get<unknown>('messages', storageKey)
+    if (raw === undefined) return undefined
+    if (!isWrappedRecord(raw)) {
+      // plaintext snapshot from before the envelope existed: keep it
+      // readable, then rewrite it wrapped so later dumps hold ciphertext
+      void this.rewrap(storageKey, raw)
+      return raw as ChatMessage[]
+    }
+    const wrapKey = await this.wrapKey()
+    if (wrapKey === undefined) {
+      // wrapped record but no usable crypto: fail closed
+      await this.drop(storageKey)
+      return undefined
+    }
+    try {
+      return await decryptRecord<ChatMessage[]>(wrapKey, raw)
+    } catch {
+      // corrupted record or the key it was wrapped under is gone
+      await this.drop(storageKey)
+      return undefined
+    }
   }
 
   schedule(conversation: Conversation): void {
+    if (!this.persist) return
     const key = this.key(conversation.peerJid)
     this.pending.set(key, conversation)
     const existing = this.timers.get(key)
@@ -54,9 +98,39 @@ export class ConversationPersistence {
     return scopedKey(this.accountJid, 'msgs', bareJid(peerJid))
   }
 
+  private wrapKey(): Promise<CryptoKey | undefined> {
+    // no caching: if the stored key was lost mid-session the next write
+    // regenerates and stores a fresh one instead of orphaning records
+    return loadWrapKey(scopedKey(this.accountJid, 'msgs-wrap')).catch(() => undefined)
+  }
+
+  private async drop(storageKey: string): Promise<void> {
+    await idb.del('messages', storageKey).catch((error: unknown) => {
+      console.warn(
+        'failed to drop unreadable message snapshot:',
+        error instanceof Error ? error.message : String(error)
+      )
+    })
+  }
+
+  // Best-effort plaintext migration. A save that lands between our read
+  // and this write can be overwritten by the older payload; the window
+  // is milliseconds wide and the next scheduled save repairs it.
+  private async rewrap(storageKey: string, value: unknown): Promise<void> {
+    const wrapKey = await this.wrapKey()
+    if (!wrapKey) return
+    try {
+      await idb.set('messages', storageKey, await encryptRecord(wrapKey, value))
+    } catch {
+      // leave the plaintext record; the next scheduled save retries
+    }
+  }
+
   private async save(conversation: Conversation): Promise<void> {
     // $state proxies cannot be structured-cloned, snapshot to plain data
     const retained = $state.snapshot(conversation.messages.slice(-RETAINED_MESSAGES))
-    await idb.set('messages', this.key(conversation.peerJid), retained)
+    const wrapKey = await this.wrapKey()
+    const record = wrapKey ? await encryptRecord(wrapKey, retained) : retained
+    await idb.set('messages', this.key(conversation.peerJid), record)
   }
 }

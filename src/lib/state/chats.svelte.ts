@@ -49,8 +49,13 @@ export class ChatStore {
   // consumed by the ui layer for notifications and aria-live announces
   onLive: ((peer: string, message: IncomingMessage) => void) | undefined
 
-  constructor(private readonly accountJid: string) {
-    this.persistence = new ConversationPersistence(accountJid)
+  // options.persist=false is the untrusted-device path: conversations
+  // stay in memory and never reach IndexedDB
+  constructor(
+    private readonly accountJid: string,
+    options?: { persist?: boolean }
+  ) {
+    this.persistence = new ConversationPersistence(accountJid, options?.persist ?? true)
   }
 
   open(peerJid: string, kind: ConversationKind = 'dm'): Conversation {

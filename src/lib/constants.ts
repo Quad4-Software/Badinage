@@ -1,5 +1,12 @@
 export const STORAGE_PREFIX = 'badinage'
 
+// paneforge persists pane layouts to localStorage under its own
+// paneforge:<id> prefix, which scopedKey cannot reach. Keep the ids
+// here so the wipe-all-data flow removes them too.
+export const SHELL_PANE_AUTOSAVE_ID = 'badinage-shell'
+export const SPLIT_PANE_AUTOSAVE_ID = 'badinage-split'
+export const PANE_AUTOSAVE_IDS = [SHELL_PANE_AUTOSAVE_ID, SPLIT_PANE_AUTOSAVE_ID]
+
 export const IDB_NAME = 'badinage'
 export const IDB_VERSION = 1
 
