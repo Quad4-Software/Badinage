@@ -1,7 +1,18 @@
 import { DOMParser } from '@xmldom/xmldom'
 import { describe, expect, it } from 'vitest'
 
-import { parseMessage, parsePresence, parseRosterItems } from './stanzas'
+import {
+  hasDiscoFeature,
+  parseBlockPush,
+  parseDiscoItemJids,
+  parseJidItems,
+  parseMamFin,
+  parseMessage,
+  parsePresence,
+  parseRosterItems,
+  parseUploadSlot,
+  parseVcardPhoto
+} from './stanzas'
 
 const parser = new DOMParser()
 
@@ -235,6 +246,21 @@ my answer</body>
     expect(m?.attachments?.[0]?.url).toBe('https://files.example.net/doc.pdf')
   })
 
+  it('keeps omemo stanzas and exposes the encrypted element as xml', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>I sent you an OMEMO encrypted message but your client does not support it.</body>
+        <encrypted xmlns="urn:xmpp:omemo:2">
+          <header sid="123"><keys jid="a@b.c"><key rid="9" kex="true">AAAA</key></keys></header>
+          <payload>BBBB</payload>
+        </encrypted>
+      </message>`)
+    )
+    expect(m).not.toBeNull()
+    expect(m?.encryptedXml).toContain('<encrypted')
+    expect(m?.encryptedXml).toContain('sid="123"')
+  })
+
   it('returns null for empty stanzas', () => {
     const m = parseMessage(xml(`<message from="a@b.c" to="x@y.z" type="chat"/>`))
     expect(m).toBeNull()
@@ -295,5 +321,137 @@ describe('parseRosterItems', () => {
     expect(items[0]).toMatchObject({ jid: 'a@b.c', name: 'A', subscription: 'both' })
     expect(items[0]?.groups).toEqual(['Friends'])
     expect(items[1]?.subscription).toBe('remove')
+  })
+})
+
+describe('parseJidItems', () => {
+  it('collects jids from a block push', () => {
+    const block = xml(`<block xmlns="urn:xmpp:blocking">
+      <item jid="spam@a.b"/>
+      <item jid="junk@c.d/phone"/>
+    </block>`)
+    expect(parseJidItems(block)).toEqual(['spam@a.b', 'junk@c.d/phone'])
+  })
+
+  it('collects jids from a blocklist result', () => {
+    const list = xml(`<blocklist xmlns="urn:xmpp:blocking"><item jid="a@b.c"/></blocklist>`)
+    expect(parseJidItems(list)).toEqual(['a@b.c'])
+  })
+
+  it('returns an empty list for an item-less unblock', () => {
+    expect(parseJidItems(xml(`<unblock xmlns="urn:xmpp:blocking"/>`))).toEqual([])
+  })
+})
+
+describe('parseBlockPush', () => {
+  it('separates blocked and unblocked jids in one push', () => {
+    const push = parseBlockPush(
+      xml(`<iq type="set"><block xmlns="urn:xmpp:blocking"><item jid="spam@a.b"/></block>
+        <unblock xmlns="urn:xmpp:blocking"><item jid="ok@c.d"/></unblock></iq>`)
+    )
+    expect(push.blocked).toEqual(['spam@a.b'])
+    expect(push.unblocked).toEqual(['ok@c.d'])
+  })
+
+  it('leaves fields undefined when the push lacks the element', () => {
+    const push = parseBlockPush(
+      xml(`<iq type="set"><block xmlns="urn:xmpp:blocking"><item jid="spam@a.b"/></block></iq>`)
+    )
+    expect(push.blocked).toEqual(['spam@a.b'])
+    expect(push.unblocked).toBeUndefined()
+  })
+})
+
+describe('parseDiscoItemJids', () => {
+  it('collects item jids from a disco items result', () => {
+    const jids = parseDiscoItemJids(
+      xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#items">
+        <item jid="upload.example.net"/><item jid="proxy.example.net"/>
+      </query></iq>`)
+    )
+    expect(jids).toEqual(['upload.example.net', 'proxy.example.net'])
+  })
+})
+
+describe('hasDiscoFeature', () => {
+  it('finds the advertised feature var', () => {
+    const stanza = xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#info">
+      <feature var="urn:xmpp:http:upload:0"/>
+    </query></iq>`)
+    expect(hasDiscoFeature(stanza, 'urn:xmpp:http:upload:0')).toBe(true)
+    expect(hasDiscoFeature(stanza, 'jabber:iq:roster')).toBe(false)
+  })
+})
+
+describe('parseUploadSlot', () => {
+  it('reads urls from attributes', () => {
+    const slot = parseUploadSlot(
+      xml(`<iq type="result"><slot xmlns="urn:xmpp:http:upload:0">
+        <put url="https://up.example.net/put"/><get url="https://up.example.net/get"/>
+      </slot></iq>`)
+    )
+    expect(slot).toEqual({
+      putUrl: 'https://up.example.net/put',
+      getUrl: 'https://up.example.net/get'
+    })
+  })
+
+  it('reads urls from text content', () => {
+    const slot = parseUploadSlot(
+      xml(`<iq type="result"><slot xmlns="urn:xmpp:http:upload:0">
+        <put>https://up.example.net/put</put><get>https://up.example.net/get</get>
+      </slot></iq>`)
+    )
+    expect(slot).toEqual({
+      putUrl: 'https://up.example.net/put',
+      getUrl: 'https://up.example.net/get'
+    })
+  })
+
+  it('returns null when a url is missing', () => {
+    const slot = parseUploadSlot(
+      xml(`<iq type="result"><slot xmlns="urn:xmpp:http:upload:0">
+        <put url="https://up.example.net/put"/>
+      </slot></iq>`)
+    )
+    expect(slot).toBeNull()
+  })
+})
+
+describe('parseVcardPhoto', () => {
+  it('builds a data uri from TYPE and BINVAL', () => {
+    const uri = parseVcardPhoto(
+      xml(`<iq type="result"><vCard xmlns="vcard-temp"><PHOTO>
+        <TYPE>image/png</TYPE><BINVAL>aGk=</BINVAL>
+      </PHOTO></vCard></iq>`)
+    )
+    expect(uri).toBe('data:image/png;base64,aGk=')
+  })
+
+  it('returns undefined without a photo', () => {
+    const stanza = xml(`<iq type="result"><vCard xmlns="vcard-temp"/></iq>`)
+    expect(parseVcardPhoto(stanza)).toBeUndefined()
+  })
+})
+
+describe('parseMamFin', () => {
+  it('extracts the rsm cursor', () => {
+    const fin = parseMamFin(
+      xml(`<iq type="result"><fin xmlns="urn:xmpp:mam:2" complete="false">
+        <set xmlns="http://jabber.org/protocol/rsm">
+          <first>uid-1</first><last>uid-9</last><count>9</count>
+        </set>
+      </fin></iq>`)
+    )
+    expect(fin).toEqual({ complete: false, first: 'uid-1', last: 'uid-9' })
+  })
+
+  it('reports a complete archive without a cursor', () => {
+    const fin = parseMamFin(
+      xml(`<iq type="result"><fin xmlns="urn:xmpp:mam:2" complete="true"/></iq>`)
+    )
+    expect(fin.complete).toBe(true)
+    expect(fin.first).toBeUndefined()
+    expect(fin.last).toBeUndefined()
   })
 })

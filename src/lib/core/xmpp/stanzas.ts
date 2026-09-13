@@ -4,6 +4,7 @@
 // suite runs under @xmldom/xmldom, which has no selector engine.
 
 import { bareJid, jidResource } from '$lib/utils/jid'
+import { allNsTags, firstNsTag, firstTag, firstTagText, serializeElement } from '$lib/utils/xml'
 
 import { NS } from './ns'
 
@@ -59,6 +60,13 @@ export interface IncomingMessage {
   // (OMEMO once verification lands, OpenPGP later). Not parsed here.
   signed?: boolean | undefined
   encrypted?: boolean | undefined
+  // serialized <encrypted> element, handed to the OMEMO service for
+  // async decryption before ingest
+  encryptedXml?: string | undefined
+  // decryption was attempted and failed; the body must not be trusted
+  undecryptable?: boolean | undefined
+  // decrypted, but the sending device is distrusted or changed keys
+  untrustedDevice?: boolean | undefined
 }
 
 export interface PresenceUpdate {
@@ -78,29 +86,22 @@ export interface MucOccupant {
   codes: string[]
 }
 
-export const CHAT_STATES: ChatState[] = ['active', 'composing', 'paused', 'inactive', 'gone']
-
-function find(el: Element, ns: string, local: string): Element | null {
-  const found = el.getElementsByTagNameNS(ns, local)
-  return found.length > 0 ? (found.item(0) as Element) : null
+// XEP-0363 slot granted by an upload service: PUT the file to putUrl,
+// share getUrl.
+export interface UploadSlot {
+  putUrl: string
+  getUrl: string
 }
 
-function findAll(el: Element, ns: string, local: string): Element[] {
-  const found = el.getElementsByTagNameNS(ns, local)
-  const out: Element[] = []
-  for (let i = 0; i < found.length; i++) out.push(found.item(i) as Element)
-  return out
+// One page of a MAM query result. rsm uid of the oldest row in this
+// page is first - pass it as before to fetch the next older page.
+export interface MamPageResult {
+  complete: boolean
+  last?: string | undefined
+  first?: string | undefined
 }
 
-function findText(el: Element, local: string): string | null {
-  const found = el.getElementsByTagName(local)
-  return found.length > 0 ? (found.item(0)?.textContent ?? null) : null
-}
-
-function firstTag(el: Element, local: string): Element | null {
-  const found = el.getElementsByTagName(local)
-  return found.length > 0 ? (found.item(0) as Element) : null
-}
+const CHAT_STATES: ChatState[] = ['active', 'composing', 'paused', 'inactive', 'gone']
 
 // XEP-0461 senders add a XEP-0393 style quote fallback at the top of the
 // body: one leading line per quoted line, each prefixed with '> '. Strip
@@ -127,12 +128,12 @@ function stripReplyFallback(body: string): { rest: string; quote?: string | unde
 // media-sharing wrapper, in which case the url comes from a data reference
 // in the sources element. Returns at most one attachment.
 function parseAttachments(inner: Element): Attachment[] {
-  const oob = find(inner, NS.OOB, 'x')
-  const oobUrl = oob ? (find(oob, NS.OOB, 'url')?.textContent?.trim() ?? '') : ''
-  const file = find(inner, NS.FILE_METADATA, 'file')
+  const oob = firstNsTag(inner, NS.OOB, 'x')
+  const oobUrl = oob ? (firstNsTag(oob, NS.OOB, 'url')?.textContent?.trim() ?? '') : ''
+  const file = firstNsTag(inner, NS.FILE_METADATA, 'file')
   let url = oobUrl
   if (!url && file) {
-    for (const ref of findAll(inner, NS.REFERENCE, 'reference')) {
+    for (const ref of allNsTags(inner, NS.REFERENCE, 'reference')) {
       const uri = ref.getAttribute('uri')
       if (uri) {
         url = uri
@@ -143,16 +144,17 @@ function parseAttachments(inner: Element): Attachment[] {
   if (!url && !file) return []
   const attachment: Attachment = { url, mediaType: '' }
   if (file) {
-    attachment.mediaType = find(file, NS.FILE_METADATA, 'media-type')?.textContent?.trim() ?? ''
-    const name = find(file, NS.FILE_METADATA, 'name')?.textContent?.trim()
+    attachment.mediaType =
+      firstNsTag(file, NS.FILE_METADATA, 'media-type')?.textContent?.trim() ?? ''
+    const name = firstNsTag(file, NS.FILE_METADATA, 'name')?.textContent?.trim()
     if (name) attachment.name = name
     const size = Number.parseInt(
-      find(file, NS.FILE_METADATA, 'size')?.textContent?.trim() ?? '',
+      firstNsTag(file, NS.FILE_METADATA, 'size')?.textContent?.trim() ?? '',
       10
     )
     if (Number.isFinite(size)) attachment.size = size
     const duration = Number.parseInt(
-      find(file, NS.FILE_METADATA, 'duration')?.textContent?.trim() ?? '',
+      firstNsTag(file, NS.FILE_METADATA, 'duration')?.textContent?.trim() ?? '',
       10
     )
     if (Number.isFinite(duration)) attachment.duration = duration
@@ -160,15 +162,42 @@ function parseAttachments(inner: Element): Attachment[] {
   return [attachment]
 }
 
+// XEP-0191: collects the jid attributes of every <item> under a block,
+// unblock or blocklist parent. An empty list on an unblock means the
+// server cleared the whole blocklist.
+export function parseJidItems(el: Element): string[] {
+  const jids: string[] = []
+  for (const item of allNsTags(el, NS.BLOCKING, 'item')) {
+    const jid = item.getAttribute('jid')
+    if (jid) jids.push(jid)
+  }
+  return jids
+}
+
+// XEP-0191 push: the server tells every resource which jids entered or
+// left the blocklist. A field stays undefined when the push carried no
+// matching element; an item-less unblock means the list was cleared.
+export function parseBlockPush(stanza: Element): {
+  blocked?: string[] | undefined
+  unblocked?: string[] | undefined
+} {
+  const block = firstNsTag(stanza, NS.BLOCKING, 'block')
+  const unblock = firstNsTag(stanza, NS.BLOCKING, 'unblock')
+  return {
+    blocked: block ? parseJidItems(block) : undefined,
+    unblocked: unblock ? parseJidItems(unblock) : undefined
+  }
+}
+
 export function parseRosterItems(stanza: Element): RosterItem[] {
   const items: RosterItem[] = []
-  for (const el of findAll(stanza, NS.ROSTER, 'item')) {
+  for (const el of allNsTags(stanza, NS.ROSTER, 'item')) {
     items.push({
       jid: el.getAttribute('jid') ?? '',
       name: el.getAttribute('name') ?? '',
       subscription: el.getAttribute('subscription') ?? 'none',
       ask: el.getAttribute('ask') ?? undefined,
-      groups: findAll(el, NS.ROSTER, 'group').map((g) => g.textContent ?? '')
+      groups: allNsTags(el, NS.ROSTER, 'group').map((g) => g.textContent ?? '')
     })
   }
   return items
@@ -176,7 +205,7 @@ export function parseRosterItems(stanza: Element): RosterItem[] {
 
 // Unwrap a carbon or MAM result to the real stanza inside <forwarded>.
 // Returns null when the stanza is not wrapped.
-export function unwrapForwarded(stanza: Element): {
+function unwrapForwarded(stanza: Element): {
   inner: Element
   kind: 'carbon-sent' | 'carbon-received' | 'mam'
   delay?: string | undefined
@@ -185,20 +214,20 @@ export function unwrapForwarded(stanza: Element): {
   const fromBare = bareJid(stanza.getAttribute('from') ?? '')
 
   for (const dir of ['sent', 'received'] as const) {
-    const wrapper = find(stanza, NS.CARBONS, dir)
-    const forwarded = wrapper ? find(wrapper, NS.FORWARD, 'forwarded') : null
+    const wrapper = firstNsTag(stanza, NS.CARBONS, dir)
+    const forwarded = wrapper ? firstNsTag(wrapper, NS.FORWARD, 'forwarded') : null
     const inner = forwarded ? firstTag(forwarded, 'message') : null
     if (inner && forwarded && ownBare === fromBare) {
-      const delay = find(forwarded, NS.DELAY, 'delay')?.getAttribute('stamp')
+      const delay = firstNsTag(forwarded, NS.DELAY, 'delay')?.getAttribute('stamp')
       return { inner, kind: `carbon-${dir}`, delay: delay ?? undefined }
     }
   }
 
-  const result = find(stanza, NS.MAM, 'result')
-  const forwarded = result ? find(result, NS.FORWARD, 'forwarded') : null
+  const result = firstNsTag(stanza, NS.MAM, 'result')
+  const forwarded = result ? firstNsTag(result, NS.FORWARD, 'forwarded') : null
   const inner = forwarded ? firstTag(forwarded, 'message') : null
   if (inner && forwarded) {
-    const delay = find(forwarded, NS.DELAY, 'delay')?.getAttribute('stamp')
+    const delay = firstNsTag(forwarded, NS.DELAY, 'delay')?.getAttribute('stamp')
     return { inner, kind: 'mam', delay: delay ?? undefined }
   }
 
@@ -224,59 +253,65 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
   if (forwarded?.kind === 'carbon-received') message.carbon = 'received'
   if (forwarded?.kind === 'mam') message.mam = true
 
-  const stanzaId = find(inner, NS.STANZA_IDS, 'stanza-id')?.getAttribute('id')
+  const stanzaId = firstNsTag(inner, NS.STANZA_IDS, 'stanza-id')?.getAttribute('id')
   if (stanzaId) message.stanzaId = stanzaId
-  const originId = find(inner, NS.STANZA_IDS, 'origin-id')?.getAttribute('id')
+  const originId = firstNsTag(inner, NS.STANZA_IDS, 'origin-id')?.getAttribute('id')
   if (originId) message.originId = originId
   const delay =
-    forwarded?.delay ?? find(inner, NS.DELAY, 'delay')?.getAttribute('stamp') ?? undefined
+    forwarded?.delay ?? firstNsTag(inner, NS.DELAY, 'delay')?.getAttribute('stamp') ?? undefined
   if (delay) message.delay = Date.parse(delay)
 
   for (const state of CHAT_STATES) {
-    if (find(inner, NS.CHAT_STATES, state)) {
+    if (firstNsTag(inner, NS.CHAT_STATES, state)) {
       message.chatState = state
       break
     }
   }
-  const receipt = find(inner, NS.RECEIPTS, 'received')
+  const receipt = firstNsTag(inner, NS.RECEIPTS, 'received')
   if (receipt) message.receiptFor = receipt.getAttribute('id') ?? undefined
   for (const marker of ['received', 'displayed', 'acknowledged'] as const) {
-    const el = find(inner, NS.MARKERS, marker)
+    const el = firstNsTag(inner, NS.MARKERS, marker)
     if (el) {
       message.marker = { id: el.getAttribute('id') ?? '', type: marker }
       break
     }
   }
-  if (find(inner, NS.RECEIPTS, 'request')) {
+  if (firstNsTag(inner, NS.RECEIPTS, 'request')) {
     message.receiptRequest = true
   }
 
-  const reply = find(inner, NS.REPLY, 'reply')
+  const reply = firstNsTag(inner, NS.REPLY, 'reply')
   if (reply) {
     message.replyTo = {
       id: reply.getAttribute('id') ?? '',
       from: reply.getAttribute('to') ?? ''
     }
   }
-  const reactions = find(inner, NS.REACTIONS, 'reactions')
+  const reactions = firstNsTag(inner, NS.REACTIONS, 'reactions')
   if (reactions) {
     message.reactionTo = {
       id: reactions.getAttribute('id') ?? '',
-      emojis: findAll(reactions, NS.REACTIONS, 'reaction').map((r) => r.textContent ?? '')
+      emojis: allNsTags(reactions, NS.REACTIONS, 'reaction').map((r) => r.textContent ?? '')
     }
   }
-  const replace = find(inner, NS.CORRECT, 'replace')
+  const replace = firstNsTag(inner, NS.CORRECT, 'replace')
   if (replace) message.replaceId = replace.getAttribute('id') ?? undefined
   const attachments = parseAttachments(inner)
   if (attachments.length > 0) message.attachments = attachments
 
+  // OMEMO payloads survive as raw xml for the service layer to decrypt;
+  // the wire body is only a fallback for clients without encryption.
+  const encrypted =
+    firstNsTag(inner, NS.OMEMO, 'encrypted') ?? firstNsTag(inner, NS.OMEMO_LEGACY, 'encrypted')
+  if (encrypted) message.encryptedXml = serializeElement(encrypted)
+
   if (type === 'groupchat') {
     message.nick = jidResource(message.from) ?? undefined
-    const subject = findText(inner, 'subject')
+    const subject = firstTagText(inner, 'subject')
     if (subject !== null) message.subject = subject
   }
 
-  const body = findText(inner, 'body')
+  const body = firstTagText(inner, 'body')
   if (body) message.body = body
   if (message.replyTo && message.body) {
     const stripped = stripReplyFallback(message.body)
@@ -295,6 +330,7 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     !message.marker &&
     !message.reactionTo &&
     !message.attachments?.length &&
+    !message.encryptedXml &&
     message.subject === undefined
   ) {
     return null
@@ -315,16 +351,16 @@ export function parsePresence(
   if (!from) return null
   const type = stanza.getAttribute('type')
 
-  const mucUser = find(stanza, NS.MUC_USER, 'x')
+  const mucUser = firstNsTag(stanza, NS.MUC_USER, 'x')
   if (mucUser) {
-    const item = find(mucUser, NS.MUC_USER, 'item')
-    const codes = findAll(mucUser, NS.MUC_USER, 'status').map((s) => s.getAttribute('code') ?? '')
+    const item = firstNsTag(mucUser, NS.MUC_USER, 'item')
+    const codes = allNsTags(mucUser, NS.MUC_USER, 'status').map((s) => s.getAttribute('code') ?? '')
     return {
       kind: 'occupant',
       occupant: {
         room: bareJid(from),
         nick: jidResource(from) ?? '',
-        presence: type === 'unavailable' ? 'offline' : (findText(stanza, 'show') ?? 'online'),
+        presence: type === 'unavailable' ? 'offline' : (firstTagText(stanza, 'show') ?? 'online'),
         affiliation: item?.getAttribute('affiliation') ?? 'none',
         role: item?.getAttribute('role') ?? 'none',
         self: codes.includes('110') || codes.includes('210'),
@@ -337,7 +373,7 @@ export function parsePresence(
     return {
       kind: 'subscribe',
       from: bareJid(from),
-      status: findText(stanza, 'status') ?? ''
+      status: firstTagText(stanza, 'status') ?? ''
     }
   }
 
@@ -345,9 +381,64 @@ export function parsePresence(
     kind: 'presence',
     presence: {
       from: bareJid(from),
-      show: type === 'unavailable' ? 'offline' : (findText(stanza, 'show') ?? 'online'),
-      status: findText(stanza, 'status') ?? '',
+      show: type === 'unavailable' ? 'offline' : (firstTagText(stanza, 'show') ?? 'online'),
+      status: firstTagText(stanza, 'status') ?? '',
       type: type ?? undefined
     }
+  }
+}
+
+// disco#items result: the jids of the server's components, used to
+// hunt for an upload service.
+export function parseDiscoItemJids(stanza: Element): string[] {
+  const jids: string[] = []
+  for (const item of allNsTags(stanza, NS.DISCO_ITEMS, 'item')) {
+    const jid = item.getAttribute('jid')
+    if (jid) jids.push(jid)
+  }
+  return jids
+}
+
+// Does a disco#info result advertise the given feature var.
+export function hasDiscoFeature(stanza: Element, featureVar: string): boolean {
+  for (const feature of allNsTags(stanza, NS.DISCO_INFO, 'feature')) {
+    if (feature.getAttribute('var') === featureVar) return true
+  }
+  return false
+}
+
+// XEP-0363 slot response. The url is an attribute in
+// urn:xmpp:http:upload:0 and text content in the newer namespace, so
+// accept both.
+export function parseUploadSlot(stanza: Element): UploadSlot | null {
+  const slot = firstNsTag(stanza, NS.HTTP_UPLOAD, 'slot')
+  const put = slot ? firstTag(slot, 'put') : null
+  const get = slot ? firstTag(slot, 'get') : null
+  const putUrl = put?.getAttribute('url') ?? put?.textContent?.trim() ?? null
+  const getUrl = get?.getAttribute('url') ?? get?.textContent?.trim() ?? null
+  return putUrl && getUrl ? { putUrl, getUrl } : null
+}
+
+// vcard-temp PHOTO as a data uri, or undefined when the stanza carries
+// no usable photo.
+export function parseVcardPhoto(stanza: Element): string | undefined {
+  const vcard = firstTag(stanza, 'vCard')
+  const photo = vcard ? firstTag(vcard, 'PHOTO') : null
+  const type = photo ? firstTagText(photo, 'TYPE') : null
+  const binval = photo ? firstTagText(photo, 'BINVAL') : null
+  return type && binval ? `data:${type};base64,${binval.trim()}` : undefined
+}
+
+// The iq result closing a MAM query carries a <fin> with the rsm set
+// for the page just returned.
+export function parseMamFin(stanza: Element): MamPageResult {
+  const fin = firstNsTag(stanza, NS.MAM, 'fin')
+  const set = fin ? firstNsTag(fin, NS.RSM, 'set') : null
+  const last = set ? firstTagText(set, 'last') : null
+  const first = set ? firstTagText(set, 'first') : null
+  return {
+    complete: fin?.getAttribute('complete') === 'true',
+    last: last ?? undefined,
+    first: first ?? undefined
   }
 }

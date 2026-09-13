@@ -6,6 +6,7 @@ export const NS = {
   MUC: 'http://jabber.org/protocol/muc',
   MUC_USER: 'http://jabber.org/protocol/muc#user',
   MUC_ADMIN: 'http://jabber.org/protocol/muc#admin',
+  MUC_OWNER: 'http://jabber.org/protocol/muc#owner',
   MAM: 'urn:xmpp:mam:2',
   RSM: 'http://jabber.org/protocol/rsm',
   FORMS: 'jabber:x:data',
@@ -22,6 +23,9 @@ export const NS = {
   OMEMO: 'urn:xmpp:omemo:2',
   OMEMO_LEGACY: 'eu.siacs.conversations.axolotl',
   SCE: 'urn:xmpp:sce:1',
+  // XEP-0380 explicit encryption announcement + XEP-0334 storage hint
+  EME: 'urn:xmpp:eme:0',
+  HINTS: 'urn:xmpp:hints',
   BOOKMARKS: 'urn:xmpp:bookmarks:1',
   PUBSUB: 'http://jabber.org/protocol/pubsub',
   RECEIPTS: 'urn:xmpp:receipts',
@@ -35,4 +39,10 @@ export const NS = {
   REFERENCE: 'urn:xmpp:reference:0'
 } as const
 
-export type Namespace = (typeof NS)[keyof typeof NS]
+// XEP-0156 host-meta link relations used by endpoint discovery. These are
+// link rel values, not stanza namespaces, so they live next to but outside
+// the NS table.
+export const HOST_META_REL = {
+  WEBSOCKET: 'urn:xmpp:alt-connections:websocket',
+  BOSH: 'urn:xmpp:alt-connections:xbosh'
+} as const

@@ -3,8 +3,7 @@ export interface ConnectionEndpoints {
   bosh?: string
 }
 
-const REL_WEBSOCKET = 'urn:xmpp:alt-connections:websocket'
-const REL_BOSH = 'urn:xmpp:alt-connections:xbosh'
+import { HOST_META_REL } from './ns'
 
 export async function discoverEndpoints(domain: string): Promise<ConnectionEndpoints> {
   const fromJson = await fetchHostMetaJson(domain)
@@ -44,8 +43,8 @@ function linksToEndpoints(
   const endpoints: ConnectionEndpoints = {}
   for (const link of links) {
     if (!link.href) continue
-    if (link.rel === REL_WEBSOCKET) endpoints.websocket = link.href
-    if (link.rel === REL_BOSH) endpoints.bosh = link.href
+    if (link.rel === HOST_META_REL.WEBSOCKET) endpoints.websocket = link.href
+    if (link.rel === HOST_META_REL.BOSH) endpoints.bosh = link.href
   }
   return endpoints
 }

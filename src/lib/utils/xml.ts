@@ -1,0 +1,36 @@
+// Element traversal helpers shared by stanza and payload parsing. These
+// take and return DOM types only. The test suite runs under
+// @xmldom/xmldom which has no selector engine, so only
+// getElementsByTagName(NS) is used here - never querySelector.
+
+// first descendant matching a local name in any namespace
+export function firstTag(el: Element, local: string): Element | null {
+  const found = el.getElementsByTagName(local)
+  return found.length > 0 ? (found.item(0) as Element) : null
+}
+
+// first descendant matching a namespace and local name
+export function firstNsTag(el: Element, ns: string, local: string): Element | null {
+  const found = el.getElementsByTagNameNS(ns, local)
+  return found.length > 0 ? (found.item(0) as Element) : null
+}
+
+// all descendants matching a namespace and local name
+export function allNsTags(el: Element, ns: string, local: string): Element[] {
+  const found = el.getElementsByTagNameNS(ns, local)
+  const out: Element[] = []
+  for (let i = 0; i < found.length; i++) out.push(found.item(i) as Element)
+  return out
+}
+
+// text content of the first descendant matching a local name
+export function firstTagText(el: Element, local: string): string | null {
+  return firstTag(el, local)?.textContent ?? null
+}
+
+// DOM Elements serialize via outerHTML; under xmldom toString does the
+// same job. The OMEMO parser consumes the serialized form.
+export function serializeElement(el: Element): string {
+  const outer = (el as { outerHTML?: string }).outerHTML
+  return outer ?? (el as unknown as { toString(): string }).toString()
+}
