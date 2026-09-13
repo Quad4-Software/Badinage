@@ -3,6 +3,7 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
+  import { copyText } from '$lib/ui/clipboard'
   import { Sheet } from '$lib/ui/primitives/sheet'
 
   import EmojiPicker from '../emoji-picker.svelte'
@@ -53,7 +54,7 @@
   }
 
   function copyBody() {
-    if (message) void navigator.clipboard?.writeText(message.body).catch(() => undefined)
+    if (message) void copyText(message.body)
     open = false
   }
 

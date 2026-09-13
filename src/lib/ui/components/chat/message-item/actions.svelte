@@ -3,6 +3,7 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
+  import { copyText } from '$lib/ui/clipboard'
   import { cn } from '$lib/utils/cn'
 
   import EmojiPicker from '../emoji-picker.svelte'
@@ -41,7 +42,7 @@
     'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded'
 
   function copyBody() {
-    void navigator.clipboard?.writeText(message.body).catch(() => undefined)
+    void copyText(message.body)
   }
 
   // anchor follows the trigger: the action bar sits above the bubble, the

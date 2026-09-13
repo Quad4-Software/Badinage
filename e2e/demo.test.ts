@@ -1,16 +1,13 @@
 import { expect, test } from '@playwright/test'
 
+import { enterDemo } from './helpers'
+
 test('demo mode signs in without a server', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
-  await expect(page.getByRole('button', { name: 'demo@badinage.local' })).toBeVisible({
-    timeout: 10_000
-  })
+  await enterDemo(page)
 })
 
 test('demo mode shows contacts, rooms and a subscription request', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   await expect(page.getByText('Aria').first()).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: /lobby/ }).first()).toBeVisible()
   await expect(page.getByText('wren@badinage.local wants to see your presence')).toBeVisible({
@@ -19,8 +16,7 @@ test('demo mode shows contacts, rooms and a subscription request', async ({ page
 })
 
 test('demo mode opens a conversation and sends a message', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
@@ -31,8 +27,7 @@ test('demo mode opens a conversation and sends a message', async ({ page }) => {
 })
 
 test('demo mode opens the room and shows its subject', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const room = page.getByRole('button', { name: /lobby/ }).first()
   await expect(room).toBeVisible({ timeout: 10_000 })
   await room.click()
@@ -40,8 +35,7 @@ test('demo mode opens the room and shows its subject', async ({ page }) => {
 })
 
 test('sidebar search filters conversations', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   await expect(page.getByRole('button', { name: /Aria/ }).first()).toBeVisible({ timeout: 10_000 })
   // the sidebar search field opens the command palette; the palette
   // combobox does the filtering
@@ -56,8 +50,7 @@ test('sidebar search filters conversations', async ({ page }) => {
 })
 
 test('unread badges are circular', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const badge = page.locator('[aria-label$="unread"]').first()
   await expect(badge).toBeVisible({ timeout: 10_000 })
   const box = await badge.boundingBox()
@@ -66,8 +59,7 @@ test('unread badges are circular', async ({ page }) => {
 })
 
 test('scrolling to top loads an older archive page', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
@@ -87,8 +79,7 @@ test('scrolling to top loads an older archive page', async ({ page }) => {
 })
 
 test('demo encrypts direct messages and shows the lock', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
@@ -102,11 +93,7 @@ test('demo encrypts direct messages and shows the lock', async ({ page }) => {
 })
 
 test('demo settings show the encryption section with fingerprints', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
-  await expect(page.getByRole('button', { name: 'demo@badinage.local' })).toBeVisible({
-    timeout: 10_000
-  })
+  await enterDemo(page)
   await page.keyboard.press('Control+,')
   const dialog = page.getByRole('dialog')
   // the side nav only exists on desktop; the section is always mounted
@@ -121,8 +108,7 @@ test('demo settings show the encryption section with fingerprints', async ({ pag
 })
 
 test('composer placeholder uses the contact name', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()

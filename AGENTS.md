@@ -53,7 +53,7 @@ License: 0BSD. Copyright Quad4 Software.
     docker/dev/        dev stack: vite server + local prosody
     scripts/           build-time utilities (icon generation)
     public/            favicon, icons, og card
-    .agents/docs/      architecture, XEP matrix, conventions, security, ci
+    .agents/docs/      architecture, XEP matrix, conventions, security, ci, testing
     .agents/skills/    repo skills: xmpp, frontend
 
 ## Architecture rules

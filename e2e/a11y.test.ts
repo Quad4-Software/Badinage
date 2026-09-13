@@ -1,24 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-async function enterDemo(page: Page) {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
-  await expect(page.getByRole('button', { name: 'demo@badinage.local' })).toBeVisible({
-    timeout: 10_000
-  })
-  // close the connect toast if it is up so the sweep covers the steady
-  // state and not a fading or backdrop-dimmed toast
-  const toast = page.locator('[data-sonner-toast]')
-  await toast
-    .first()
-    .waitFor({ state: 'visible', timeout: 5_000 })
-    .catch(() => undefined)
-  if (await toast.count()) {
-    await page.getByRole('button', { name: 'Close toast' }).first().click()
-    await expect(toast).toHaveCount(0, { timeout: 10_000 })
-  }
-}
+import { enterDemo } from './helpers'
 
 async function expectNoViolations(page: Page) {
   const results = await new AxeBuilder({ page }).analyze()

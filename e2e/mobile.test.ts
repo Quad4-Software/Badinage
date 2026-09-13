@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
 
+import { enterDemo } from './helpers'
+
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
 test('contextmenu or long-press opens the message action sheet', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
@@ -29,8 +30,7 @@ test('contextmenu or long-press opens the message action sheet', async ({ page }
 })
 
 test('a hold gesture without a contextmenu still opens the sheet', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
@@ -48,8 +48,7 @@ test('a hold gesture without a contextmenu still opens the sheet', async ({ page
 })
 
 test('composer exposes a send key hint and the attach sheet', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await enterDemo(page)
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()

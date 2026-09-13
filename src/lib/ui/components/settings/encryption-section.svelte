@@ -5,8 +5,10 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { settings } from '$lib/state/settings.svelte'
+  import { copyText } from '$lib/ui/clipboard'
   import { cn } from '$lib/utils/cn'
   import { Button } from '$lib/ui/primitives/button'
+  import { toast } from '$lib/ui/primitives/sonner'
   import { Switch } from '$lib/ui/primitives/switch'
 
   import FingerprintDialogs from './encryption/fingerprint-dialogs.svelte'
@@ -35,6 +37,11 @@
       if (device.level !== 'trusted') await service.setTrust(jid, device.deviceId, 'trusted')
     }
     await reload(jid)
+  }
+
+  // the fingerprint row has no other feedback, so success toasts too
+  async function copyFingerprint() {
+    if (await copyText(ownFingerprint)) toast.success($LL.copied())
   }
 
   $effect(() => {
@@ -131,7 +138,7 @@
             size="icon"
             class="size-7 shrink-0"
             aria-label={$LL.copyFingerprint()}
-            onclick={() => void navigator.clipboard.writeText(ownFingerprint)}
+            onclick={() => void copyFingerprint()}
           >
             <Copy class="size-3.5" />
           </Button>

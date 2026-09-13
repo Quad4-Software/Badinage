@@ -1,6 +1,7 @@
 <script lang="ts">
   import { COPY_FEEDBACK_MS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
+  import { copyText } from '$lib/ui/clipboard'
   import { Button } from '$lib/ui/primitives/button'
 
   let { error, reset }: { error: unknown; reset: () => void } = $props()
@@ -9,9 +10,11 @@
   const copied = $state({ value: false })
 
   function copyError() {
-    void navigator.clipboard.writeText(message)
-    copied.value = true
-    setTimeout(() => (copied.value = false), COPY_FEEDBACK_MS)
+    void copyText(message).then((ok) => {
+      if (!ok) return
+      copied.value = true
+      setTimeout(() => (copied.value = false), COPY_FEEDBACK_MS)
+    })
   }
 
   function reload() {

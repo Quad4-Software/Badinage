@@ -193,6 +193,11 @@ type RootTranslation = {
 	 */
 	emptyRoster: string
 	/**
+	 * N​o​ ​m​a​t​c​h​e​s​ ​f​o​r​ ​"​{​q​u​e​r​y​}​"
+	 * @param {string} query
+	 */
+	noMatches: RequiredParams<'query'>
+	/**
 	 * T​o​g​g​l​e​ ​t​h​e​m​e
 	 */
 	toggleTheme: string
@@ -909,6 +914,10 @@ type RootTranslation = {
 	 * C​o​p​i​e​d
 	 */
 	copied: string
+	/**
+	 * C​o​p​y​ ​f​a​i​l​e​d
+	 */
+	copyFailed: string
 	/**
 	 * C​o​n​n​e​c​t​e​d​ ​a​s​ ​{​j​i​d​}
 	 * @param {string} jid
@@ -1844,6 +1853,10 @@ export type TranslationFunctions = {
 	 */
 	emptyRoster: () => LocalizedString
 	/**
+	 * No matches for "{query}"
+	 */
+	noMatches: (arg: { query: string }) => LocalizedString
+	/**
 	 * Toggle theme
 	 */
 	toggleTheme: () => LocalizedString
@@ -2543,6 +2556,10 @@ export type TranslationFunctions = {
 	 * Copied
 	 */
 	copied: () => LocalizedString
+	/**
+	 * Copy failed
+	 */
+	copyFailed: () => LocalizedString
 	/**
 	 * Connected as {jid}
 	 */

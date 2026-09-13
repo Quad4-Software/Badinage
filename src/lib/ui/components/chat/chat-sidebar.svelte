@@ -172,7 +172,10 @@
             onSelect={() => open(contact.jid)}
           />
         {:else}
-          {#if account?.status === 'connecting'}
+          {#if q}
+            <!-- a filtered-empty list is a miss, not an empty roster;
+                 the nav-level line below reports it -->
+          {:else if account?.status === 'connecting'}
             <div class="flex flex-col gap-2 p-2" role="status" aria-label={$LL.loadingContacts()}>
               {#each Array.from({ length: 6 }) as _, i (i)}
                 <div class="flex items-center gap-3">
@@ -187,6 +190,10 @@
           {/if}
         {/each}
       </SidebarSection>
+
+      {#if q && conversations.length === 0 && rooms.length === 0 && bookmarks.length === 0 && contacts.length === 0}
+        <p class="text-muted-foreground px-2 py-4 text-sm">{$LL.noMatches({ query })}</p>
+      {/if}
     </nav>
   </ScrollArea>
 </div>

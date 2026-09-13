@@ -46,6 +46,7 @@ const en = {
   send: 'Send',
   noConversation: 'Select a conversation or contact to start chatting',
   emptyRoster: 'No contacts yet',
+  noMatches: 'No matches for "{query:string}"',
   toggleTheme: 'Toggle theme',
   back: 'Back',
   encrypted: 'Encrypted',
@@ -230,6 +231,7 @@ const en = {
   crashReload: 'Reload app',
   copyError: 'Copy error',
   copied: 'Copied',
+  copyFailed: 'Copy failed',
 
   toastConnected: 'Connected as {jid:string}',
   toastConnectionError: 'Connection problem for {jid:string}',
