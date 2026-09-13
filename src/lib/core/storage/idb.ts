@@ -5,7 +5,7 @@ export type StoreName = (typeof STORES)[number]
 
 let dbPromise: Promise<IDBDatabase> | undefined
 
-export function openDb(): Promise<IDBDatabase> {
+function openDb(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
     const request = indexedDB.open(IDB_NAME, IDB_VERSION)
     request.onupgradeneeded = () => {
