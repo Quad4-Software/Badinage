@@ -15,7 +15,8 @@ export default defineConfig([
       'packages/*/docs/',
       'coverage/',
       'reports/',
-      '.stryker-tmp/'
+      '.stryker-tmp/',
+      '.svelte-check/'
     ]
   },
   js.configs.recommended,

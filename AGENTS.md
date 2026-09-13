@@ -8,7 +8,12 @@ License: 0BSD. Copyright Quad4 Software.
 
 ## Stack
 
-- Svelte 5 (runes) + Vite 8 + TypeScript 5 (strict, exactOptionalPropertyTypes)
+- Svelte 5 (runes) + Vite 8 + TypeScript 6 (strict, exactOptionalPropertyTypes)
+- Two TypeScript installs: the `typescript` dep stays on 6.x because
+  typescript-eslint peers `<6.1.0` and svelte-check needs the JS compiler
+  API. `@typescript/native` is an alias of stable `typescript@7` used only
+  by `pnpm check:tsgo` for fast native type-checking. Its `.svelte-check/`
+  output cache is gitignored and excluded from eslint.
 - Tailwind CSS 4 via @tailwindcss/vite, shadcn-svelte primitives on Bits UI
 - strophe.js for the XMPP transport (WebSocket + BOSH, SCRAM-SHA-256)
 - typesafe-i18n for localization, run `pnpm i18n` after editing locales
@@ -23,6 +28,7 @@ License: 0BSD. Copyright Quad4 Software.
     pnpm dev          # dev server
     pnpm build        # static build to dist/, includes PWA service worker
     pnpm check        # svelte-check, fails on warnings
+    pnpm check:tsgo   # svelte-check on the TypeScript 7 native compiler
     pnpm lint         # eslint, typed rules enabled
     pnpm format       # prettier write
     pnpm test         # vitest unit tests

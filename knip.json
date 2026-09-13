@@ -5,7 +5,7 @@
       "entry": ["index.html", "e2e/**/*.test.ts", "scripts/*.mjs"],
       "project": ["{src,e2e,scripts}/**/*.{ts,svelte,mjs,css}"],
       "ignore": ["src/lib/i18n/**"],
-      "ignoreDependencies": ["@stryker-mutator/*"]
+      "ignoreDependencies": ["@stryker-mutator/*", "@typescript/native"]
     },
     "packages/omemo": {
       "entry": ["test/**/*.test.ts"],
