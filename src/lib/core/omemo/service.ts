@@ -48,6 +48,8 @@ import {
   applyEnvelopeContent,
   attachmentNodes,
   chatStateNode,
+  ephemeralNode,
+  geolocNode,
   reactionsNode,
   replaceNode,
   replyNode,
@@ -290,9 +292,8 @@ export class OmemoService {
   }
 
   // Device list enriched with fingerprints and current trust state.
-  // Observing here also records first-seen devices so the UI can react
-  // without a second pass. omemo:2 devices come first; a legacy-only peer
-  // still lists its devices so they can be verified.
+  // Observing records first-seen devices so the UI can react without a
+  // second pass. A legacy-only peer still lists its devices for verify.
   async fingerprints(jid: string): Promise<DeviceFingerprint[]> {
     const bare = bareJid(jid)
     const out: DeviceFingerprint[] = []
@@ -324,9 +325,8 @@ export class OmemoService {
   }
 
   // Non-distrusted devices of the peer with a resolvable bundle. A peer
-  // with no entries here must produce a null result from the encrypt
-  // paths so the caller can fall back to plaintext - encrypting only for
-  // our own other devices would send something the peer cannot read.
+  // with none yields null from the encrypt paths so the caller falls
+  // back to plaintext.
   private async peerRecipients(ns: Namespace, bare: string): Promise<EncryptRecipient[]> {
     const recipients: EncryptRecipient[] = []
     for (const deviceId of await this.devicesOfNs(ns, bare)) {
@@ -377,13 +377,10 @@ export class OmemoService {
     return serializeXml(encrypted)
   }
 
-  // Encrypt a text body. opts.replaceId wraps an XEP-0308 correction,
-  // opts.replyTo an XEP-0461 reply and opts.spoilerHint an XEP-0382
-  // spoiler marker inside the envelope so edits, quotes and spoiler hints
-  // stay encrypted. When the peer is legacy-only the raw body is sent
-  // through that profile; legacy cannot carry envelope content, so reply,
-  // replace and spoiler metadata are dropped there rather than sent in
-  // the clear.
+  // Encrypt a text body plus envelope content (XEP-0308 replaceId,
+  // XEP-0461 replyTo, XEP-0382 spoilerHint, ephemeral timer, geoloc).
+  // Legacy-only peers cannot carry envelope content, so that metadata is
+  // dropped there rather than sent in the clear.
   async encryptBody(
     jid: string,
     body: string,
@@ -391,13 +388,17 @@ export class OmemoService {
       replaceId?: string
       replyTo?: { id: string; to: string } | undefined
       spoilerHint?: string | undefined
+      ephemeral?: number | undefined
+      geoloc?: { lat: number; lon: number; accuracy?: number | undefined } | undefined
     }
   ): Promise<string | null> {
     const bare = bareJid(jid)
     const content = textEnvelope(body, [
       ...(opts?.replaceId ? [replaceNode(opts.replaceId)] : []),
       ...(opts?.replyTo ? [replyNode(opts.replyTo)] : []),
-      ...(opts?.spoilerHint !== undefined ? [spoilerNode(opts.spoilerHint)] : [])
+      ...(opts?.spoilerHint !== undefined ? [spoilerNode(opts.spoilerHint)] : []),
+      ...(opts?.ephemeral !== undefined ? [ephemeralNode(opts.ephemeral)] : []),
+      ...(opts?.geoloc ? [geolocNode(opts.geoloc)] : [])
     ]).content
     const omemo2 = await this.encryptEnvelope(bare, content)
     if (omemo2 !== null) return omemo2
@@ -433,11 +434,10 @@ export class OmemoService {
 
   // XEP-0384 recovery for undecryptable stanzas: send one empty OMEMO
   // message (a key transport) to the sender device that produced the
-  // failed stanza, so it can complete or repair the session. Empty
-  // messages exist purely to transfer key material, which is why this is
-  // allowed to build a session without prior trust. Rate limited to once
-  // per (sender, sid) per app session and skipped for devices the user
-  // distrusted. Returns true when a transport stanza was actually sent.
+  // failed stanza, so it can complete or repair the session. Key
+  // transports may build a session without prior trust. Rate limited to
+  // once per (sender, sid) per app session, skipped for distrusted
+  // devices.
   async sendKeyTransport(jid: string, sid: number, ns: Namespace): Promise<boolean> {
     const bare = bareJid(jid)
     const key = `${ns}:${bare}/${sid}`
@@ -476,8 +476,8 @@ export class OmemoService {
   // message.body plus any envelope content (reply, replace, reactions,
   // chat states, attachments), flags encrypted state, and records the
   // sender's device fingerprint so key changes surface in the UI. The
-  // report tells the caller which device sent it and whether a key
-  // transport might help, even when decryption itself failed.
+  // report names the sending device and whether a key transport might
+  // help, even when decryption itself failed.
   async decryptInto(message: IncomingMessage): Promise<DecryptReport> {
     if (!message.encryptedXml) return { status: 'none' }
     const sender = bareJid(message.from)

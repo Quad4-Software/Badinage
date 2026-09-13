@@ -47,6 +47,27 @@ export function spoilerNode(hint: string): XmlElement {
   return el('spoiler', { xmlns: NS.SPOILER }, [], hint)
 }
 
+// XEP-0466 ephemeral timer: the timer must ride inside the envelope so
+// the cleartext stanza does not leak that the conversation is set to
+// self-destruct.
+export function ephemeralNode(timer: number): XmlElement {
+  return el('ephemeral', { xmlns: NS.EPHEMERAL, timer: String(timer) })
+}
+
+// XEP-0080 location: coordinates go inside the envelope; the envelope
+// body still carries the geo uri fallback.
+export function geolocNode(geoloc: {
+  lat: number
+  lon: number
+  accuracy?: number | undefined
+}): XmlElement {
+  const children = [el('lat', {}, [], String(geoloc.lat)), el('lon', {}, [], String(geoloc.lon))]
+  if (geoloc.accuracy !== undefined) {
+    children.push(el('accuracy', {}, [], String(geoloc.accuracy)))
+  }
+  return el('geoloc', { xmlns: NS.GEOLOC }, children)
+}
+
 // XEP-0066 out-of-band url plus optional XEP-0446 file metadata. The url
 // also goes in the envelope body (handled by the caller) so clients that
 // only read bodies still share something usable.
@@ -96,6 +117,20 @@ export function applyEnvelopeContent(message: IncomingMessage, content: XmlEleme
       message.chatState = node.name as ChatState
     } else if (node.name === 'spoiler' && xmlns === NS.SPOILER) {
       message.spoilerHint = node.text
+    } else if (node.name === 'ephemeral' && xmlns === NS.EPHEMERAL) {
+      const timer = Number.parseInt(node.attrs['timer'] ?? '', 10)
+      if (Number.isFinite(timer) && timer >= 0) message.ephemeralTimer = timer
+    } else if (node.name === 'geoloc' && xmlns === NS.GEOLOC) {
+      const lat = Number.parseFloat(findChild(node, 'lat')?.text ?? '')
+      const lon = Number.parseFloat(findChild(node, 'lon')?.text ?? '')
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        const accuracy = Number.parseFloat(findChild(node, 'accuracy')?.text ?? '')
+        message.geoloc = {
+          lat,
+          lon,
+          ...(Number.isFinite(accuracy) ? { accuracy } : {})
+        }
+      }
     }
   }
 

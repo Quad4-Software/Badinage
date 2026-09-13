@@ -26,6 +26,12 @@ export interface TrustRecord {
 
 // What a freshly observed fingerprint means for an existing record. Pure
 // so the transitions can be unit tested without storage.
+//
+// XEP-0450 ATM rules: a brand new device lands at blind trust when the
+// setting is on. A fingerprint change is always a manual event - a
+// rotated key falls back to undecided so the UI can flag the sender as
+// untrusted until the user verifies, even when the previous key was
+// only blind-trusted.
 export function observeLevel(
   existing: TrustRecord | undefined,
   fingerprint: string,
@@ -37,6 +43,7 @@ export function observeLevel(
   if (existing.fingerprint === fingerprint) {
     return { level: existing.level, changed: existing.changed }
   }
+  if (existing.level === 'distrusted') return { level: 'distrusted', changed: true }
   return { level: 'undecided', changed: true }
 }
 
