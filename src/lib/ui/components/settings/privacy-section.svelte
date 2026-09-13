@@ -9,14 +9,23 @@
 
   let { q }: { q: string } = $props()
 
-  type Flag = 'sendChatStates' | 'sendReceipts' | 'sendReadMarkers'
+  type Flag =
+    | 'sendChatStates'
+    | 'sendReceipts'
+    | 'sendReadMarkers'
+    | 'sendRealTimeText'
+    | 'allowAttention'
+    | 'mapPreviews'
 
   const items = $derived(
     (
       [
         ['sendChatStates', $LL.sendTyping(), 'typing indicators'],
         ['sendReceipts', $LL.sendReceipts(), 'delivery receipts'],
-        ['sendReadMarkers', $LL.sendReadMarkers(), 'read seen markers']
+        ['sendReadMarkers', $LL.sendReadMarkers(), 'read seen markers'],
+        ['sendRealTimeText', $LL.realTimeText(), $LL.realTimeTextHint() + ' rtt live typing'],
+        ['allowAttention', $LL.allowAttention(), $LL.allowAttentionHint() + ' buzz nudge'],
+        ['mapPreviews', $LL.mapPreviews(), $LL.mapPreviewsHint() + ' tiles openstreetmap location']
       ] as [Flag, string, string][]
     ).filter(([, label, keywords]) => matchesQuery(q, label, keywords, $LL.privacy()))
   )

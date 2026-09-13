@@ -325,7 +325,75 @@ const en = {
   wipeDataHint: 'Delete all local messages, keys and settings on this device',
   wipeDataTitle: 'Wipe all local data?',
   wipeDataDescription:
-    'Every account session, cached message and stored key on this device will be deleted. This cannot be undone.'
+    'Every account session, cached message and stored key on this device will be deleted. This cannot be undone.',
+
+  shareTitle: 'Share to a conversation',
+  sharePickHint: 'Pick where the shared content should go',
+  shareFiles: '{count:number} file(s)',
+  shareEmpty: 'Nothing to share',
+  sharedQueued: 'Shared content dropped into the draft',
+
+  handleXmppLinks: 'Open xmpp: links in Badinage',
+  handleXmppLinksHint:
+    'Registers this app as a system handler for XMPP addresses and join links.',
+
+  exploreRooms: 'Explore rooms',
+  exploreHint: 'Search public channels offered by a search service',
+  searchService: 'Search service',
+  searchServicePlaceholder: 'conference.example.org',
+  searchQueryPlaceholder: 'Search channels',
+  searchChannels: 'Search',
+  searchServiceMissing: 'No channel search service was found for your account',
+  searchFailed: 'The search service did not answer',
+  searchEmpty: 'No channels matched',
+  channelUsers: '{count:number} users',
+
+  buzz: 'Buzz',
+  buzzSent: 'Attention request sent',
+  wantsAttention: '{name:string} wants your attention',
+  allowAttention: 'Attention requests',
+  allowAttentionHint:
+    'Contacts can nudge you with a buzz. Each sender can only nudge once every 30 seconds.',
+
+  realTimeText: 'Real-time text',
+  realTimeTextHint:
+    'Shows what your contact is typing before they send it, and shares your draft while you compose in unencrypted chats.',
+  liveTyping: '{name:string} is typing',
+
+  mentionSuggestions: 'Mention suggestions',
+  shareLocation: 'Share location',
+  locating: 'Locating…',
+  locationFailed: 'Could not get your location',
+  sharedLocation: 'Shared location',
+  openMap: 'Open map',
+  mapPreviews: 'Inline map previews',
+  mapPreviewsHint:
+    'Loads a small map tile from the OpenStreetMap tile server when a contact shares a location.',
+
+  disappearing: 'Disappearing messages',
+  disappearingHint:
+    'New messages self-destruct after the timer expires, on your devices and for peers that honour the timer.',
+  timerOff: 'Off',
+  timer5m: '5 minutes',
+  timer1h: '1 hour',
+  timer8h: '8 hours',
+  timer1d: '1 day',
+  timer1w: '1 week',
+  ephemeralActive: 'Disappearing after {time:string}',
+
+  notifyChat: 'Notifications',
+  notifyAlways: 'All messages',
+  notifyMentions: 'Mentions only',
+  notifyNever: 'Muted',
+
+  invisible: 'Invisible',
+  invisibleHint:
+    'You appear offline to your contacts. Joining rooms is blocked while invisible.',
+
+  verifyAll: 'Verify all',
+  verifyAllDescription: 'Mark every device of {jid:string} as verified?',
+  trustAll: 'Trust all',
+  trustAllDescription: 'Blindly trust every undecided device of {jid:string}?'
 } satisfies BaseTranslation
 
 export default en

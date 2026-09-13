@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Hash, UserPlus } from '@lucide/svelte'
+  import { Hash, Search, UserPlus } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import type { Bookmark } from '$lib/core/xmpp/connection'
   import { app } from '$lib/state/app.svelte'
+  import { explore } from '$lib/state/explore'
   import { parseJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
@@ -115,6 +116,15 @@
 
       <SidebarSection title={$LL.rooms()} bind:expanded={showRooms}>
         {#snippet action()}
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-6 shrink-0"
+            onclick={() => (explore.open = true)}
+            aria-label={$LL.exploreRooms()}
+          >
+            <Search class="size-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

@@ -1,22 +1,26 @@
 <script lang="ts">
-  import { Mic, Paperclip, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
+  import { MapPin, Mic, Paperclip, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
 
-  import { TYPING_NOTICE_MS } from '$lib/constants'
-  import type { ChatState } from '$lib/core/xmpp/stanzas'
+  import type { Geoloc } from '$lib/core/xmpp/stanzas'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { settings } from '$lib/state/settings.svelte'
   import type { ConversationKind } from '$lib/state/chats.svelte'
-  import { sendFileMessage } from '$lib/state/upload'
+  import { cn } from '$lib/utils/cn'
   import { bareJid } from '$lib/utils/jid'
-  import { parseSpoilerCommand } from '$lib/utils/message-commands'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Button } from '$lib/ui/primitives/button'
 
   import EmojiPicker from './emoji-picker.svelte'
   import RecordingMeter from './recording-meter.svelte'
   import { createVoiceRecorder } from '../../voice.svelte'
+  import { createFileSend } from './composer/files'
+  import { sendGeoloc } from './composer/location'
+  import { mentionCandidates as candidatesFor, mentionToken } from './composer/mentions'
+  import { createRtt } from './composer/rtt'
+  import { sendText } from './composer/send'
+  import { createTyping } from './composer/typing'
 
   let {
     peerJid,
@@ -30,10 +34,28 @@
   let inputEl = $state<HTMLTextAreaElement | null>(null)
   let fileEl = $state<HTMLInputElement | null>(null)
   let emojiOpen = $state(false)
-  let composingSent = false
-  let pauseTimer: ReturnType<typeof setTimeout> | undefined
+  // XEP-0372: the @token under the cursor and its completion candidates
+  let mentionQuery = $state<{ start: number; text: string } | null>(null)
+  let mentionIndex = $state(0)
+  let locating = $state(false)
 
   const account = $derived(accounts.active)
+  const conversation = $derived(account ? app.chatsFor(account.jid).open(peerJid) : undefined)
+
+  // chat states (XEP-0085) and real-time text (XEP-0301) sender state
+  const typing = createTyping({
+    account: () => account,
+    conversation: () => conversation,
+    kind: () => kind,
+    peer: () => peerJid
+  })
+  const rtt = createRtt({
+    account: () => account,
+    conversation: () => conversation,
+    kind: () => kind,
+    peer: () => peerJid,
+    body: () => body
+  })
 
   // save the draft whenever the text changes
   $effect(() => {
@@ -42,6 +64,16 @@
 
   $effect(() => {
     return app.registerComposerFocus(peerJid, () => inputEl?.focus())
+  })
+
+  // switching peers or unmounting ends any live rtt session politely;
+  // peer is captured so the cancel goes to the peer the session was on
+  $effect(() => {
+    const peer = peerJid
+    return () => {
+      rtt.dispose(peer)
+      mentionQuery = null
+    }
   })
 
   // grow the textarea with its content, capped so it scrolls past the cap.
@@ -60,170 +92,100 @@
 
   const placeholder = $derived($LL.messagePlaceholder({ peer: peerName || bareJid(peerJid) }))
 
-  // XEP-0085 chat states. In an encrypted conversation the state rides
-  // inside an SCE envelope (sent as a bare notification, no fallback
-  // body) so typing metadata never leaks in the clear; peers without
-  // usable omemo:2 devices get the plain cleartext state instead.
-  function sendState(state: ChatState) {
-    if (!account) return
-    const conversation = app.chatsFor(account.jid).open(peerJid)
-    if (conversation.encrypted !== true) {
-      account.connection.sendChatState(peerJid, state)
+  // track the @token under the cursor so the suggestion list stays live
+  function trackMention() {
+    if (kind !== 'muc' || !inputEl) {
+      mentionQuery = null
       return
     }
-    void Promise.resolve(account.omemo ?? account.omemoService())
-      .then(async (omemo) => {
-        if (!account) return
-        const xml = omemo ? await omemo.encryptChatState(peerJid, state) : null
-        if (xml !== null) account.connection.sendEncryptedNotification(peerJid, xml)
-        else account.connection.sendChatState(peerJid, state)
-      })
-      .catch(() => account?.connection.sendChatState(peerJid, state))
+    mentionQuery = mentionToken(body, inputEl.selectionStart ?? body.length)
   }
 
-  // XEP-0085: emit composing when typing starts, paused after a short idle.
-  // DMs only - chat states in MUC are noisy and many rooms discourage them.
-  function notifyTyping() {
-    if (!account || kind !== 'dm' || !settings.current.sendChatStates) return
-    if (!composingSent) {
-      composingSent = true
-      sendState('composing')
+  const mentionCandidates = $derived(candidatesFor(conversation, mentionQuery))
+
+  function completeMention(nick: string) {
+    if (!mentionQuery || !inputEl) return
+    const cursor = inputEl.selectionStart ?? body.length
+    const next = `${body.slice(0, mentionQuery.start)}${nick} ${body.slice(cursor)}`
+    const pos = mentionQuery.start + nick.length + 1
+    body = next
+    mentionQuery = null
+    inputEl.focus()
+    // restore the caret after svelte writes the bound value back
+    requestAnimationFrame(() => inputEl?.setSelectionRange(pos, pos))
+  }
+
+  // XEP-0080: share our current position as a geoloc stanza with a geo
+  // uri body fallback. The timer/encryption wiring is identical to a
+  // normal send.
+  function shareLocation() {
+    const current = account
+    if (!current || locating) return
+    if (!navigator.geolocation) {
+      toast.error($LL.locationFailed())
+      return
     }
-    clearTimeout(pauseTimer)
-    pauseTimer = setTimeout(() => {
-      if (composingSent) {
-        composingSent = false
-        sendState('paused')
-      }
-    }, TYPING_NOTICE_MS)
+    locating = true
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        locating = false
+        const geoloc: Geoloc = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        }
+        void sendGeoloc(current, peerJid, kind, conversation, geoloc)
+      },
+      () => {
+        locating = false
+        toast.error($LL.locationFailed())
+      },
+      { timeout: 15_000, enableHighAccuracy: false }
+    )
   }
 
   async function send() {
     const text = body.trim()
     if (!account || (!text && !voice.recording)) return
-    clearTimeout(pauseTimer)
-    composingSent = false
-
-    const type = kind === 'muc' ? 'groupchat' : 'chat'
-    const ctx = app.composerFor(peerJid)
-    // XEP-0382 slash command: "/spoiler [hint] text" hides text behind a
-    // spoiler with the bracketed hint, "/spoiler text" is hintless. A
-    // plain "/me ..." stays literal on the wire; the render side splits it.
-    const spoiler = parseSpoilerCommand(text)
-    const sendText = spoiler?.body ?? text
-
-    if (ctx.editing) {
-      const ref = ctx.editing.wireId ?? ctx.editing.id
-      let sent = false
-      if (type === 'chat') {
-        const omemo = account.omemo ?? (await account.omemoService())
-        if (omemo) {
-          try {
-            // the correction rides inside the SCE envelope; the wire
-            // stanza never carries a cleartext replace element
-            const xml = await omemo.encryptBody(peerJid, sendText, {
-              replaceId: ref,
-              spoilerHint: spoiler?.hint
-            })
-            if (xml !== null) {
-              account.connection.sendEncryptedMessage(peerJid, xml)
-              sent = true
-            }
-          } catch {
-            // never downgrade a correction to plaintext on encrypt failure
-            toast.error($LL.encryptFailed())
-            return
-          }
-        }
-      }
-      if (!sent) {
-        account.connection.sendChatMessage(peerJid, sendText, type, {
-          replaceId: ref,
-          spoilerHint: spoiler?.hint
-        })
-      }
-      app
-        .chatsFor(account.jid)
-        .applyCorrection(peerJid, ctx.editing.id, sendText, Date.now(), spoiler?.hint)
-    } else {
-      const replyTo = ctx.replyTo
-      // XEP-0461: in MUC the referenced id is the room stanza-id (stored as
-      // message.id), in DMs the wire id attribute
-      const wireRef = replyTo
-        ? kind === 'muc'
-          ? replyTo.id
-          : (replyTo.wireId ?? replyTo.id)
-        : undefined
-      // XEP-0461: the reply 'to' attribute names the author of the quoted
-      // stanza - our own bare jid when we quote ourselves
-      const replyRef =
-        replyTo && wireRef
-          ? { id: wireRef, to: replyTo.outgoing ? bareJid(account.jid) : peerJid }
-          : undefined
-      // encrypt when the peer publishes omemo devices; falls back to
-      // plaintext when there are none or every device is distrusted
-      let encryptedXml: string | null = null
-      if (type === 'chat') {
-        // await the in-flight service creation so a message sent right
-        // after connect is still encrypted
-        const omemo = account.omemo ?? (await account.omemoService())
-        if (omemo) {
-          try {
-            // null means the peer publishes no usable devices; a thrown
-            // error is a real failure and must not downgrade to plaintext.
-            // The reply reference and spoiler marker travel inside the
-            // envelope with the body.
-            encryptedXml = await omemo.encryptBody(peerJid, sendText, {
-              replyTo: replyRef,
-              spoilerHint: spoiler?.hint
-            })
-          } catch {
-            toast.error($LL.encryptFailed())
-            return
-          }
-        }
-      }
-      const encrypted = encryptedXml !== null
-      const id = encryptedXml
-        ? account.connection.sendEncryptedMessage(peerJid, encryptedXml)
-        : account.connection.sendChatMessage(peerJid, sendText, type, {
-            replyTo: replyRef,
-            spoilerHint: spoiler?.hint
-          })
-      const store = app.chatsFor(account.jid)
-      const conversation = store.open(peerJid)
-      // keep the flag honest: a peer that removed its device list drops
-      // the conversation back to plaintext
-      if (type === 'chat') conversation.encrypted = encrypted
-      store.push(peerJid, {
-        id,
-        wireId: id,
-        peerJid,
-        body: sendText,
-        outgoing: true,
-        timestamp: Date.now(),
-        encrypted,
-        delivered: false,
-        read: false,
-        reactions: {},
-        spoilerHint: spoiler?.hint,
-        replyTo: replyTo
-          ? {
-              id: replyTo.id,
-              from: replyTo.outgoing
-                ? (conversation.ourNick ?? account.jid)
-                : (replyTo.nick ?? peerJid),
-              quote: replyTo.body
-            }
-          : undefined,
-        nick: kind === 'muc' ? (conversation.ourNick ?? undefined) : undefined
-      })
-    }
+    typing.sent()
+    const sent = await sendText({
+      account,
+      peerJid,
+      kind,
+      conversation,
+      ctx: app.composerFor(peerJid),
+      text
+    })
+    if (!sent) return
     body = ''
     app.setComposer(peerJid, {})
+    // the message is out; any in-flight rtt session ends with a cancel
+    rtt.reset()
+    mentionQuery = null
   }
 
   function onKeydown(event: KeyboardEvent) {
+    if (mentionCandidates.length > 0 && mentionQuery) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const delta = event.key === 'ArrowDown' ? 1 : -1
+        mentionIndex = (mentionIndex + delta + mentionCandidates.length) % mentionCandidates.length
+        return
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        const nick = mentionCandidates[mentionIndex]
+        if (nick) {
+          event.preventDefault()
+          completeMention(nick)
+          return
+        }
+      }
+      if (event.key === 'Escape') {
+        mentionQuery = null
+        event.stopPropagation()
+        return
+      }
+    }
     if (event.key === 'Escape' && (composerCtx.replyTo || composerCtx.editing)) {
       event.preventDefault()
       // keep the global nav.closeConversation binding from firing too
@@ -231,7 +193,7 @@
       app.setComposer(peerJid, {})
       return
     }
-    if (event.key !== 'Enter') notifyTyping()
+    if (event.key !== 'Enter') typing.notifyTyping()
     if (!settings.current.sendWithEnter) return
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
@@ -245,42 +207,11 @@
     inputEl?.focus()
   }
 
+  const files = createFileSend({ account: () => account, peer: () => peerJid, kind: () => kind })
+  const { sendFile, onFiles, onPaste } = files
+
   function attach() {
     fileEl?.click()
-  }
-
-  async function onFiles(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = ''
-    if (!file || !account) return
-    await sendFile(file, file.name, file.type || 'application/octet-stream')
-  }
-
-  // pasted files ride the same upload path as picked ones; nameless
-  // clipboard blobs get a generated name with an extension from the type
-  function onPaste(event: ClipboardEvent) {
-    const files = event.clipboardData?.files
-    if (!files?.length) return
-    event.preventDefault()
-    for (const file of files) {
-      const name = file.name || `pasted-${Date.now()}.${file.type.split('/')[1] ?? 'bin'}`
-      sendFile(file, name, file.type || 'application/octet-stream')
-    }
-  }
-
-  function sendFile(file: Blob, name: string, mediaType: string, duration?: number) {
-    if (!account) return
-    sendFileMessage(
-      account,
-      peerJid,
-      kind === 'muc' ? 'groupchat' : 'chat',
-      file,
-      name,
-      mediaType,
-      () => toast.error($LL.uploadFailed()),
-      duration
-    )
   }
 
   // m:ss clock for the recording row
@@ -375,17 +306,58 @@
         </div>
       {/if}
     </div>
-    <textarea
-      bind:value={body}
-      bind:this={inputEl}
-      rows={1}
-      onkeydown={onKeydown}
-      onpaste={onPaste}
-      {placeholder}
-      aria-label={placeholder}
-      disabled={voice.recording}
-      class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-    ></textarea>
+    <div class="relative min-w-0 flex-1">
+      {#if mentionCandidates.length > 0}
+        <div
+          role="listbox"
+          aria-label={$LL.mentionSuggestions()}
+          class="bg-popover text-popover-foreground absolute bottom-full left-0 z-50 mb-1 min-w-40 rounded-md border p-1 shadow-md"
+        >
+          {#each mentionCandidates as nick, i (nick)}
+            <button
+              type="button"
+              role="option"
+              aria-selected={i === mentionIndex}
+              class={cn(
+                'flex w-full cursor-pointer items-center rounded-sm px-2 py-1 text-left text-sm',
+                i === mentionIndex ? 'bg-accent' : 'hover:bg-accent'
+              )}
+              onmousedown={(e) => {
+                e.preventDefault()
+                completeMention(nick)
+              }}
+            >
+              {nick}
+            </button>
+          {/each}
+        </div>
+      {/if}
+      <textarea
+        bind:value={body}
+        bind:this={inputEl}
+        rows={1}
+        onkeydown={onKeydown}
+        oninput={() => {
+          trackMention()
+          rtt.maybeSend()
+          mentionIndex = 0
+        }}
+        onpaste={onPaste}
+        {placeholder}
+        aria-label={placeholder}
+        disabled={voice.recording}
+        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+      ></textarea>
+    </div>
+    <Button
+      variant="ghost"
+      size="icon"
+      onclick={shareLocation}
+      aria-label={$LL.shareLocation()}
+      disabled={voice.recording || locating}
+    >
+      <MapPin class="size-4" />
+    </Button>
     {#if voice.recording}
       <div class="flex min-w-0 flex-1 items-center gap-2">
         <RecordingMeter analyser={voice.analyser} />

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { BellOff, Timer } from '@lucide/svelte'
+
   import LL from '$lib/i18n/i18n-svelte'
   import type { Conversation } from '$lib/state/chats.svelte'
   import { cn } from '$lib/utils/cn'
@@ -74,9 +76,23 @@
       {/if}
     </span>
   </span>
-  {#if conversation.unread > 0}
+  {#if conversation.ephemeralTimer}
+    <Timer class="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" role="img" />
+  {/if}
+  {#if conversation.notify === 'never'}
+    <BellOff class="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" role="img" />
+  {/if}
+  <!-- muted conversations keep their counter but never badge it up -->
+  {#if conversation.unread > 0 && conversation.notify !== 'never'}
     <span
       class="bg-primary text-primary-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-[0.65rem] leading-none font-medium"
+      aria-label={$LL.unread({ count: conversation.unread })}
+    >
+      {conversation.unread > 99 ? '99+' : conversation.unread}
+    </span>
+  {:else if conversation.unread > 0}
+    <span
+      class="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-[0.65rem] leading-none font-medium"
       aria-label={$LL.unread({ count: conversation.unread })}
     >
       {conversation.unread > 99 ? '99+' : conversation.unread}

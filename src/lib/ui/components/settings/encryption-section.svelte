@@ -9,7 +9,7 @@
   import { Button } from '$lib/ui/primitives/button'
   import { Switch } from '$lib/ui/primitives/switch'
 
-  import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
+  import FingerprintDialogs from './encryption/fingerprint-dialogs.svelte'
   import { matchesQuery } from './match'
   import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
@@ -26,6 +26,16 @@
 
   let verifyTarget = $state<DeviceFingerprint | null>(null)
   let distrustTarget = $state<DeviceFingerprint | null>(null)
+  // verifyAllTarget is the jid whose device list is bulk-verified
+  let verifyAllTarget = $state<string | null>(null)
+
+  async function verifyAll(jid: string) {
+    if (!service) return
+    for (const device of devices[jid] ?? []) {
+      if (device.level !== 'trusted') await service.setTrust(jid, device.deviceId, 'trusted')
+    }
+    await reload(jid)
+  }
 
   $effect(() => {
     if (!service) return
@@ -167,6 +177,16 @@
               {:else if list.length === 0}
                 <p class="text-muted-foreground text-xs">{$LL.noOmemoDevices()}</p>
               {:else}
+                {#if list.length > 1 && list.some((d) => d.level !== 'trusted')}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    class="h-6 self-start px-2 text-xs"
+                    onclick={() => (verifyAllTarget = contact.jid)}
+                  >
+                    {$LL.verifyAll()}
+                  </Button>
+                {/if}
                 {#each list as device (device.deviceId)}
                   <div class="border-border flex flex-col gap-1 rounded-md border p-2">
                     <div class="flex items-center justify-between gap-2">
@@ -235,35 +255,15 @@
   {/if}
 </SettingSection>
 
-<ConfirmDialog
-  open={verifyTarget !== null}
-  onOpenChange={(o) => !o && (verifyTarget = null)}
-  title={$LL.verifyFingerprintTitle()}
-  confirmLabel={$LL.verify()}
-  onConfirm={() => {
-    if (verifyTarget && service) {
-      void service.setTrust(verifyTarget.jid, verifyTarget.deviceId, 'trusted')
-    }
-    verifyTarget = null
+<FingerprintDialogs
+  bind:verifyTarget
+  bind:distrustTarget
+  bind:verifyAllTarget
+  onVerify={(device) => {
+    if (service) void service.setTrust(device.jid, device.deviceId, 'trusted')
   }}
->
-  {$LL.verifyFingerprintDescription({ jid: verifyTarget?.jid ?? '' })}
-  <code class="mt-2 block font-mono text-xs break-all select-all">
-    {verifyTarget?.fingerprint ?? ''}
-  </code>
-</ConfirmDialog>
-
-<ConfirmDialog
-  open={distrustTarget !== null}
-  onOpenChange={(o) => !o && (distrustTarget = null)}
-  title={$LL.distrustTitle()}
-  description={$LL.distrustDescription({ jid: distrustTarget?.jid ?? '' })}
-  confirmLabel={$LL.distrust()}
-  destructive
-  onConfirm={() => {
-    if (distrustTarget && service) {
-      void service.setTrust(distrustTarget.jid, distrustTarget.deviceId, 'distrusted')
-    }
-    distrustTarget = null
+  onDistrust={(device) => {
+    if (service) void service.setTrust(device.jid, device.deviceId, 'distrusted')
   }}
+  onVerifyAll={(jid) => void verifyAll(jid)}
 />

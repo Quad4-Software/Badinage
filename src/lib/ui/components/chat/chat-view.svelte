@@ -1,18 +1,12 @@
 <script lang="ts">
-  import { DropdownMenu } from 'bits-ui'
   import {
     ArrowLeft,
-    Ban,
     Bookmark as BookmarkIcon,
     BookmarkX,
     Columns2,
-    EllipsisVertical,
     Lock,
     LogOut,
-    Pencil,
-    Quote,
-    Settings,
-    UserPlus,
+    Timer,
     Users,
     X
   } from '@lucide/svelte'
@@ -41,6 +35,9 @@
   import RoomStatusBanner from './room-status-banner.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
   import TypingIndicator from './typing-indicator.svelte'
+  import { createChatActions } from './chat-view/actions'
+  import { ephemeralLabel } from './chat-view/ephemeral'
+  import OptionsMenu from './chat-view/options-menu.svelte'
 
   // peer: which conversation this pane shows. split: true when rendered in a
   // secondary pane (has its own conversation picker + close button).
@@ -90,29 +87,32 @@
   // reaction sender keys are bare jids in dms and nicks or XEP-0421
   // occupant ids in mucs; resolve all three to display names so the
   // tooltip stays readable
-  function senderLabel(sender: string): string {
-    if (!account || !conversation) return sender
-    if (isRoom) {
-      if (sender === conversation.ourNick || sender === conversation.ourOccupantId) {
-        return $LL.you()
-      }
-      for (const occupant of conversation.occupants.values()) {
-        if (occupant.occupantId === sender || occupant.nick === sender) return occupant.nick
-      }
-      return sender
-    }
-    if (sender === account.jid) return $LL.you()
-    return account.roster.find((c) => c.jid === sender)?.name || sender
-  }
+  const actions = createChatActions({
+    account: () => account,
+    conversation: () => conversation,
+    isRoom: () => isRoom,
+    contact: () => contact,
+    peerBookmarked: () => peerBookmarked,
+    split: () => split,
+    moderateTarget: () => moderateTarget,
+    moderateReason: () => moderateReason,
+    setModerateReason: (v) => (moderateReason = v)
+  })
+  const {
+    senderLabel,
+    toggleBookmark,
+    leaveRoom,
+    changeNick,
+    sendInvite,
+    doModerate,
+    setNotify,
+    setEphemeral,
+    buzz,
+    sendReactionSet
+  } = actions
 
   function retractMessage() {
-    const target = retractTarget
-    if (!target || !account || !conversation) return
-    // dm retractions reference the stanza id attribute; muc retractions
-    // the room stanza-id, which lands in message.id after the echo merge
-    const ref = isRoom ? target.id : (target.wireId ?? target.id)
-    account.connection.sendRetraction(conversation.peerJid, ref, isRoom ? 'groupchat' : 'chat')
-    app.chatsFor(account.jid).retract(conversation.peerJid, ref)
+    actions.retractMessage(retractTarget)
   }
 
   function onDragOver(event: DragEvent) {
@@ -154,36 +154,6 @@
   const peerBookmarked = $derived(peer ? (account?.isBookmarked(peer) ?? false) : false)
   const typers = $derived(conversation ? [...conversation.typers] : [])
 
-  function toggleBookmark() {
-    if (!account || !conversation) return
-    if (peerBookmarked) {
-      account.removeBookmark(conversation.peerJid)
-      return
-    }
-    if (isRoom) {
-      account.addBookmark({
-        jid: conversation.peerJid,
-        kind: 'conference',
-        name: conversation.peerJid.split('@')[0],
-        autojoin: true,
-        nick: conversation.ourNick
-      })
-    } else {
-      account.addBookmark({
-        jid: conversation.peerJid,
-        kind: 'contact',
-        name: contact?.name || undefined
-      })
-    }
-  }
-
-  function leaveRoom() {
-    if (!account || !conversation?.ourNick) return
-    account.leaveRoom(conversation.peerJid, conversation.ourNick)
-    if (split) app.splitPeer = null
-    else app.activePeer = null
-  }
-
   // polite announcements for live incoming traffic; onLive already filters
   // out mam pages, delayed deliveries and our own carbons, and the split
   // pane skips mounting so messages never announce twice
@@ -196,56 +166,15 @@
     })
   )
 
-  function changeNick(newNick: string) {
-    if (!account || !conversation?.ourNick) return
-    account.connection.changeRoomNick(
-      conversation.peerJid,
-      conversation.ourNick,
-      newNick,
-      conversation.password
-    )
-  }
-
-  function sendInvite(jid: string, reason: string) {
-    if (!account || !conversation) return
-    // the stored room password rides along on the direct invite so a
-    // password-protected room stays joinable from the invite alone
-    account.connection.inviteToRoom(conversation.peerJid, jid, {
-      reason: reason || undefined,
-      password: conversation.password
-    })
-    toast.success($LL.inviteSent())
-  }
-
-  function doModerate() {
-    if (!moderateTarget || !conversation) return
-    // moderation addresses the room stanza-id, which message.id holds
-    account?.connection.moderateMessage(
-      conversation.peerJid,
-      moderateTarget.id,
-      moderateReason || undefined
-    )
-    moderateReason = ''
-  }
-
-  // XEP-0444 reactions. In an encrypted dm the reaction set rides inside
-  // an SCE envelope as a bare notification so the emoji and its target id
-  // never leak in the clear; anything else uses the plain stanza.
-  function sendReactionSet(target: string, ref: string, emojis: string[]) {
-    const current = account
-    if (!current || !conversation) return
-    if (conversation.kind === 'dm' && conversation.encrypted === true) {
-      void Promise.resolve(current.omemo ?? current.omemoService())
-        .then(async (omemo) => {
-          const xml = omemo ? await omemo.encryptReaction(target, ref, emojis) : null
-          if (xml !== null) current.connection.sendEncryptedNotification(target, xml)
-          else current.connection.sendReaction(target, ref, emojis, 'chat')
-        })
-        .catch(() => current.connection.sendReaction(target, ref, emojis, 'chat'))
-      return
-    }
-    current.connection.sendReaction(target, ref, emojis, isRoom ? 'groupchat' : 'chat')
-  }
+  // XEP-0301: live text buffers still inside their ttl; dm uses the ''
+  // key, muc shows the first composing nick's buffer
+  const rttPreview = $derived(
+    conversation
+      ? isRoom
+        ? [...conversation.liveText.values()][0]?.text
+        : conversation.liveText.get('')?.text
+      : undefined
+  )
 </script>
 
 {#if !split}
@@ -312,20 +241,49 @@
                   <TooltipContent>{$LL.encryptedChat()}</TooltipContent>
                 </Tooltip>
               {/if}
+              {#if conversation.ephemeralTimer}
+                <Tooltip>
+                  <TooltipTrigger>
+                    {#snippet child({ props })}
+                      <span
+                        {...props}
+                        class="inline-flex"
+                        role="img"
+                        aria-label={$LL.ephemeralActive({
+                          time: ephemeralLabel(conversation.ephemeralTimer)
+                        })}
+                      >
+                        <Timer class="text-muted-foreground size-3.5 shrink-0" />
+                      </span>
+                    {/snippet}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {$LL.ephemeralActive({ time: ephemeralLabel(conversation.ephemeralTimer) })}
+                  </TooltipContent>
+                </Tooltip>
+              {/if}
             </h1>
             <p class="text-muted-foreground flex items-center gap-1.5 text-xs">
               {#if isRoom}
-                {#if typers.length > 0}
+                {#if typers.length > 0 || rttPreview}
                   <TypingIndicator class="text-primary" />
                   <span class="text-primary truncate"
-                    >{$LL.typingNames({ names: typers.join(', ') })}</span
+                    >{$LL.typingNames({ names: typers.join(', ') })}{rttPreview
+                      ? ` · ${rttPreview}`
+                      : ''}</span
                   >
                 {:else}
                   <span class="truncate">{conversation.subject ?? ''}</span>
                 {/if}
-              {:else if conversation.peerState === 'composing'}
+              {:else if conversation.peerState === 'composing' || rttPreview}
                 <TypingIndicator class="text-primary" />
-                <span class="text-primary">{$LL.typing()}</span>
+                {#if rttPreview}
+                  <!-- XEP-0301: the buffer the peer is composing, shown
+                       instead of a static typing hint -->
+                  <span class="text-primary truncate italic">{rttPreview}</span>
+                {:else}
+                  <span class="text-primary">{$LL.typing()}</span>
+                {/if}
               {:else if contact}
                 <PresenceDot presence={contact.presence} />
                 <span class="truncate">
@@ -366,55 +324,22 @@
                 <LogOut class="size-4" />
               </Button>
               {#if conversation.joined}
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger class="shrink-0">
-                    {#snippet child({ props })}
-                      <Button {...props} variant="ghost" size="icon" aria-label={$LL.roomOptions()}>
-                        <EllipsisVertical class="size-4" />
-                      </Button>
-                    {/snippet}
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content
-                      class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
-                      sideOffset={4}
-                      align="end"
-                    >
-                      <DropdownMenu.Item
-                        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                        onSelect={() => (nickOpen = true)}
-                      >
-                        <Pencil class="size-4" />
-                        {$LL.changeNickname()}
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                        onSelect={() => (inviteOpen = true)}
-                      >
-                        <UserPlus class="size-4" />
-                        {$LL.inviteToRoom()}
-                      </DropdownMenu.Item>
-                      {#if canEditSubject}
-                        <DropdownMenu.Item
-                          class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                          onSelect={() => (subjectOpen = true)}
-                        >
-                          <Quote class="size-4" />
-                          {$LL.editSubject()}
-                        </DropdownMenu.Item>
-                      {/if}
-                      {#if canConfigure}
-                        <DropdownMenu.Item
-                          class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                          onSelect={() => (configOpen = true)}
-                        >
-                          <Settings class="size-4" />
-                          {$LL.roomConfig()}
-                        </DropdownMenu.Item>
-                      {/if}
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Root>
+                <OptionsMenu
+                  {conversation}
+                  room
+                  {peerBookmarked}
+                  {peerBlocked}
+                  {canEditSubject}
+                  {canConfigure}
+                  onNick={() => (nickOpen = true)}
+                  onInvite={() => (inviteOpen = true)}
+                  onSubject={() => (subjectOpen = true)}
+                  onConfig={() => (configOpen = true)}
+                  onToggleBookmark={toggleBookmark}
+                  onBuzz={buzz}
+                  onSetNotify={setNotify}
+                  onSetEphemeral={setEphemeral}
+                />
               {/if}
             {/if}
             {#if !split}
@@ -430,45 +355,20 @@
               </Button>
             {/if}
             {#if !isRoom}
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger class="shrink-0">
-                  {#snippet child({ props })}
-                    <Button {...props} variant="ghost" size="icon" aria-label={$LL.chatOptions()}>
-                      <EllipsisVertical class="size-4" />
-                    </Button>
-                  {/snippet}
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
-                    sideOffset={4}
-                    align="end"
-                  >
-                    <DropdownMenu.Item
-                      class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                      onSelect={toggleBookmark}
-                    >
-                      {#if peerBookmarked}
-                        <BookmarkX class="size-4" />
-                        {$LL.removeBookmark()}
-                      {:else}
-                        <BookmarkIcon class="size-4" />
-                        {$LL.bookmarkContact()}
-                      {/if}
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item
-                      class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                      onSelect={() => {
-                        if (peerBlocked) account?.unblock(conversation.peerJid)
-                        else confirmBlock = true
-                      }}
-                    >
-                      <Ban class="size-4" />
-                      {peerBlocked ? $LL.unblockUser() : $LL.blockUser()}
-                    </DropdownMenu.Item>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
+              <OptionsMenu
+                {conversation}
+                room={false}
+                {peerBookmarked}
+                {peerBlocked}
+                onToggleBookmark={toggleBookmark}
+                onBuzz={buzz}
+                onBlock={() => {
+                  if (peerBlocked) account?.unblock(conversation.peerJid)
+                  else confirmBlock = true
+                }}
+                onSetNotify={setNotify}
+                onSetEphemeral={setEphemeral}
+              />
             {/if}
           </div>
         </div>

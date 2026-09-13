@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ModeWatcher } from 'mode-watcher'
   import { onMount } from 'svelte'
+  import { SvelteURL } from 'svelte/reactivity'
   import { toast } from 'svelte-sonner'
 
   import { reportError } from '$lib/core/telemetry'
@@ -9,9 +10,12 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { parseDeepLink, shareInbox } from '$lib/state/links'
   import { settings } from '$lib/state/settings.svelte'
   import AddContactDialog from '$lib/ui/components/dialogs/add-contact-dialog.svelte'
+  import ExploreRoomsDialog from '$lib/ui/components/dialogs/explore-rooms-dialog.svelte'
   import JoinRoomDialog from '$lib/ui/components/dialogs/join-room-dialog.svelte'
+  import ShareDialog from '$lib/ui/components/dialogs/share-dialog.svelte'
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
   import CommandPalette from '$lib/ui/components/shell/command-palette.svelte'
@@ -81,6 +85,25 @@
       void accounts.add({ jid: 'demo@badinage.local', password: 'demo', demo: true })
     }
 
+    // XEP-0147 deep links: the web+xmpp protocol handler (manifest or
+    // registerProtocolHandler) lands on ?uri=, the in-app form uses
+    // #/xmpp/<encoded-uri>. Either way the parsed action waits in
+    // app.pendingLink until an account is ready to act on it.
+    const link = parseDeepLink(new SvelteURL(window.location.href), window.location.hash)
+    if (link) {
+      app.pendingLink = link
+      // strip the launch query so reloads do not replay it
+      const clean = new SvelteURL(window.location.href)
+      clean.searchParams.delete('uri')
+      clean.hash = ''
+      window.history.replaceState(null, '', clean)
+    }
+    // a share_target POST parked its payload in IndexedDB before the
+    // app booted; the share dialog drains it
+    void shareInbox().then((payload) => {
+      if (payload) app.sharePayload = payload
+    })
+
     const onError = (event: ErrorEvent) => {
       if (!event.error) return
       toast.error(event.error instanceof Error ? event.error.message : String(event.error))
@@ -94,6 +117,40 @@
       window.removeEventListener('error', onError)
       window.removeEventListener('unhandledrejection', onRejection)
     }
+  })
+
+  // Route a pending deep link once an account exists. 'message' resolves
+  // straight into the conversation with an optional prefilled draft;
+  // 'join' and 'roster' open their dialogs, which consume and clear the
+  // pending link themselves.
+  $effect(() => {
+    const link = app.pendingLink
+    if (!link || accounts.list.length === 0) return
+    if (link.kind === 'message') {
+      app.pendingLink = null
+      app.selectPeer(link.jid)
+      if (link.body) app.setDraft(link.jid, link.body)
+      app.focusComposer(link.jid)
+    } else if (link.kind === 'join') {
+      app.joinRoomOpen = true
+    } else {
+      app.addContactOpen = true
+    }
+  })
+
+  // Badging API: mirror the total unread count onto the app icon for
+  // installed PWA users. Muted conversations still count - the badge is
+  // about unread state, not notification policy.
+  $effect(() => {
+    let total = 0
+    for (const store of app.chats.values()) {
+      for (const conversation of store.conversations.values()) {
+        total += conversation.unread
+      }
+    }
+    if (!('setAppBadge' in navigator)) return
+    if (total > 0) void navigator.setAppBadge(total)
+    else void navigator.clearAppBadge()
   })
 </script>
 
@@ -109,6 +166,18 @@
   <SettingsDialog />
   <JoinRoomDialog />
   <AddContactDialog />
+  <ExploreRoomsDialog />
+  {#if app.sharePayload}
+    <ShareDialog
+      bind:open={
+        () => app.sharePayload !== null,
+        (open) => {
+          if (!open) app.sharePayload = null
+        }
+      }
+      payload={app.sharePayload}
+    />
+  {/if}
   <CommandPalette />
 
   <Dialog bind:open={app.loginOpen}>

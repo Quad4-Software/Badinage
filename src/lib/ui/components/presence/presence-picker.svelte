@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DropdownMenu } from 'bits-ui'
-  import { Check, ChevronDown } from '@lucide/svelte'
+  import { Check, ChevronDown, EyeOff } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
@@ -12,6 +12,7 @@
   const account = $derived(accounts.active)
   const presence = $derived(account?.presence ?? 'online')
   const presenceStatus = $derived(account?.presenceStatus ?? '')
+  const invisible = $derived(account?.invisible ?? false)
 
   let statusDraft = $state('')
   let menuOpen = $state(false)
@@ -37,7 +38,9 @@
       >
         <PresenceDot presence={account?.status === 'connected' ? presence : 'offline'} />
         <span class="min-w-0 flex-1 truncate text-left">
-          {presenceLabel(account?.status === 'connected' ? presence : 'offline')}
+          {invisible
+            ? $LL.invisible()
+            : presenceLabel(account?.status === 'connected' ? presence : 'offline')}
         </span>
         {#if presenceStatus}
           <span class="text-muted-foreground min-w-0 truncate text-xs">{presenceStatus}</span>
@@ -64,6 +67,21 @@
           {/if}
         </DropdownMenu.Item>
       {/each}
+      <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
+      <!-- XEP-0186: not a presence show value; a privacy list that
+           denies outbound presence. Kept visually distinct so it does
+           not look like a fifth show state -->
+      <DropdownMenu.Item
+        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+        onSelect={() => account?.setInvisible(!invisible)}
+        title={$LL.invisibleHint()}
+      >
+        <EyeOff class="text-muted-foreground size-4" />
+        <span class="flex-1">{$LL.invisible()}</span>
+        {#if invisible}
+          <Check class="size-4 shrink-0" />
+        {/if}
+      </DropdownMenu.Item>
       <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
       <div class="px-1 py-1">
         <Input

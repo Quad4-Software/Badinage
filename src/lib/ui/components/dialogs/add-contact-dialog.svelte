@@ -19,6 +19,15 @@
 
   const jidValid = $derived(isValidUserJid(jid))
 
+  // an xmpp:...?roster or bare xmpp:jid deep link prefills the dialog
+  $effect(() => {
+    if (app.addContactOpen && app.pendingLink?.kind === 'roster') {
+      jid = app.pendingLink.jid
+      if (app.pendingLink.name) name = app.pendingLink.name
+      app.pendingLink = null
+    }
+  })
+
   function submit(event: SubmitEvent) {
     event.preventDefault()
     const account = accounts.active

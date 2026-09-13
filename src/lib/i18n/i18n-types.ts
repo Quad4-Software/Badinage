@@ -1247,6 +1247,221 @@ type RootTranslation = {
 	 * E​v​e​r​y​ ​a​c​c​o​u​n​t​ ​s​e​s​s​i​o​n​,​ ​c​a​c​h​e​d​ ​m​e​s​s​a​g​e​ ​a​n​d​ ​s​t​o​r​e​d​ ​k​e​y​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​w​i​l​l​ ​b​e​ ​d​e​l​e​t​e​d​.​ ​T​h​i​s​ ​c​a​n​n​o​t​ ​b​e​ ​u​n​d​o​n​e​.
 	 */
 	wipeDataDescription: string
+	/**
+	 * S​h​a​r​e​ ​t​o​ ​a​ ​c​o​n​v​e​r​s​a​t​i​o​n
+	 */
+	shareTitle: string
+	/**
+	 * P​i​c​k​ ​w​h​e​r​e​ ​t​h​e​ ​s​h​a​r​e​d​ ​c​o​n​t​e​n​t​ ​s​h​o​u​l​d​ ​g​o
+	 */
+	sharePickHint: string
+	/**
+	 * {​c​o​u​n​t​}​ ​f​i​l​e​(​s​)
+	 * @param {number} count
+	 */
+	shareFiles: RequiredParams<'count'>
+	/**
+	 * N​o​t​h​i​n​g​ ​t​o​ ​s​h​a​r​e
+	 */
+	shareEmpty: string
+	/**
+	 * S​h​a​r​e​d​ ​c​o​n​t​e​n​t​ ​d​r​o​p​p​e​d​ ​i​n​t​o​ ​t​h​e​ ​d​r​a​f​t
+	 */
+	sharedQueued: string
+	/**
+	 * O​p​e​n​ ​x​m​p​p​:​ ​l​i​n​k​s​ ​i​n​ ​B​a​d​i​n​a​g​e
+	 */
+	handleXmppLinks: string
+	/**
+	 * R​e​g​i​s​t​e​r​s​ ​t​h​i​s​ ​a​p​p​ ​a​s​ ​a​ ​s​y​s​t​e​m​ ​h​a​n​d​l​e​r​ ​f​o​r​ ​X​M​P​P​ ​a​d​d​r​e​s​s​e​s​ ​a​n​d​ ​j​o​i​n​ ​l​i​n​k​s​.
+	 */
+	handleXmppLinksHint: string
+	/**
+	 * E​x​p​l​o​r​e​ ​r​o​o​m​s
+	 */
+	exploreRooms: string
+	/**
+	 * S​e​a​r​c​h​ ​p​u​b​l​i​c​ ​c​h​a​n​n​e​l​s​ ​o​f​f​e​r​e​d​ ​b​y​ ​a​ ​s​e​a​r​c​h​ ​s​e​r​v​i​c​e
+	 */
+	exploreHint: string
+	/**
+	 * S​e​a​r​c​h​ ​s​e​r​v​i​c​e
+	 */
+	searchService: string
+	/**
+	 * c​o​n​f​e​r​e​n​c​e​.​e​x​a​m​p​l​e​.​o​r​g
+	 */
+	searchServicePlaceholder: string
+	/**
+	 * S​e​a​r​c​h​ ​c​h​a​n​n​e​l​s
+	 */
+	searchQueryPlaceholder: string
+	/**
+	 * S​e​a​r​c​h
+	 */
+	searchChannels: string
+	/**
+	 * N​o​ ​c​h​a​n​n​e​l​ ​s​e​a​r​c​h​ ​s​e​r​v​i​c​e​ ​w​a​s​ ​f​o​u​n​d​ ​f​o​r​ ​y​o​u​r​ ​a​c​c​o​u​n​t
+	 */
+	searchServiceMissing: string
+	/**
+	 * T​h​e​ ​s​e​a​r​c​h​ ​s​e​r​v​i​c​e​ ​d​i​d​ ​n​o​t​ ​a​n​s​w​e​r
+	 */
+	searchFailed: string
+	/**
+	 * N​o​ ​c​h​a​n​n​e​l​s​ ​m​a​t​c​h​e​d
+	 */
+	searchEmpty: string
+	/**
+	 * {​c​o​u​n​t​}​ ​u​s​e​r​s
+	 * @param {number} count
+	 */
+	channelUsers: RequiredParams<'count'>
+	/**
+	 * B​u​z​z
+	 */
+	buzz: string
+	/**
+	 * A​t​t​e​n​t​i​o​n​ ​r​e​q​u​e​s​t​ ​s​e​n​t
+	 */
+	buzzSent: string
+	/**
+	 * {​n​a​m​e​}​ ​w​a​n​t​s​ ​y​o​u​r​ ​a​t​t​e​n​t​i​o​n
+	 * @param {string} name
+	 */
+	wantsAttention: RequiredParams<'name'>
+	/**
+	 * A​t​t​e​n​t​i​o​n​ ​r​e​q​u​e​s​t​s
+	 */
+	allowAttention: string
+	/**
+	 * C​o​n​t​a​c​t​s​ ​c​a​n​ ​n​u​d​g​e​ ​y​o​u​ ​w​i​t​h​ ​a​ ​b​u​z​z​.​ ​E​a​c​h​ ​s​e​n​d​e​r​ ​c​a​n​ ​o​n​l​y​ ​n​u​d​g​e​ ​o​n​c​e​ ​e​v​e​r​y​ ​3​0​ ​s​e​c​o​n​d​s​.
+	 */
+	allowAttentionHint: string
+	/**
+	 * R​e​a​l​-​t​i​m​e​ ​t​e​x​t
+	 */
+	realTimeText: string
+	/**
+	 * S​h​o​w​s​ ​w​h​a​t​ ​y​o​u​r​ ​c​o​n​t​a​c​t​ ​i​s​ ​t​y​p​i​n​g​ ​b​e​f​o​r​e​ ​t​h​e​y​ ​s​e​n​d​ ​i​t​,​ ​a​n​d​ ​s​h​a​r​e​s​ ​y​o​u​r​ ​d​r​a​f​t​ ​w​h​i​l​e​ ​y​o​u​ ​c​o​m​p​o​s​e​ ​i​n​ ​u​n​e​n​c​r​y​p​t​e​d​ ​c​h​a​t​s​.
+	 */
+	realTimeTextHint: string
+	/**
+	 * {​n​a​m​e​}​ ​i​s​ ​t​y​p​i​n​g
+	 * @param {string} name
+	 */
+	liveTyping: RequiredParams<'name'>
+	/**
+	 * M​e​n​t​i​o​n​ ​s​u​g​g​e​s​t​i​o​n​s
+	 */
+	mentionSuggestions: string
+	/**
+	 * S​h​a​r​e​ ​l​o​c​a​t​i​o​n
+	 */
+	shareLocation: string
+	/**
+	 * L​o​c​a​t​i​n​g​…
+	 */
+	locating: string
+	/**
+	 * C​o​u​l​d​ ​n​o​t​ ​g​e​t​ ​y​o​u​r​ ​l​o​c​a​t​i​o​n
+	 */
+	locationFailed: string
+	/**
+	 * S​h​a​r​e​d​ ​l​o​c​a​t​i​o​n
+	 */
+	sharedLocation: string
+	/**
+	 * O​p​e​n​ ​m​a​p
+	 */
+	openMap: string
+	/**
+	 * I​n​l​i​n​e​ ​m​a​p​ ​p​r​e​v​i​e​w​s
+	 */
+	mapPreviews: string
+	/**
+	 * L​o​a​d​s​ ​a​ ​s​m​a​l​l​ ​m​a​p​ ​t​i​l​e​ ​f​r​o​m​ ​t​h​e​ ​O​p​e​n​S​t​r​e​e​t​M​a​p​ ​t​i​l​e​ ​s​e​r​v​e​r​ ​w​h​e​n​ ​a​ ​c​o​n​t​a​c​t​ ​s​h​a​r​e​s​ ​a​ ​l​o​c​a​t​i​o​n​.
+	 */
+	mapPreviewsHint: string
+	/**
+	 * D​i​s​a​p​p​e​a​r​i​n​g​ ​m​e​s​s​a​g​e​s
+	 */
+	disappearing: string
+	/**
+	 * N​e​w​ ​m​e​s​s​a​g​e​s​ ​s​e​l​f​-​d​e​s​t​r​u​c​t​ ​a​f​t​e​r​ ​t​h​e​ ​t​i​m​e​r​ ​e​x​p​i​r​e​s​,​ ​o​n​ ​y​o​u​r​ ​d​e​v​i​c​e​s​ ​a​n​d​ ​f​o​r​ ​p​e​e​r​s​ ​t​h​a​t​ ​h​o​n​o​u​r​ ​t​h​e​ ​t​i​m​e​r​.
+	 */
+	disappearingHint: string
+	/**
+	 * O​f​f
+	 */
+	timerOff: string
+	/**
+	 * 5​ ​m​i​n​u​t​e​s
+	 */
+	timer5m: string
+	/**
+	 * 1​ ​h​o​u​r
+	 */
+	timer1h: string
+	/**
+	 * 8​ ​h​o​u​r​s
+	 */
+	timer8h: string
+	/**
+	 * 1​ ​d​a​y
+	 */
+	timer1d: string
+	/**
+	 * 1​ ​w​e​e​k
+	 */
+	timer1w: string
+	/**
+	 * D​i​s​a​p​p​e​a​r​i​n​g​ ​a​f​t​e​r​ ​{​t​i​m​e​}
+	 * @param {string} time
+	 */
+	ephemeralActive: RequiredParams<'time'>
+	/**
+	 * N​o​t​i​f​i​c​a​t​i​o​n​s
+	 */
+	notifyChat: string
+	/**
+	 * A​l​l​ ​m​e​s​s​a​g​e​s
+	 */
+	notifyAlways: string
+	/**
+	 * M​e​n​t​i​o​n​s​ ​o​n​l​y
+	 */
+	notifyMentions: string
+	/**
+	 * M​u​t​e​d
+	 */
+	notifyNever: string
+	/**
+	 * I​n​v​i​s​i​b​l​e
+	 */
+	invisible: string
+	/**
+	 * Y​o​u​ ​a​p​p​e​a​r​ ​o​f​f​l​i​n​e​ ​t​o​ ​y​o​u​r​ ​c​o​n​t​a​c​t​s​.​ ​J​o​i​n​i​n​g​ ​r​o​o​m​s​ ​i​s​ ​b​l​o​c​k​e​d​ ​w​h​i​l​e​ ​i​n​v​i​s​i​b​l​e​.
+	 */
+	invisibleHint: string
+	/**
+	 * V​e​r​i​f​y​ ​a​l​l
+	 */
+	verifyAll: string
+	/**
+	 * M​a​r​k​ ​e​v​e​r​y​ ​d​e​v​i​c​e​ ​o​f​ ​{​j​i​d​}​ ​a​s​ ​v​e​r​i​f​i​e​d​?
+	 * @param {string} jid
+	 */
+	verifyAllDescription: RequiredParams<'jid'>
+	/**
+	 * T​r​u​s​t​ ​a​l​l
+	 */
+	trustAll: string
+	/**
+	 * B​l​i​n​d​l​y​ ​t​r​u​s​t​ ​e​v​e​r​y​ ​u​n​d​e​c​i​d​e​d​ ​d​e​v​i​c​e​ ​o​f​ ​{​j​i​d​}​?
+	 * @param {string} jid
+	 */
+	trustAllDescription: RequiredParams<'jid'>
 }
 
 export type TranslationFunctions = {
@@ -2450,6 +2665,214 @@ export type TranslationFunctions = {
 	 * Every account session, cached message and stored key on this device will be deleted. This cannot be undone.
 	 */
 	wipeDataDescription: () => LocalizedString
+	/**
+	 * Share to a conversation
+	 */
+	shareTitle: () => LocalizedString
+	/**
+	 * Pick where the shared content should go
+	 */
+	sharePickHint: () => LocalizedString
+	/**
+	 * {count} file(s)
+	 */
+	shareFiles: (arg: { count: number }) => LocalizedString
+	/**
+	 * Nothing to share
+	 */
+	shareEmpty: () => LocalizedString
+	/**
+	 * Shared content dropped into the draft
+	 */
+	sharedQueued: () => LocalizedString
+	/**
+	 * Open xmpp: links in Badinage
+	 */
+	handleXmppLinks: () => LocalizedString
+	/**
+	 * Registers this app as a system handler for XMPP addresses and join links.
+	 */
+	handleXmppLinksHint: () => LocalizedString
+	/**
+	 * Explore rooms
+	 */
+	exploreRooms: () => LocalizedString
+	/**
+	 * Search public channels offered by a search service
+	 */
+	exploreHint: () => LocalizedString
+	/**
+	 * Search service
+	 */
+	searchService: () => LocalizedString
+	/**
+	 * conference.example.org
+	 */
+	searchServicePlaceholder: () => LocalizedString
+	/**
+	 * Search channels
+	 */
+	searchQueryPlaceholder: () => LocalizedString
+	/**
+	 * Search
+	 */
+	searchChannels: () => LocalizedString
+	/**
+	 * No channel search service was found for your account
+	 */
+	searchServiceMissing: () => LocalizedString
+	/**
+	 * The search service did not answer
+	 */
+	searchFailed: () => LocalizedString
+	/**
+	 * No channels matched
+	 */
+	searchEmpty: () => LocalizedString
+	/**
+	 * {count} users
+	 */
+	channelUsers: (arg: { count: number }) => LocalizedString
+	/**
+	 * Buzz
+	 */
+	buzz: () => LocalizedString
+	/**
+	 * Attention request sent
+	 */
+	buzzSent: () => LocalizedString
+	/**
+	 * {name} wants your attention
+	 */
+	wantsAttention: (arg: { name: string }) => LocalizedString
+	/**
+	 * Attention requests
+	 */
+	allowAttention: () => LocalizedString
+	/**
+	 * Contacts can nudge you with a buzz. Each sender can only nudge once every 30 seconds.
+	 */
+	allowAttentionHint: () => LocalizedString
+	/**
+	 * Real-time text
+	 */
+	realTimeText: () => LocalizedString
+	/**
+	 * Shows what your contact is typing before they send it, and shares your draft while you compose in unencrypted chats.
+	 */
+	realTimeTextHint: () => LocalizedString
+	/**
+	 * {name} is typing
+	 */
+	liveTyping: (arg: { name: string }) => LocalizedString
+	/**
+	 * Mention suggestions
+	 */
+	mentionSuggestions: () => LocalizedString
+	/**
+	 * Share location
+	 */
+	shareLocation: () => LocalizedString
+	/**
+	 * Locating…
+	 */
+	locating: () => LocalizedString
+	/**
+	 * Could not get your location
+	 */
+	locationFailed: () => LocalizedString
+	/**
+	 * Shared location
+	 */
+	sharedLocation: () => LocalizedString
+	/**
+	 * Open map
+	 */
+	openMap: () => LocalizedString
+	/**
+	 * Inline map previews
+	 */
+	mapPreviews: () => LocalizedString
+	/**
+	 * Loads a small map tile from the OpenStreetMap tile server when a contact shares a location.
+	 */
+	mapPreviewsHint: () => LocalizedString
+	/**
+	 * Disappearing messages
+	 */
+	disappearing: () => LocalizedString
+	/**
+	 * New messages self-destruct after the timer expires, on your devices and for peers that honour the timer.
+	 */
+	disappearingHint: () => LocalizedString
+	/**
+	 * Off
+	 */
+	timerOff: () => LocalizedString
+	/**
+	 * 5 minutes
+	 */
+	timer5m: () => LocalizedString
+	/**
+	 * 1 hour
+	 */
+	timer1h: () => LocalizedString
+	/**
+	 * 8 hours
+	 */
+	timer8h: () => LocalizedString
+	/**
+	 * 1 day
+	 */
+	timer1d: () => LocalizedString
+	/**
+	 * 1 week
+	 */
+	timer1w: () => LocalizedString
+	/**
+	 * Disappearing after {time}
+	 */
+	ephemeralActive: (arg: { time: string }) => LocalizedString
+	/**
+	 * Notifications
+	 */
+	notifyChat: () => LocalizedString
+	/**
+	 * All messages
+	 */
+	notifyAlways: () => LocalizedString
+	/**
+	 * Mentions only
+	 */
+	notifyMentions: () => LocalizedString
+	/**
+	 * Muted
+	 */
+	notifyNever: () => LocalizedString
+	/**
+	 * Invisible
+	 */
+	invisible: () => LocalizedString
+	/**
+	 * You appear offline to your contacts. Joining rooms is blocked while invisible.
+	 */
+	invisibleHint: () => LocalizedString
+	/**
+	 * Verify all
+	 */
+	verifyAll: () => LocalizedString
+	/**
+	 * Mark every device of {jid} as verified?
+	 */
+	verifyAllDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Trust all
+	 */
+	trustAll: () => LocalizedString
+	/**
+	 * Blindly trust every undecided device of {jid}?
+	 */
+	trustAllDescription: (arg: { jid: string }) => LocalizedString
 }
 
 export type Formatters = {}

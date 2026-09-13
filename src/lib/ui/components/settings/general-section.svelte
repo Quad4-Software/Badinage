@@ -10,7 +10,7 @@
 
   let { q }: { q: string } = $props()
 
-  type Flag = 'sendWithEnter' | 'notifications' | 'sounds'
+  type Flag = 'sendWithEnter' | 'notifications' | 'sounds' | 'xmppLinkHandler'
 
   // tracked so the denied hint appears the moment the browser refuses
   let permission = $state(notifyPermission())
@@ -20,7 +20,8 @@
       [
         ['sendWithEnter', $LL.sendWithEnter(), 'return key newline'],
         ['notifications', $LL.notifications(), 'alerts desktop notify'],
-        ['sounds', $LL.sounds(), 'audio mute beep']
+        ['sounds', $LL.sounds(), 'audio mute beep'],
+        ['xmppLinkHandler', $LL.handleXmppLinks(), 'xmpp links protocol handler deep link']
       ] as [Flag, string, string][]
     ).filter(([, label, keywords]) => matchesQuery(q, label, keywords, $LL.general()))
   )
@@ -38,6 +39,19 @@
     // the request rides a user gesture instead of firing unprompted
     if (key === 'notifications' && value) {
       void requestNotifyPermission().then((result) => (permission = result))
+    }
+    // the protocol handler registration also needs a user gesture; the
+    // installed-pwa manifest entry works regardless of this toggle
+    if (key === 'xmppLinkHandler' && value) {
+      try {
+        navigator.registerProtocolHandler(
+          'xmpp',
+          `${window.location.origin}${import.meta.env.BASE_URL}?uri=%s`
+        )
+      } catch {
+        // scheme not allowed here (e.g. non-https); the manifest handler
+        // still applies once the app is installed
+      }
     }
   }
 </script>

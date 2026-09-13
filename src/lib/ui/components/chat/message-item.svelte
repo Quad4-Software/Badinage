@@ -1,24 +1,15 @@
 <script lang="ts">
-  import {
-    Copy,
-    Eye,
-    File,
-    Lock,
-    Pencil,
-    Reply,
-    Smile,
-    SmilePlus,
-    Trash2,
-    Undo2,
-    X
-  } from '@lucide/svelte'
+  import { Eye, File, Lock, MapPin, SmilePlus, Undo2, X } from '@lucide/svelte'
 
-  import { REACTION_TOOLTIP_CAP } from '$lib/constants'
+  import { GEOLOC_TILE_TEMPLATE, GEOLOC_TILE_ZOOM, REACTION_TOOLTIP_CAP } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
+  import { settings } from '$lib/state/settings.svelte'
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { cn } from '$lib/utils/cn'
+  import { consistentColor } from '$lib/utils/protocol/color'
   import { isEmojiOnly } from '$lib/utils/emoji'
+  import { isGeoUri, osmUrl, tileFor, tileUrl } from '$lib/utils/protocol/geo'
   import { meAction } from '$lib/utils/message-commands'
   import { reactionSenderNames } from '$lib/utils/reactions'
 
@@ -26,7 +17,7 @@
   import MessageAttachments from './message-attachments.svelte'
   import MessageBody from './message-body.svelte'
   import MessageMeta from './message-meta.svelte'
-  import EmojiPicker from './emoji-picker.svelte'
+  import MessageItemActions from './message-item/actions.svelte'
 
   interface Props {
     message: ChatMessage
@@ -75,14 +66,22 @@
     onDismiss
   }: Props = $props()
 
-  let pickerOpen = $state(false)
-  let pickerAnchor = $state<'top' | 'bottom'>('top')
   let spoilerRevealed = $state(false)
 
   // senders put the oob url in the body as a fallback; when the body is
-  // exactly that url the attachment block already renders it
+  // exactly that url the attachment block already renders it. Same for
+  // the geo uri fallback that accompanies a geoloc element.
   const bodyIsAttachmentUrl = $derived(
-    (message.attachments ?? []).some((a) => a.url === message.body.trim())
+    (message.attachments ?? []).some((a) => a.url === message.body.trim()) ||
+      (message.geoloc !== undefined && isGeoUri(message.body))
+  )
+  const geoTile = $derived(
+    message.geoloc ? tileFor(message.geoloc.lat, message.geoloc.lon, GEOLOC_TILE_ZOOM) : undefined
+  )
+  const geoTileUrl = $derived(
+    message.geoloc && settings.current.mapPreviews
+      ? tileUrl(GEOLOC_TILE_TEMPLATE, message.geoloc.lat, message.geoloc.lon, GEOLOC_TILE_ZOOM)
+      : ''
   )
   const reactionEntries = $derived(Object.entries(message.reactions))
   const jumbo = $derived(isEmojiOnly(message.body))
@@ -95,12 +94,11 @@
   const actionClass =
     'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded'
 
-  function copyBody() {
-    void navigator.clipboard?.writeText(message.body).catch(() => undefined)
-  }
+  // picker state is shared between the action bar trigger and the
+  // reaction-row trigger, so it lives here and binds into the child
+  let pickerOpen = $state(false)
+  let pickerAnchor = $state<'top' | 'bottom'>('top')
 
-  // anchor follows the trigger: the action bar sits above the bubble, the
-  // quick-react buttons below it
   function openPicker(anchor: 'top' | 'bottom') {
     pickerAnchor = anchor
     pickerOpen = !pickerOpen
@@ -142,7 +140,10 @@
     class={cn('flex max-w-[75%] min-w-0 flex-col', message.outgoing ? 'items-end' : 'items-start')}
   >
     {#if showNick && !message.outgoing && message.nick}
-      <span class="text-muted-foreground mb-0.5 ml-1 text-xs">{message.nick}</span>
+      <!-- XEP-0392: stable per-nick color so senders stay scannable -->
+      <span class="mb-0.5 ml-1 text-xs" style:color={consistentColor(message.nick)}>
+        {message.nick}
+      </span>
     {/if}
 
     <div class="relative max-w-full">
@@ -151,7 +152,8 @@
           'density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
           message.outgoing
             ? 'bg-primary text-primary-foreground rounded-br-sm'
-            : 'bg-muted rounded-bl-sm'
+            : 'bg-muted rounded-bl-sm',
+          message.mentionsMe && 'ring-primary/60 ring-2'
         )}
       >
         {#if message.retracted}
@@ -241,6 +243,43 @@
                   {/if}
                 </span>
               </div>
+            {:else if message.geoloc}
+              <!-- XEP-0080: a location card; the tile preview is
+                   opt-in because it fetches from a tile server -->
+              <a
+                href={osmUrl(message.geoloc.lat, message.geoloc.lon)}
+                target="_blank"
+                rel="noopener noreferrer"
+                class={cn(
+                  'mb-1 block w-52 overflow-hidden rounded-md border text-left',
+                  message.outgoing ? 'border-primary-foreground/30' : 'border-border'
+                )}
+              >
+                {#if geoTileUrl && geoTile}
+                  <span class="relative block h-28 w-52 overflow-hidden">
+                    <!-- tile is 256px; offset it so the pin lands at the
+                         center of the 208x112 window -->
+                    <img
+                      src={geoTileUrl}
+                      alt=""
+                      class="absolute h-64 w-64 max-w-none"
+                      style:left="{104 - geoTile.pinX}px"
+                      style:top="{56 - geoTile.pinY}px"
+                    />
+                    <MapPin
+                      class="text-destructive absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-full"
+                    />
+                  </span>
+                {/if}
+                <span class="flex items-center gap-1.5 px-2 py-1.5 text-xs">
+                  <MapPin class="size-3.5 shrink-0" />
+                  <span class="min-w-0 flex-1 truncate">{$LL.sharedLocation()}</span>
+                  <span class="tabular-nums opacity-70">
+                    {message.geoloc.lat.toFixed(5)}, {message.geoloc.lon.toFixed(5)}
+                  </span>
+                </span>
+              </a>
+              {@render bodyContent()}
             {:else if message.spoilerHint !== undefined}
               <!-- XEP-0382: the body stays hidden until the reveal control -->
               <button
@@ -271,110 +310,18 @@
         {/if}
       </div>
 
-      {#if !message.retracted && !message.pending}
-        <div
-          class={cn(
-            'bg-popover absolute right-1 bottom-full z-10 mb-0.5 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm transition-opacity',
-            pickerOpen
-              ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
-          )}
-        >
-          <button
-            type="button"
-            class={actionClass}
-            aria-label={$LL.reply()}
-            onclick={() => onReply?.(message)}
-          >
-            <Reply class="size-3.5" />
-          </button>
-          <button
-            type="button"
-            class={actionClass}
-            aria-label={$LL.react()}
-            aria-expanded={pickerOpen}
-            onclick={() => openPicker('top')}
-          >
-            <Smile class="size-3.5" />
-          </button>
-          {#if message.outgoing}
-            <button
-              type="button"
-              class={actionClass}
-              aria-label={$LL.editMessage()}
-              onclick={() => onEdit?.(message)}
-            >
-              <Pencil class="size-3.5" />
-            </button>
-            <button
-              type="button"
-              class={actionClass}
-              aria-label={$LL.retractMessage()}
-              onclick={() => onRetract?.(message)}
-            >
-              <Trash2 class="size-3.5" />
-            </button>
-          {/if}
-          <button
-            type="button"
-            class={actionClass}
-            aria-label={$LL.copyMessage()}
-            onclick={copyBody}
-          >
-            <Copy class="size-3.5" />
-          </button>
-          {#if canModerate}
-            <button
-              type="button"
-              class={actionClass}
-              aria-label={$LL.removeMessage()}
-              onclick={() => onModerate?.(message)}
-            >
-              <Trash2 class="size-3.5" />
-            </button>
-          {/if}
-          {#if message.undecryptable && onDismiss}
-            <button
-              type="button"
-              class={actionClass}
-              aria-label={$LL.dismissMessage()}
-              onclick={() => onDismiss(message)}
-            >
-              <X class="size-3.5" />
-            </button>
-          {/if}
-        </div>
-
-        {#if pickerOpen}
-          <div
-            class={cn(
-              'absolute z-30',
-              pickerAnchor === 'top'
-                ? 'right-0 bottom-full mb-1'
-                : cn('top-full mt-1', message.outgoing ? 'right-0' : 'left-0')
-            )}
-          >
-            <EmojiPicker
-              onPick={(emoji) => onReact?.(emoji)}
-              onClose={() => (pickerOpen = false)}
-            />
-          </div>
-        {/if}
-
-        {#if reactionEntries.length === 0}
-          <button
-            type="button"
-            class={cn(
-              'bg-popover text-muted-foreground hover:text-accent-foreground absolute -bottom-3 z-10 flex size-6 items-center justify-center rounded-full border opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
-              message.outgoing ? 'right-1' : 'left-1'
-            )}
-            aria-label={$LL.react()}
-            onclick={() => openPicker('bottom')}
-          >
-            <SmilePlus class="size-3.5" />
-          </button>
-        {/if}
-      {/if}
+      <MessageItemActions
+        {message}
+        {canModerate}
+        bind:pickerOpen
+        bind:pickerAnchor
+        {onReply}
+        {onEdit}
+        {onReact}
+        {onRetract}
+        {onModerate}
+        {onDismiss}
+      />
     </div>
 
     {#if reactionEntries.length > 0}

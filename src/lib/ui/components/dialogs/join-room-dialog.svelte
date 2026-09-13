@@ -2,6 +2,7 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { explore } from '$lib/state/explore'
   import { bareJid, isValidBareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
   import { Checkbox } from '$lib/ui/primitives/checkbox'
@@ -23,10 +24,20 @@
   const roomValid = $derived(isValidBareJid(room))
   const canJoin = $derived(roomValid && nick.trim().length > 0)
 
-  // default nick: the local part of the account JID
+  // default nick: the local part of the account JID. A room address
+  // handed over by the explore dialog or an xmpp:?join link prefills
+  // the jid field.
   $effect(() => {
     if (app.joinRoomOpen && !nick) {
       nick = accounts.active?.jid.split('@')[0] ?? ''
+    }
+    if (app.joinRoomOpen && explore.joinPrefill) {
+      room = explore.joinPrefill.room
+      explore.joinPrefill = null
+    }
+    if (app.joinRoomOpen && app.pendingLink?.kind === 'join') {
+      room = app.pendingLink.jid
+      app.pendingLink = null
     }
   })
 

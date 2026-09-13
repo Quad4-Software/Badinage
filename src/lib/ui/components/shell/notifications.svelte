@@ -16,7 +16,7 @@
   } from '$lib/ui/notify'
   import { bareJid } from '$lib/utils/jid'
   import { mediaKind } from '$lib/utils/media'
-  import { coalesced, shouldNotify, snippet } from '$lib/utils/notify'
+  import { chatNotifyMode, coalesced, shouldNotify, snippet } from '$lib/utils/notify'
 
   // last fire time per account:peer so rapid bursts collapse into one
   const lastFired: Record<string, number> = {}
@@ -42,12 +42,17 @@
   function fire(event: LiveMessage) {
     const active =
       event.accountJid === accounts.active?.jid && app.activePeer === bareJid(event.peer)
+    const conversation = app.chatsFor(event.accountJid).conversations.get(bareJid(event.peer))
+    const chatMode = chatNotifyMode(conversation?.notify, conversation?.kind ?? 'dm')
     const gate = {
       enabled: settings.current.notifications,
       accountEnabled: settings.metaFor(event.accountJid).notify !== false,
       permission: notifyPermission(),
       hidden: document.hidden,
-      conversationActive: active
+      conversationActive: active,
+      chatMode,
+      mentioned: event.mentioned === true,
+      attention: event.attention === true && settings.current.allowAttention
     }
     if (gate.enabled && gate.accountEnabled && gate.permission === 'default') {
       // still undecided: ask now, and if the user grants, this message
@@ -57,16 +62,22 @@
       })
       return
     }
+    // attention gets its sound even when the notification itself is
+    // gated away (focused conversation); that is the point of a buzz
+    if (event.attention && settings.current.allowAttention && settings.current.sounds) {
+      playBeep()
+    }
     if (!shouldNotify(gate)) return
     const tag = `badinage:${event.accountJid}:${bareJid(event.peer)}`
     const now = Date.now()
     if (!coalesced(lastFired[tag], now, NOTIFICATION_COALESCE_MS)) return
     lastFired[tag] = now
-    showNotification(event.sender, bodyFor(event), tag, () => {
+    const body = event.attention ? $LL.wantsAttention({ name: event.sender }) : bodyFor(event)
+    showNotification(event.sender, body, tag, () => {
       accounts.activeJid = event.accountJid
       app.selectPeer(event.peer)
     })
-    if (settings.current.sounds) playBeep()
+    if (settings.current.sounds && !event.attention) playBeep()
   }
 
   $effect(() => app.onLiveMessage(fire))

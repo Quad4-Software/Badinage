@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, CheckCheck, Lock, ShieldCheck } from '@lucide/svelte'
+  import { Check, CheckCheck, Lock, ShieldCheck, Timer } from '@lucide/svelte'
 
   import LL, { locale } from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
@@ -16,6 +16,18 @@
     message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
   )}
 >
+  {#if message.expiresAt !== undefined}
+    <Tooltip>
+      <TooltipTrigger>
+        {#snippet child({ props })}
+          <span {...props} class="inline-flex" role="img" aria-label={$LL.disappearing()}>
+            <Timer class="size-3" />
+          </span>
+        {/snippet}
+      </TooltipTrigger>
+      <TooltipContent>{$LL.disappearing()}</TooltipContent>
+    </Tooltip>
+  {/if}
   {#if message.edited}
     <span>{$LL.edited()}</span>
   {/if}
