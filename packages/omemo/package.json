@@ -41,6 +41,8 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "test:interop": "vitest run test/interop",
+    "bench": "vitest bench",
+    "mutate": "stryker run",
     "vectors": ".venv/bin/python scripts/gen_vectors.py",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "docs": "typedoc --tsconfig tsconfig.build.json --out docs/api src/index.ts",

@@ -1,0 +1,56 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "plugins": [
+    "@stryker-mutator/*",
+    "./node_modules/@stryker-mutator/vitest-runner/dist/src/index.js"
+  ],
+  "vitest": {
+    "configFile": "vite.config.ts"
+  },
+  "mutate": [
+    "src/lib/core/**/*.ts",
+    "src/lib/state/**/*.ts",
+    "src/lib/utils/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.bench.ts",
+    "!src/lib/core/xmpp/demo.ts",
+    "!src/lib/core/xmpp/demo-data.ts",
+    "!src/lib/core/xmpp/connection.ts",
+    "!src/lib/core/xmpp/types.ts",
+    "!src/lib/core/storage/idb.ts",
+    "!src/lib/state/*.svelte.ts"
+  ],
+  "coverageAnalysis": "perTest",
+  "ignorePatterns": [
+    "dist",
+    "coverage",
+    "test-results",
+    "docs",
+    "docker",
+    "e2e",
+    "public",
+    "scripts",
+    ".agents",
+    "**/.venv",
+    "**/dist",
+    "**/docs",
+    "packages/omemo/scripts"
+  ],
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 0
+  },
+  "incremental": true,
+  "incrementalFile": "reports/stryker-incremental.json",
+  "reporters": ["clear-text", "progress", "html", "json"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/mutation.html"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "timeoutMS": 60000
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6.34.0/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["index.html", "e2e/**/*.test.ts", "scripts/*.mjs"],
+      "project": ["{src,e2e,scripts}/**/*.{ts,svelte,mjs,css}"],
+      "ignore": ["src/lib/i18n/**"],
+      "ignoreDependencies": ["@stryker-mutator/*"]
+    },
+    "packages/omemo": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["{src,test}/**/*.ts"],
+      "ignoreDependencies": ["@stryker-mutator/*"]
+    }
+  }
+}

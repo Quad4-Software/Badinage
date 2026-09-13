@@ -70,6 +70,30 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
-    environment: 'node'
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
+      reportsDirectory: 'coverage',
+      reportOnFailure: true,
+      include: ['src/lib/core/**', 'src/lib/state/**', 'src/lib/utils/**'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.bench.ts',
+        'src/lib/core/xmpp/demo.ts',
+        'src/lib/core/xmpp/demo-data.ts',
+        'src/lib/i18n/**',
+        'src/lib/ui/**'
+      ],
+      thresholds: {
+        lines: 35,
+        statements: 35,
+        branches: 40,
+        functions: 20
+      }
+    },
+    benchmark: {
+      suppressExportGetterWarnings: true
+    }
   }
 })

@@ -1,0 +1,31 @@
+diff --git a/dist/src/vitest-test-runner.js b/dist/src/vitest-test-runner.js
+index 84f1ca026503b8e92b7adc952ec6c6a401943656..3c23761a1aa9bc29ddc6cfc557a06106ea713b89 100644
+--- a/dist/src/vitest-test-runner.js
++++ b/dist/src/vitest-test-runner.js
+@@ -143,19 +143,13 @@ export class VitestTestRunner {
+         let testFilesToRun = explicitTestFiles;
+         if (testIds.length > 0) {
+             const parsedTests = testIds.map(fromTestId);
+-            const regexTestNameFilter = parsedTests
+-                .map(({ test: name }) => escapeRegExp(name))
+-                .join('|');
+-            const regex = new RegExp(regexTestNameFilter);
+-            testFilesToRun = parsedTests.map(({ file }) => file);
+-            this.ctx.projects.forEach((project) => {
+-                project.config.testNamePattern = regex;
+-            });
+-        }
+-        else {
+-            this.ctx.projects.forEach((project) => {
+-                project.config.testNamePattern = undefined;
+-            });
++            // NOTE(patched): vitest 5 matches testNamePattern against the
++            // leaf test name only, not the suite-qualified name this
++            // runner builds, so a pattern here would skip every test and
++            // let all mutants survive. Filter by file instead: every file
++            // containing a covering test runs in full, which is slower but
++            // correct.
++            testFilesToRun = [...new Set(parsedTests.map(({ file }) => file))];
+         }
+         try {
+             await this.ctx.start(testFilesToRun);

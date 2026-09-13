@@ -5,6 +5,8 @@ build/
 .vite/
 .pnpm-store/
 coverage/
+reports/
+stryker.log
 playwright-report/
 test-results/
 *.tsbuildinfo
@@ -21,3 +23,4 @@ packages/omemo/docs/
 *.tgz
 test-results/
 playwright-report/
+.stryker-tmp/
