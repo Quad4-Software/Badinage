@@ -3,6 +3,7 @@ import { SvelteSet } from 'svelte/reactivity'
 import { DEFAULT_RESOURCE } from '$lib/constants'
 import { omemoModule, OmemoService } from '$lib/core/omemo'
 import { ModuleRegistry } from '$lib/core/module'
+import { clearLoginBackoff, recordLoginFailure } from '$lib/core/storage/login-backoff'
 import { clearSession, saveSession, type SessionOptions } from '$lib/core/storage/session'
 import {
   XmppConnection,
@@ -10,6 +11,7 @@ import {
   type ConnectionStatus
 } from '$lib/core/xmpp/connection'
 import { DemoConnection } from '$lib/core/xmpp/demo'
+import { RegisterError, registerAccount } from '$lib/core/xmpp/register'
 import type { RosterItem } from '$lib/core/xmpp/stanzas'
 import { discoverEndpoints } from '$lib/core/xmpp/discovery'
 import { bareJid, jidDomain } from '$lib/utils/jid'
@@ -20,6 +22,9 @@ export type AccountOptions = SessionOptions
 // App.svelte restores remembered logins through this re-export so ui/
 // never touches core/ storage directly
 export { restoreSessions } from '$lib/core/storage/session'
+// the login form reads the remaining backoff through this re-export for
+// the same reason
+export { loginBackoffRemaining } from '$lib/core/storage/login-backoff'
 
 export interface RosterContact extends RosterItem {
   presence: string
@@ -52,6 +57,9 @@ export class Account {
   // last omemo init failure, surfaced so the ui can warn that the
   // account is running in plaintext
   omemoError = $state<string | undefined>(undefined)
+  // XEP-0199 last measured server round trip in ms, null until the first
+  // pong lands and whenever the account drops offline
+  latency = $state<number | null>(null)
 
   private registry = new ModuleRegistry()
 
@@ -87,6 +95,13 @@ export class Account {
   disconnect(): void {
     this.registry.destroyAll()
     this.connection.disconnect()
+  }
+
+  // XEP-0352: forward ui visibility to the transport, which records the
+  // desired state even before connect and replays <inactive/> once the
+  // session comes up in a hidden tab
+  setClientActive(active: boolean): void {
+    this.connection.setClientActive(active)
   }
 
   // ---- contacts -------------------------------------------------------------
@@ -205,14 +220,21 @@ export class Account {
   }
 
   private bind(): void {
+    this.connection.events.on('latency', (ms) => {
+      this.latency = ms
+    })
     this.connection.events.on('status', (status) => {
       this.status = status
       if (status === 'authfail' || status === 'error') {
         this.lastError = status
+        // every failure escalates the session-scoped login backoff
+        recordLoginFailure(this.jid)
       } else if (status === 'connecting' || status === 'connected') {
         this.lastError = null
       }
+      if (status !== 'connected') this.latency = null
       if (status === 'connected') {
+        clearLoginBackoff(this.jid)
         void this.registry.initAll({ account: this, connection: this.connection })
         // re-advertise our chosen presence; the transport only sends a
         // bare online presence on connect
@@ -318,6 +340,28 @@ class AccountsStore {
     })
     await account.connect()
     return account
+  }
+
+  // XEP-0077 in-band registration on a throwaway websocket, then the
+  // caller logs in through the normal add() path. Resolves with the
+  // machine-readable failure reason instead of throwing so the ui can
+  // pick a locale string without importing core types.
+  async register(
+    jid: string,
+    password: string,
+    server?: string
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    try {
+      let websocketUrl = server
+      if (!websocketUrl) {
+        websocketUrl = (await discoverEndpoints(jidDomain(jid))).websocket
+      }
+      if (!websocketUrl) return { ok: false, reason: 'unsupported' }
+      await registerAccount(websocketUrl, jid, password)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, reason: err instanceof RegisterError ? err.reason : 'error' }
+    }
   }
 
   remove(jid: string): void {

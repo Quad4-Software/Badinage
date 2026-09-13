@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Pane, PaneGroup, PaneResizer } from 'paneforge'
 
+  import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
 
@@ -52,6 +53,21 @@
   }
 
   $effect(() => app.registerAction('nav.toggleSidebar', toggleSidebar))
+
+  // XEP-0352 client state indication: every connected account hears about
+  // tab visibility. Reading accounts.list keeps the effect live across
+  // logins so a freshly added account gets the current state at once; the
+  // connection dedupes repeats.
+  $effect(() => {
+    void accounts.list.length
+    const sync = () => {
+      const active = document.visibilityState === 'visible'
+      for (const account of accounts.list) account.setClientActive(active)
+    }
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => document.removeEventListener('visibilitychange', sync)
+  })
 </script>
 
 {#snippet resizer(dimmed = false)}
