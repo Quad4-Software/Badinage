@@ -1,94 +1,37 @@
+// ChatStore: the per-account collection of conversations. Owns ingest
+// routing (carbons, muc self-echo, corrections, reactions, markers) and
+// MAM paging. The Conversation shape lives in conversation.svelte.ts,
+// chat-state expiry in typing.ts, IndexedDB snapshots in
+// persistence.svelte.ts.
+
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
 import { MESSAGE_PAGE_SIZE } from '$lib/constants'
-import { idb } from '$lib/core/storage/idb'
-import { scopedKey } from '$lib/core/storage/keys'
 import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
-import type { Attachment, ChatState, IncomingMessage } from '$lib/core/xmpp/stanzas'
+import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 
+import {
+  createConversation,
+  emptyMessage,
+  type ChatMessage,
+  type Conversation,
+  type ConversationKind,
+  type RoomOccupant
+} from './conversation.svelte'
+import { applyCorrection, applyReactions } from './messages'
+import { ConversationPersistence } from './persistence.svelte'
+import { TypingTracker } from './typing'
+
 export type { Attachment }
+export type {
+  ChatMessage,
+  Conversation,
+  ConversationKind,
+  RoomOccupant
+} from './conversation.svelte'
 
-export type ConversationKind = 'dm' | 'muc'
-
-export interface ReplyRef {
-  id: string
-  from: string
-  quote?: string | undefined
-}
-
-export interface ChatMessage {
-  // dedup key: stanza-id when present, else origin-id, else a fallback
-  id: string
-  // the stanza's wire id attribute - used for receipts and chat markers
-  wireId?: string | undefined
-  peerJid: string
-  body: string
-  outgoing: boolean
-  timestamp: number
-  encrypted: boolean
-  delivered: boolean
-  read: boolean
-  nick?: string | undefined
-  replyTo?: ReplyRef | undefined
-  attachments?: Attachment[] | undefined
-  // emoji -> list of senders (bare jids for dms, nicks for muc)
-  reactions: Record<string, string[]>
-  edited?: boolean
-  // signing state placeholder: 'signed' once verification lands
-  signed?: boolean
-}
-
-export interface RoomOccupant {
-  nick: string
-  presence: string
-  affiliation: string
-  role: string
-  self: boolean
-}
-
-export interface Conversation {
-  peerJid: string
-  kind: ConversationKind
-  messages: ChatMessage[]
-  unread: number
-  // typing indicator state of the peer (dm) - composing etc.
-  peerState?: ChatState | undefined
-  // muc: which occupant the chat state came from
-  peerStateNick?: string | undefined
-  // muc only
-  subject?: string | undefined
-  // room vCard photo as a data URI, fetched lazily when the room opens
-  avatar?: string | undefined
-  avatarFetched?: boolean | undefined
-  occupants: SvelteMap<string, RoomOccupant>
-  ourNick?: string | undefined
-  joined?: boolean
-  // mam paging: the rsm first uid of the oldest page we pulled, sent as
-  // the before cursor when fetching further back
-  historyCursor?: string | undefined
-  // true once the archive reports complete or a page comes back with no
-  // first uid to page before
-  historyComplete?: boolean | undefined
-  historyLoading?: boolean | undefined
-}
-
-const RETAINED_MESSAGES = MESSAGE_PAGE_SIZE * 4
 const DEDUP_CAP = 500
-
-export function emptyMessage(peerJid: string): ChatMessage {
-  return {
-    id: '',
-    peerJid,
-    body: '',
-    outgoing: true,
-    timestamp: Date.now(),
-    encrypted: false,
-    delivered: false,
-    read: false,
-    reactions: {}
-  }
-}
 
 export class ChatStore {
   conversations = new SvelteMap<string, Conversation>()
@@ -99,23 +42,19 @@ export class ChatStore {
   // no reactivity needed
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
   private seen = new Map<string, Set<string>>()
+  private persistence: ConversationPersistence
+  private typing = new TypingTracker()
 
-  constructor(private readonly accountJid: string) {}
+  constructor(private readonly accountJid: string) {
+    this.persistence = new ConversationPersistence(accountJid)
+  }
 
   open(peerJid: string, kind: ConversationKind = 'dm'): Conversation {
     const bare = bareJid(peerJid)
     let conversation = this.conversations.get(bare)
     if (!conversation) {
-      // $state so fields like unread and peerState stay reactive inside the map
-      const created = $state<Conversation>({
-        peerJid: bare,
-        kind,
-        messages: [],
-        unread: 0,
-        occupants: new SvelteMap()
-      })
-      this.conversations.set(bare, created)
-      conversation = created
+      conversation = createConversation(bare, kind)
+      this.conversations.set(bare, conversation)
     }
     if (kind === 'muc') conversation.kind = 'muc'
     if (!this.loaded[bare]) {
@@ -130,6 +69,11 @@ export class ChatStore {
     if (conversation) conversation.unread = 0
   }
 
+  // persist any debounced writes; called on disconnect and account removal
+  flush(): Promise<void> {
+    return this.persistence.flush()
+  }
+
   push(peerJid: string, message: ChatMessage, active = false): boolean {
     const bare = bareJid(peerJid)
     const conversation = this.open(bare)
@@ -140,7 +84,7 @@ export class ChatStore {
     while (at > 0 && (conversation.messages[at - 1]?.timestamp ?? 0) > message.timestamp) at--
     conversation.messages.splice(at, 0, message)
     if (!message.outgoing && !active) conversation.unread += 1
-    this.persistSoon(conversation)
+    this.persistence.schedule(conversation)
     return true
   }
 
@@ -153,34 +97,15 @@ export class ChatStore {
 
   applyReaction(peer: string, sender: string, targetId: string, emojis: string[]): void {
     const target = this.findMessage(peer, targetId)
-    if (!target) return
-    // each sender's new reaction set replaces their previous one
-    for (const [emoji, senders] of Object.entries(target.reactions)) {
-      const next = senders.filter((s) => s !== sender)
-      target.reactions[emoji] = next
-    }
-    // drop empty sets afterwards to keep reactions reactive
-    for (const [emoji, senders] of Object.entries(target.reactions)) {
-      if (senders.length === 0) {
-        const { [emoji]: _gone, ...rest } = target.reactions
-        void _gone
-        target.reactions = rest
-      }
-    }
-    for (const emoji of emojis) {
-      const senders = target.reactions[emoji] ?? []
-      if (!senders.includes(sender)) senders.push(sender)
-      target.reactions[emoji] = senders
-    }
+    if (target) applyReactions(target, sender, emojis)
   }
 
   applyCorrection(peer: string, replaceId: string, body: string, timestamp: number): boolean {
     const target = this.findMessage(peer, replaceId)
     if (!target) return false
-    target.body = body
-    target.edited = true
     // keep original position but reflect the correction time for ordering
     void timestamp
+    applyCorrection(target, body)
     return true
   }
 
@@ -228,8 +153,14 @@ export class ChatStore {
       this.applyReaction(peer, sender, message.reactionTo.id, message.reactionTo.emojis)
     }
     if (message.chatState !== undefined && !outgoing) {
-      conversation.peerState = message.chatState
-      conversation.peerStateNick = message.type === 'groupchat' ? message.nick : undefined
+      // muc typers are tracked per nick in the typing tracker; peerState
+      // is the dm signal
+      if (message.type !== 'groupchat') conversation.peerState = message.chatState
+      this.typing.note(conversation, sender, message.chatState)
+    }
+    // a content stanza implies the sender stopped composing
+    if (!outgoing && message.body) {
+      this.typing.clear(conversation, message.type === 'groupchat' ? sender : '')
     }
     if (message.subject !== undefined) {
       conversation.subject = message.subject || undefined
@@ -243,7 +174,8 @@ export class ChatStore {
       }
       // target unknown: fall through and show it as a normal message
     }
-    if (!message.body && !message.attachments?.length) return
+    if (message.encrypted && conversation.kind === 'dm') conversation.encrypted = true
+    if (!message.body && !message.attachments?.length && !message.undecryptable) return
 
     // MUC self-echo: the room reflects our own message back with a fresh
     // stanza id. Merge it into the locally pushed copy (mark delivered,
@@ -276,6 +208,8 @@ export class ChatStore {
     if (message.attachments?.length) stored.attachments = message.attachments
     if (message.signed) stored.signed = true
     if (message.encrypted) stored.encrypted = true
+    if (message.undecryptable) stored.undecryptable = true
+    if (message.untrustedDevice) stored.untrustedDevice = true
     this.push(peer, stored, activePeer === peer)
   }
 
@@ -346,12 +280,8 @@ export class ChatStore {
     return false
   }
 
-  private storageKey(peerJid: string): string {
-    return scopedKey(this.accountJid, 'msgs', bareJid(peerJid))
-  }
-
   private async hydrate(conversation: Conversation): Promise<void> {
-    const stored = await idb.get<ChatMessage[]>('messages', this.storageKey(conversation.peerJid))
+    const stored = await this.persistence.load(conversation.peerJid)
     if (!stored || conversation.messages.length > 0) return
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const seen = this.seen.get(conversation.peerJid) ?? new Set<string>()
@@ -365,28 +295,5 @@ export class ChatStore {
     }
     // one splice so reactivity notifies once for the whole batch
     conversation.messages.splice(0, 0, ...batch)
-  }
-
-  // coalesce writes: a 50-message MAM page is one IDB transaction, not 50
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity
-  private persistTimers = new Map<string, ReturnType<typeof setTimeout>>()
-
-  private persistSoon(conversation: Conversation): void {
-    const key = this.storageKey(conversation.peerJid)
-    const existing = this.persistTimers.get(key)
-    if (existing) clearTimeout(existing)
-    this.persistTimers.set(
-      key,
-      setTimeout(() => {
-        this.persistTimers.delete(key)
-        void this.persist(conversation)
-      }, 250)
-    )
-  }
-
-  private async persist(conversation: Conversation): Promise<void> {
-    // $state proxies cannot be structured-cloned, snapshot to plain data
-    const retained = $state.snapshot(conversation.messages.slice(-RETAINED_MESSAGES))
-    await idb.set('messages', this.storageKey(conversation.peerJid), retained)
   }
 }

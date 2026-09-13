@@ -1,17 +1,9 @@
-import { SvelteMap } from 'svelte/reactivity'
-
 import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
-import { accounts } from './accounts.svelte'
-import { ChatStore, type ChatMessage } from './chats.svelte'
-
-export interface ComposerContext {
-  // replying to this message
-  replyTo?: ChatMessage | undefined
-  // editing our own message
-  editing?: ChatMessage | undefined
-}
+import { accounts, type Account } from './accounts.svelte'
+import { ChatStore } from './chats.svelte'
+import { ComposerStore, type ComposerContext } from './composer.svelte'
 
 class AppStore {
   chats = new Map<string, ChatStore>()
@@ -19,18 +11,21 @@ class AppStore {
   // optional second chat pane (paneforge split view)
   splitPeer = $state<string | null>(null)
   sidebarOpen = $state(false)
+  // desktop pane collapse state; the rail content is driven off the
+  // pane's data-pane-state attribute, this mirrors it for other widgets
+  sidebarCollapsed = $state(false)
   settingsOpen = $state(false)
   loginOpen = $state(false)
   joinRoomOpen = $state(false)
   addContactOpen = $state(false)
-  // reply/edit context and focus callbacks are keyed per peer so split
-  // panes keep independent composer state
-  composerByPeer = new SvelteMap<string, ComposerContext>()
-  private focusByPeer = new Map<string, () => void>()
-  drafts = new Map<string, string>()
+  // drafts, reply/edit context and focus callbacks live in the composer
+  // store; the methods below delegate, keyed per account:peer
+  private composer = new ComposerStore()
 
   private handlers = new Map<string, () => void>()
-  private bound = new Set<string>()
+  // jid -> Account: re-adding a removed account creates a new Account with
+  // a new connection, so identity matters more than the jid string
+  private bound = new Map<string, Account>()
 
   chatsFor(accountJid: string): ChatStore {
     let store = this.chats.get(accountJid)
@@ -66,38 +61,32 @@ class AppStore {
   }
 
   draftKey(peer: string): string {
-    return `${accounts.active?.jid ?? ''}:${bareJid(peer)}`
+    return this.composer.key(accounts.active?.jid, peer)
   }
 
   getDraft(peer: string): string {
-    return this.drafts.get(this.draftKey(peer)) ?? ''
+    return this.composer.draft(this.draftKey(peer))
   }
 
   setDraft(peer: string, value: string): void {
-    const key = this.draftKey(peer)
-    if (value) this.drafts.set(key, value)
-    else this.drafts.delete(key)
+    this.composer.setDraft(this.draftKey(peer), value)
   }
 
   composerFor(peer: string): ComposerContext {
-    return this.composerByPeer.get(this.draftKey(peer)) ?? {}
+    return this.composer.context(this.draftKey(peer))
   }
 
   setComposer(peer: string, ctx: ComposerContext): void {
-    const key = this.draftKey(peer)
-    if (ctx.replyTo || ctx.editing) this.composerByPeer.set(key, ctx)
-    else this.composerByPeer.delete(key)
+    this.composer.setContext(this.draftKey(peer), ctx)
   }
 
   registerComposerFocus(peer: string, focus: () => void): () => void {
-    const key = this.draftKey(peer)
-    this.focusByPeer.set(key, focus)
-    return () => this.focusByPeer.delete(key)
+    return this.composer.registerFocus(this.draftKey(peer), focus)
   }
 
   focusComposer(peer: string | null): void {
     if (!peer) return
-    this.focusByPeer.get(this.draftKey(peer))?.()
+    this.composer.focus(this.draftKey(peer))
   }
 
   selectPeer(peer: string | null): void {
@@ -108,7 +97,7 @@ class AppStore {
       this.splitPeer = this.activePeer
     }
     this.activePeer = bare
-    if (bare) this.composerByPeer.delete(this.draftKey(bare))
+    if (bare) this.composer.clearContext(this.draftKey(bare))
     if (!peer) return
     const account = accounts.active
     if (!account) return
@@ -150,13 +139,47 @@ class AppStore {
   }
 
   private bindAccount(accountJid: string): void {
-    if (this.bound.has(accountJid)) return
     const account = accounts.list.find((a) => a.jid === accountJid)
-    if (!account) return
-    this.bound.add(accountJid)
+    if (!account || this.bound.get(accountJid) === account) return
+    this.bound.set(accountJid, account)
     const store = this.chatsFor(accountJid)
 
+    account.connection.events.on('status', (status) => {
+      if (status === 'disconnected') void store.flush()
+    })
+
     account.connection.events.on('message', (message) => {
+      // locally ignored peers never reach the store, even when the
+      // server has no XEP-0191 support to filter them for us
+      if (account.blocked.has(bareJid(message.from))) return
+
+      // omemo stanzas carry their real body inside the envelope; decrypt
+      // first, then run the normal ingest and receipt path
+      if (message.encryptedXml) {
+        const omemo = account.omemo
+        if (!omemo) {
+          message.encrypted = true
+          message.undecryptable = true
+          message.body = ''
+          store.ingest(message, this.activePeer)
+          return
+        }
+        void omemo.decryptInto(message).then(() => {
+          if (account.blocked.has(bareJid(message.from))) return
+          store.ingest(message, this.activePeer)
+          if (
+            settings.current.sendReceipts &&
+            message.receiptRequest &&
+            message.body &&
+            message.type === 'chat' &&
+            message.id
+          ) {
+            account.connection.sendReceipt(bareJid(message.from), message.id)
+          }
+        })
+        return
+      }
+
       store.ingest(message, this.activePeer)
       // auto-receipt for chat messages that asked for one
       if (
@@ -179,6 +202,22 @@ class AppStore {
       })
     })
   }
+
+  // Called by AccountsStore before an account leaves the list: flush
+  // pending writes, drop the stale binding, and clear the view if the
+  // removed account was the active one.
+  releaseAccount(jid: string): void {
+    this.bound.delete(jid)
+    const store = this.chats.get(jid)
+    void store?.flush()
+    this.chats.delete(jid)
+    if (accounts.active?.jid === jid) {
+      this.activePeer = null
+      this.splitPeer = null
+    }
+  }
 }
 
 export const app = new AppStore()
+
+accounts.onRemoved((jid) => app.releaseAccount(jid))

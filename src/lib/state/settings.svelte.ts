@@ -1,11 +1,15 @@
 import { PersistedState } from 'runed'
 
+import { globalKey } from '$lib/core/storage/keys'
+import { setTelemetryEnabled } from '$lib/core/telemetry'
+
 export const KEYBINDING_ACTIONS = [
   'app.settings',
   'app.toggleTheme',
   'nav.nextConversation',
   'nav.prevConversation',
   'nav.closeConversation',
+  'nav.toggleSidebar',
   'chat.focusComposer',
   'account.1',
   'account.2',
@@ -20,13 +24,14 @@ export const DEFAULT_KEYBINDINGS: Record<KeybindingAction, string> = {
   'nav.nextConversation': 'alt+arrowdown',
   'nav.prevConversation': 'alt+arrowup',
   'nav.closeConversation': 'escape',
+  'nav.toggleSidebar': 'mod+b',
   'chat.focusComposer': 'alt+c',
   'account.1': 'mod+1',
   'account.2': 'mod+2',
   'account.3': 'mod+3'
 }
 
-export interface Settings {
+interface Settings {
   keybindings: Record<string, string>
   sendWithEnter: boolean
   notifications: boolean
@@ -35,6 +40,11 @@ export interface Settings {
   sendChatStates: boolean
   sendReceipts: boolean
   sendReadMarkers: boolean
+  // omemo: trust newly seen device fingerprints automatically (BTBV)
+  omemoBlindTrust: boolean
+  // crash reporting to a deployment-configured sentry-compatible
+  // endpoint; inert when no DSN was baked in at build time
+  crashReporting: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -44,14 +54,18 @@ const DEFAULT_SETTINGS: Settings = {
   sounds: false,
   sendChatStates: true,
   sendReceipts: true,
-  sendReadMarkers: true
+  sendReadMarkers: true,
+  omemoBlindTrust: true,
+  crashReporting: true
 }
 
 class SettingsStore {
-  private persisted = new PersistedState<Settings>('badinage:settings', DEFAULT_SETTINGS)
+  private persisted = new PersistedState<Settings>(globalKey('settings'), DEFAULT_SETTINGS)
 
   get current(): Settings {
-    return this.persisted.current
+    // merge defaults so keys added later are never undefined for users
+    // with an older persisted blob
+    return { ...DEFAULT_SETTINGS, ...this.persisted.current }
   }
 
   get keybindings(): Record<string, string> {
@@ -73,6 +87,8 @@ class SettingsStore {
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): void {
     this.persisted.current = { ...this.persisted.current, [key]: value }
+    // keep the telemetry opt-out in sync with the toggle
+    if (key === 'crashReporting') setTelemetryEnabled(value === true)
   }
 }
 
