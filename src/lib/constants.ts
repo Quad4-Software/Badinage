@@ -120,3 +120,29 @@ export const OAUTH_HTTP_TIMEOUT_MS = 15_000
 export const OAUTH_PKCE_BYTES = 32
 // oauth 'state' nonce length in bytes
 export const OAUTH_STATE_BYTES = 16
+
+// XEP-0224: at most one attention alert per peer inside this window
+export const ATTENTION_COOLDOWN_MS = 30_000
+
+// XEP-0301: how often composer diffs go out while a dm draft changes
+export const RTT_INTERVAL_MS = 700
+
+// XEP-0301: a received real-time buffer is dropped after this much
+// silence so a stale preview never lingers
+export const RTT_TTL_MS = 15_000
+
+// XEP-0466: expired ephemeral messages are swept at this cadence
+export const EPHEMERAL_SWEEP_MS = 15_000
+
+// PWA share target endpoint the service worker intercepts
+export const SHARE_TARGET_PATH = 'share-target'
+
+// IndexedDB key the service worker drops shared payloads under
+export const SHARE_INBOX_KEY = 'share-inbox'
+
+// upper bound on the total size of files a share_target POST stashes
+export const SHARE_INBOX_MAX_BYTES = 32 * 1024 * 1024
+
+// XEP-0080 static tile preview: single tile at this zoom with a pin
+export const GEOLOC_TILE_ZOOM = 15
+export const GEOLOC_TILE_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'

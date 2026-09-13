@@ -74,6 +74,22 @@ export const NS = {
   SPOILER: 'urn:xmpp:spoiler:0',
   // XEP-0393 message styling: used for the unstyled opt-out element
   STYLING: 'urn:xmpp:styling:0',
+  // XEP-0224 attention request element
+  ATTENTION: 'urn:xmpp:attention:0',
+  // XEP-0301 in-band real-time text
+  RTT: 'urn:xmpp:rtt:0',
+  // XEP-0080 user geolocation element
+  GEOLOC: 'http://jabber.org/protocol/geoloc',
+  // XEP-0466 ephemeral message timer
+  EPHEMERAL: 'urn:xmpp:ephemeral:0',
+  // XEP-0490 message displayed synchronization private PEP node
+  MDS: 'urn:xmpp:mds:displayed:0',
+  // XEP-0492 per-chat notification settings element
+  NOTIFY: 'urn:xmpp:notification-settings:1',
+  // XEP-0186 invisibility via privacy lists
+  PRIVACY: 'jabber:iq:privacy',
+  // XEP-0433 extended channel search iq payload
+  CHANNEL_SEARCH: 'urn:xmpp:channel-search:0:search',
   // RFC 6120 stanza error conditions
   STANZA_ERROR: 'urn:ietf:params:xml:ns:xmpp-stanzas'
 } as const

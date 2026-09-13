@@ -6,16 +6,22 @@
 
 import type { Emitter } from '$lib/core/events'
 
-import type { PepPublishOptions } from './features/pep'
+import type { PepPublishOptions } from './features/pep/pep'
+import type { RttEvent, RttOp } from '$lib/utils/protocol/rtt'
+
 import type {
   Bookmark,
+  ChannelSearchItem,
   ChatState,
   DataForm,
   DiscoInfo,
   DiscoItem,
+  Geoloc,
   IncomingMessage,
   MamPageResult,
   MarkerType,
+  MdsDisplayed,
+  MessageReference,
   MucDecline,
   MucInvite,
   MucOccupant,
@@ -46,6 +52,13 @@ export interface SendMessageOptions {
   // XEP-0382: mark the body as a spoiler; the string is the optional
   // hint shown before reveal, empty for a hintless spoiler
   spoilerHint?: string | undefined
+  // XEP-0466: ephemeral timer in seconds attached to this message
+  ephemeral?: number | undefined
+  // XEP-0372 body-range references (mentions); positions are code points
+  references?: MessageReference[] | undefined
+  // XEP-0080 location payload; a geo: uri body fallback is added by the
+  // sender, so callers only pass coordinates
+  geoloc?: Geoloc | undefined
 }
 
 // XEP-0446 file metadata, all fields optional on the wire.
@@ -83,6 +96,9 @@ export type ConnectionEvents = {
   // retracted bookmark items. Consumers refetch the node (last write
   // wins) rather than trusting the partial update.
   bookmarks: { updated: Bookmark[]; retracted: string[] }
+  // XEP-0490 PEP notification: our other resources advanced the
+  // displayed marker for these conversations
+  mds: MdsDisplayed[]
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
@@ -210,4 +226,33 @@ export interface ChatConnection {
   fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void
   addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void
   removeBookmark(jid: string, onDone?: (ok: boolean) => void): void
+  // XEP-0224: send an attention request. No body - the stanza is a pure
+  // signal and receivers rate-limit it.
+  sendAttention(to: string, type?: 'chat' | 'groupchat'): void
+  // XEP-0301: send one real-time text update. seq increments per edit of
+  // the same composed message; event and ops carry the delta.
+  sendRtt(to: string, seq: number, event: RttEvent, ops: RttOp[]): void
+  // XEP-0186: toggle invisibility through a privacy list that denies
+  // outbound presence. onDone reports whether the server accepted it.
+  setInvisible(enabled: boolean, onDone: (ok: boolean) => void): void
+  // XEP-0490: publish the displayed marker for a conversation on our
+  // private MDS node; by echoes the stanza-id assigner when known
+  publishDisplayed(
+    peer: string,
+    stanzaId: string,
+    by?: string,
+    onDone?: (ok: boolean) => void
+  ): void
+  // XEP-0301: one disco#info probe resolving whether the peer advertises
+  // real-time text support. Results cache in the disco layer.
+  rttSupported(jid: string, onDone: (supported: boolean) => void): void
+  // XEP-0433: fetch the search form a channel search service offers, or
+  // null when the jid does not run the protocol
+  channelSearchForm(service: string, onDone: (form: DataForm | null) => void): void
+  // XEP-0433: submit a filled form and get result items back
+  channelSearch(
+    service: string,
+    form: DataForm,
+    onDone: (items: ChannelSearchItem[] | null) => void
+  ): void
 }

@@ -2,8 +2,8 @@ import { DOMParser } from '@xmldom/xmldom'
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { malformed, messageArb, presenceArb, stanzaArb } from '../../../../test/stanza-gen'
-import { NS } from './ns'
+import { malformed, messageArb, presenceArb, stanzaArb } from '../../../../../../test/stanza-gen'
+import { NS } from '../../ns'
 import {
   hasDiscoFeature,
   parseAvatarHash,
@@ -21,7 +21,7 @@ import {
   parseRosterItems,
   parseUploadSlot,
   parseVcardPhoto
-} from './stanzas'
+} from '..'
 
 const parser = new DOMParser()
 const noop = (): void => undefined

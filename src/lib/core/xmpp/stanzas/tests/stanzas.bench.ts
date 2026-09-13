@@ -1,7 +1,7 @@
 import { DOMParser } from '@xmldom/xmldom'
 import { test } from 'vitest'
 
-import { parseMessage, parsePresence, parseRosterItems } from './stanzas'
+import { parseMessage, parsePresence, parseRosterItems } from '..'
 
 const parser = new DOMParser()
 
