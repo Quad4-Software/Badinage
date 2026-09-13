@@ -79,7 +79,10 @@ export class IdbOmemoStore implements OmemoStore {
     this.keyWrapError = keyWrapError
   }
 
-  static async create(accountJid: string): Promise<IdbOmemoStore> {
+  // scope separates the key material of the two OMEMO profiles: 'om' for
+  // omemo:2, 'oml' for the legacy namespace. Each profile needs its own
+  // identity, so they cannot share one store.
+  static async create(accountJid: string, scope = 'om'): Promise<IdbOmemoStore> {
     let wrapKey: CryptoKey | undefined
     let keyWrapError: unknown
     try {
@@ -94,7 +97,7 @@ export class IdbOmemoStore implements OmemoStore {
         keyWrapError instanceof Error ? keyWrapError.message : String(keyWrapError)
       )
     }
-    return new IdbOmemoStore(scopedKey(accountJid, 'om'), wrapKey, keyWrapError)
+    return new IdbOmemoStore(scopedKey(accountJid, scope), wrapKey, keyWrapError)
   }
 
   private k(...parts: (string | number)[]): string {
@@ -198,6 +201,16 @@ export class IdbOmemoStore implements OmemoStore {
 
   putDeviceIds(jid: string, ids: number[]): Promise<void> {
     return this.putRecord(this.k('dev', jid), ids)
+  }
+
+  // Small wrapped key/value area beyond the OmemoStore contract, used for
+  // prekey rotation bookkeeping (see rotation.ts).
+  getMeta<T>(key: string): Promise<T | undefined> {
+    return this.getRecord(this.k('meta', key))
+  }
+
+  putMeta(key: string, value: unknown): Promise<void> {
+    return this.putRecord(this.k('meta', key), value)
   }
 }
 

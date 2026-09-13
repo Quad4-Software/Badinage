@@ -385,6 +385,14 @@ type RootTranslation = {
 	 */
 	fileAttachment: string
 	/**
+	 * D​e​c​r​y​p​t​i​n​g​ ​a​t​t​a​c​h​m​e​n​t
+	 */
+	decryptingAttachment: string
+	/**
+	 * C​o​u​l​d​ ​n​o​t​ ​d​e​c​r​y​p​t
+	 */
+	attachmentDecryptFailed: string
+	/**
 	 * U​p​l​o​a​d​ ​f​a​i​l​e​d
 	 */
 	uploadFailed: string
@@ -392,6 +400,10 @@ type RootTranslation = {
 	 * E​n​c​r​y​p​t​i​o​n​ ​f​a​i​l​e​d​ ​-​ ​m​e​s​s​a​g​e​ ​n​o​t​ ​s​e​n​t
 	 */
 	encryptFailed: string
+	/**
+	 * D​i​s​m​i​s​s​ ​m​e​s​s​a​g​e
+	 */
+	dismissMessage: string
 	/**
 	 * S​i​g​n​e​d
 	 */
@@ -864,6 +876,10 @@ type RootTranslation = {
 	 */
 	couldNotDecrypt: string
 	/**
+	 * A​s​k​e​d​ ​t​h​e​ ​s​e​n​d​e​r​ ​t​o​ ​r​e​p​a​i​r​ ​t​h​e​ ​e​n​c​r​y​p​t​i​o​n​ ​s​e​s​s​i​o​n
+	 */
+	keyRequested: string
+	/**
 	 * F​r​o​m​ ​a​n​ ​u​n​v​e​r​i​f​i​e​d​ ​d​e​v​i​c​e
 	 */
 	untrustedDevice: string
@@ -1271,6 +1287,14 @@ export type TranslationFunctions = {
 	 */
 	fileAttachment: () => LocalizedString
 	/**
+	 * Decrypting attachment
+	 */
+	decryptingAttachment: () => LocalizedString
+	/**
+	 * Could not decrypt
+	 */
+	attachmentDecryptFailed: () => LocalizedString
+	/**
 	 * Upload failed
 	 */
 	uploadFailed: () => LocalizedString
@@ -1278,6 +1302,10 @@ export type TranslationFunctions = {
 	 * Encryption failed - message not sent
 	 */
 	encryptFailed: () => LocalizedString
+	/**
+	 * Dismiss message
+	 */
+	dismissMessage: () => LocalizedString
 	/**
 	 * Signed
 	 */
@@ -1738,6 +1766,10 @@ export type TranslationFunctions = {
 	 * Encrypted message could not be decrypted
 	 */
 	couldNotDecrypt: () => LocalizedString
+	/**
+	 * Asked the sender to repair the encryption session
+	 */
+	keyRequested: () => LocalizedString
 	/**
 	 * From an unverified device
 	 */

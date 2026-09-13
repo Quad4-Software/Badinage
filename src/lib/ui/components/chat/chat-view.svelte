@@ -96,6 +96,25 @@
     if (split) app.splitPeer = null
     else app.activePeer = null
   }
+
+  // XEP-0444 reactions. In an encrypted dm the reaction set rides inside
+  // an SCE envelope as a bare notification so the emoji and its target id
+  // never leak in the clear; anything else uses the plain stanza.
+  function sendReactionSet(target: string, ref: string, emojis: string[]) {
+    const current = account
+    if (!current || !conversation) return
+    if (conversation.kind === 'dm' && conversation.encrypted === true) {
+      void Promise.resolve(current.omemo ?? current.omemoService())
+        .then(async (omemo) => {
+          const xml = omemo ? await omemo.encryptReaction(target, ref, emojis) : null
+          if (xml !== null) current.connection.sendEncryptedNotification(target, xml)
+          else current.connection.sendReaction(target, ref, emojis, 'chat')
+        })
+        .catch(() => current.connection.sendReaction(target, ref, emojis, 'chat'))
+      return
+    }
+    current.connection.sendReaction(target, ref, emojis, isRoom ? 'groupchat' : 'chat')
+  }
 </script>
 
 {#snippet paneContent()}
@@ -272,9 +291,12 @@
             // MUC reactions/replies reference the room stanza-id, DMs the
             // wire id; message.id holds the stanza-id when the server sent one
             const ref = isRoom ? message.id : (message.wireId ?? message.id)
-            const type = isRoom ? 'groupchat' : 'chat'
-            account.connection.sendReaction(conversation.peerJid, ref, emojis, type)
+            sendReactionSet(conversation.peerJid, ref, emojis)
             app.chatsFor(account.jid).applyReaction(conversation.peerJid, self, ref, emojis)
+          }}
+          onDismiss={(message) => {
+            if (!account) return
+            app.chatsFor(account.jid).dropMessage(conversation.peerJid, message.id)
           }}
         />
         <Composer

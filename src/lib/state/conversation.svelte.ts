@@ -29,6 +29,9 @@ export interface ChatMessage {
   nick?: string | undefined
   // decryption failed or the stanza could not be shown as text
   undecryptable?: boolean | undefined
+  // we sent the sender's device a key transport asking it to repair the
+  // session (XEP-0384 recovery); purely informational for the tombstone
+  keyRequested?: boolean | undefined
   // decrypted, but the sending device is distrusted or changed keys
   untrustedDevice?: boolean | undefined
   replyTo?: ReplyRef | undefined

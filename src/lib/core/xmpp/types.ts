@@ -115,8 +115,12 @@ export interface ChatConnection {
   pepGet(node: string, jid: string | undefined, onDone: (items: Element | null) => void): void
   pepPublish(node: string, itemId: string, payloadXml: string): void
   // OMEMO: send a pre-encrypted message stanza. encryptedXml is the
-  // serialized <encrypted> element produced by the omemo service.
-  sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string
+  // serialized <encrypted> element produced by the omemo service; replies
+  // and corrections travel inside its SCE envelope, never in the clear.
+  sendEncryptedMessage(to: string, encryptedXml: string): string
+  // OMEMO: send a bare encrypted payload with no fallback body - used for
+  // key transports, reactions and chat states in encrypted conversations.
+  sendEncryptedNotification(to: string, encryptedXml: string): void
   joinRoom(room: string, nick: string, password?: string): void
   leaveRoom(room: string, nick: string): void
   setRoomSubject(room: string, subject: string): void

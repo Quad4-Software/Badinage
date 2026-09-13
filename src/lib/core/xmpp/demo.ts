@@ -176,9 +176,8 @@ export class DemoConnection implements ChatConnection {
     void payloadXml
   }
 
-  sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string {
+  sendEncryptedMessage(to: string, encryptedXml: string): string {
     void encryptedXml
-    void opts
     const id = this.uniqueId('msg')
     this.timers.push(
       setTimeout(
@@ -187,6 +186,12 @@ export class DemoConnection implements ChatConnection {
       )
     )
     return id
+  }
+
+  sendEncryptedNotification(to: string, encryptedXml: string): void {
+    // key transports and encrypted reactions/states are inert in demo
+    void to
+    void encryptedXml
   }
 
   sendChatState(to: string, state: ChatState, type: 'chat' | 'groupchat' = 'chat'): void {

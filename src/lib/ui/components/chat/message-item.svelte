@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Copy, Lock, Pencil, Reply, Smile, SmilePlus } from '@lucide/svelte'
+  import { Copy, Lock, Pencil, Reply, Smile, SmilePlus, X } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
@@ -23,6 +23,8 @@
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((emoji: string) => void) | undefined
+    // removes the message; only rendered for undecryptable tombstones
+    onDismiss?: ((message: ChatMessage) => void) | undefined
   }
 
   let {
@@ -34,7 +36,8 @@
     onQuoteClick,
     onReply,
     onEdit,
-    onReact
+    onReact,
+    onDismiss
   }: Props = $props()
 
   let pickerOpen = $state(false)
@@ -128,15 +131,20 @@
         {/if}
 
         {#if message.undecryptable}
-          <p
+          <div
             class={cn(
               'flex items-center gap-1.5 italic',
               message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
             )}
           >
             <Lock class="size-3.5 shrink-0" />
-            {$LL.couldNotDecrypt()}
-          </p>
+            <span class="min-w-0">
+              {$LL.couldNotDecrypt()}
+              {#if message.keyRequested}
+                <span class="mt-0.5 block text-xs not-italic">{$LL.keyRequested()}</span>
+              {/if}
+            </span>
+          </div>
         {:else if message.body && !bodyIsAttachmentUrl}
           <p class={cn('break-words whitespace-pre-wrap', jumbo && 'text-4xl leading-tight')}>
             {#each bodyParts as part, i (i)}
@@ -191,6 +199,16 @@
         <button type="button" class={actionClass} aria-label={$LL.copyMessage()} onclick={copyBody}>
           <Copy class="size-3.5" />
         </button>
+        {#if message.undecryptable && onDismiss}
+          <button
+            type="button"
+            class={actionClass}
+            aria-label={$LL.dismissMessage()}
+            onclick={() => onDismiss(message)}
+          >
+            <X class="size-3.5" />
+          </button>
+        {/if}
       </div>
 
       {#if pickerOpen}

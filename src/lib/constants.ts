@@ -31,3 +31,15 @@ export const INLINE_ATTACHMENT_LIMIT = 512 * 1024
 // cleartext body on omemo stanzas for clients that cannot decrypt
 export const OMEMO_FALLBACK_BODY =
   'I sent you an OMEMO encrypted message but your client does not support it.'
+
+// omemo signed prekeys are rotated once they are older than this
+export const OMEMO_SPK_ROTATE_MS = 30 * 24 * 60 * 60 * 1000
+
+// undecryptable stanzas kept for one-shot retry per sending device
+export const OMEMO_RETRY_QUEUE_MAX = 50
+
+// XEP-0454 aesgcm media sharing: AES-256-GCM key + 12 byte IV, tag
+// appended to the ciphertext, fragment is hex(iv) followed by hex(key)
+export const AESGCM_KEY_BYTES = 32
+export const AESGCM_IV_BYTES = 12
+export const AESGCM_TAG_BYTES = 16

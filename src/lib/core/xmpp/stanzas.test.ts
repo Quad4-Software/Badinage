@@ -261,6 +261,20 @@ my answer</body>
     expect(m?.encryptedXml).toContain('sid="123"')
   })
 
+  it('captures legacy-namespace encrypted elements the same way', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>I sent you an OMEMO encrypted message but your client does not support it.</body>
+        <encrypted xmlns="eu.siacs.conversations.axolotl">
+          <header sid="7"><key rid="9">AAAA</key></header>
+          <payload>BBBB</payload>
+        </encrypted>
+      </message>`)
+    )
+    expect(m).not.toBeNull()
+    expect(m?.encryptedXml).toContain('eu.siacs.conversations.axolotl')
+  })
+
   it('returns null for empty stanzas', () => {
     const m = parseMessage(xml(`<message from="a@b.c" to="x@y.z" type="chat"/>`))
     expect(m).toBeNull()

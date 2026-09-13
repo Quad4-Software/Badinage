@@ -26,7 +26,7 @@ import {
   sendReceipt
 } from './features/messaging'
 import { joinRoom, leaveRoom, setRoomSubject } from './features/muc'
-import { pepGet, pepPublish, sendEncryptedMessage } from './features/pep'
+import { pepGet, pepPublish, sendEncryptedMessage, sendEncryptedNotification } from './features/pep'
 import { fetchAvatar, sendDirectedPresence, sendPresence } from './features/presence'
 import { fetchRoster, rosterRemove, rosterSet } from './features/roster'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
@@ -177,8 +177,12 @@ export class XmppConnection implements ChatConnection {
     pepPublish(this.transport, node, itemId, payloadXml)
   }
 
-  sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string {
-    return sendEncryptedMessage(this.transport, to, encryptedXml, opts)
+  sendEncryptedMessage(to: string, encryptedXml: string): string {
+    return sendEncryptedMessage(this.transport, to, encryptedXml)
+  }
+
+  sendEncryptedNotification(to: string, encryptedXml: string): void {
+    sendEncryptedNotification(this.transport, to, encryptedXml)
   }
 
   // ---- presence / avatars, implemented in features/presence.ts ----------------

@@ -21,9 +21,19 @@
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((message: ChatMessage, emoji: string) => void) | undefined
+    // dismisses a message outright - only offered on undecryptable tombstones
+    onDismiss?: ((message: ChatMessage) => void) | undefined
   }
 
-  let { conversation, selfJid = '', onQuoteClick, onReply, onEdit, onReact }: Props = $props()
+  let {
+    conversation,
+    selfJid = '',
+    onQuoteClick,
+    onReply,
+    onEdit,
+    onReact,
+    onDismiss
+  }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
   // scrollTop under this counts as near the top and shows the pager button
@@ -154,6 +164,7 @@
           {onReply}
           {onEdit}
           onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
+          {onDismiss}
         />
       </li>
     {/each}

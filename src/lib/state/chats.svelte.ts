@@ -112,23 +112,26 @@ export class ChatStore {
     return true
   }
 
-  ingest(message: IncomingMessage, activePeer: string | null): void {
-    // Work out which conversation this stanza belongs to and whether it is ours.
-    let peer: string
-    let outgoing = false
+  // Work out which conversation a stanza belongs to and whether it is ours.
+  private routeMessage(message: IncomingMessage): { peer: string; outgoing: boolean } {
     if (message.carbon === 'sent') {
-      peer = bareJid(message.to)
-      outgoing = true
-    } else if (message.type === 'groupchat') {
-      peer = bareJid(message.from)
-      const ownNick = this.conversations.get(peer)?.ourNick
-      outgoing = message.nick !== undefined && message.nick === ownNick
-    } else if (bareJid(message.from) === this.accountJid) {
-      peer = bareJid(message.to)
-      outgoing = true
-    } else {
-      peer = bareJid(message.from)
+      return { peer: bareJid(message.to), outgoing: true }
     }
+    if (message.type === 'groupchat') {
+      const peer = bareJid(message.from)
+      const ownNick = this.conversations.get(peer)?.ourNick
+      return { peer, outgoing: message.nick !== undefined && message.nick === ownNick }
+    }
+    if (bareJid(message.from) === this.accountJid) {
+      return { peer: bareJid(message.to), outgoing: true }
+    }
+    return { peer: bareJid(message.from), outgoing: false }
+  }
+
+  // Returns the stored message when the stanza produced one, undefined for
+  // pure signal stanzas (receipts, chat states) and dedup hits.
+  ingest(message: IncomingMessage, activePeer: string | null): ChatMessage | undefined {
+    const { peer, outgoing } = this.routeMessage(message)
 
     const conversation = this.open(peer)
     if (message.type === 'groupchat') conversation.kind = 'muc'
@@ -173,12 +176,12 @@ export class ChatStore {
       if (
         this.applyCorrection(peer, message.replaceId, message.body, message.delay ?? Date.now())
       ) {
-        return
+        return undefined
       }
       // target unknown: fall through and show it as a normal message
     }
     if (message.encrypted && conversation.kind === 'dm') conversation.encrypted = true
-    if (!message.body && !message.attachments?.length && !message.undecryptable) return
+    if (!message.body && !message.attachments?.length && !message.undecryptable) return undefined
 
     // MUC self-echo: the room reflects our own message back with a fresh
     // stanza id. Merge it into the locally pushed copy (mark delivered,
@@ -190,7 +193,7 @@ export class ChatStore {
         if (recent.outgoing && !recent.delivered && recent.body === message.body) {
           recent.delivered = true
           if (message.stanzaId) recent.id = message.stanzaId
-          return
+          return undefined
         }
       }
     }
@@ -217,6 +220,73 @@ export class ChatStore {
     if (message.undecryptable) stored.undecryptable = true
     if (message.untrustedDevice) stored.untrustedDevice = true
     this.push(peer, stored, activePeer === peer, seenIds)
+    return stored
+  }
+
+  // A stanza that failed to decrypt on arrival succeeded on retry: patch
+  // its tombstone in place. Stanzas that carried only signals (reaction,
+  // chat state, key transport) get their effect applied and the tombstone
+  // removed instead.
+  resolveDecrypted(message: IncomingMessage): boolean {
+    const { peer } = this.routeMessage(message)
+    const conversation = this.conversations.get(peer)
+    if (!conversation) return false
+
+    // the tombstone was stored with an empty body, so its fallback id had
+    // an empty body component too
+    const tombstoneFallback = `${peer}:${message.delay ?? ''}:`
+    const stored = conversation.messages.find(
+      (m) =>
+        m.undecryptable === true &&
+        ((message.stanzaId !== undefined && m.id === message.stanzaId) ||
+          (message.originId !== undefined && m.id === message.originId) ||
+          (message.id !== undefined && m.wireId === message.id) ||
+          m.id === tombstoneFallback)
+    )
+    if (!stored) return false
+
+    const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
+    if (message.reactionTo) {
+      this.applyReaction(peer, sender, message.reactionTo.id, message.reactionTo.emojis)
+    }
+    if (message.chatState !== undefined && conversation.kind === 'dm') {
+      conversation.peerState = message.chatState
+    }
+    if (message.replaceId && message.body) {
+      if (this.applyCorrection(peer, message.replaceId, message.body, Date.now())) {
+        this.dropTombstone(conversation, stored)
+        return true
+      }
+    }
+    if (!message.body && !message.attachments?.length) {
+      this.dropTombstone(conversation, stored)
+      return true
+    }
+    stored.body = message.body
+    delete stored.undecryptable
+    delete stored.keyRequested
+    stored.encrypted = true
+    if (message.untrustedDevice) stored.untrustedDevice = true
+    if (message.replyTo) stored.replyTo = message.replyTo
+    if (message.attachments?.length) stored.attachments = message.attachments
+    return true
+  }
+
+  private dropTombstone(conversation: Conversation, stored: ChatMessage): void {
+    const at = conversation.messages.indexOf(stored)
+    if (at < 0) return
+    conversation.messages.splice(at, 1)
+    if (!stored.outgoing && conversation.unread > 0) conversation.unread -= 1
+    this.persistence.schedule(conversation)
+  }
+
+  // Remove one stored message by its display id. The UI uses this to
+  // dismiss undecryptable tombstones that will never resolve.
+  dropMessage(peer: string, id: string): void {
+    const conversation = this.conversations.get(bareJid(peer))
+    const stored = conversation?.messages.find((m) => m.id === id)
+    if (!conversation || !stored) return
+    this.dropTombstone(conversation, stored)
   }
 
   markDelivered(peerJid: string, id: string): void {
