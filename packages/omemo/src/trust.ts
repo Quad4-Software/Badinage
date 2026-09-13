@@ -6,7 +6,7 @@
 import { bytesEqual, bytesToHex } from './internal/bytes'
 import type { Namespace } from './constants'
 import { edPublicToCurvePublic } from './crypto/keys'
-import type { ParsedBundle } from './protocol/bundle'
+import type { ParsedBundle } from './protocol/wire/bundle'
 
 // Extract the 32 byte Curve25519 identity key form from a parsed bundle.
 export function identityFingerprintMaterial(bundle: ParsedBundle): Uint8Array {

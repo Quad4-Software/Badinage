@@ -1,6 +1,7 @@
 // OmemoManager: the high level facade tying bundles, X3DH, sessions and the
 // wire format together. One manager handles one profile (omemo:2 or legacy)
-// for one local device. Key material helpers live in protocol/deviceKeys.ts.
+// for one local device. Key material helpers live in
+// protocol/session/deviceKeys.ts.
 
 import { DEVICE_ID_MAX, PREKEY_COUNT_DEFAULT } from './constants'
 import type { Namespace } from './constants'
@@ -10,32 +11,32 @@ import { parseXml } from './internal/xml'
 import type { XmlElement } from './internal/xml'
 
 import { curveSecretSignBit, encodeCurveKeyWire, generateX25519KeyPair } from './crypto/keys'
-import { parseBundle } from './protocol/bundle'
-import type { ParsedBundle } from './protocol/bundle'
+import { parseBundle } from './protocol/wire/bundle'
+import type { ParsedBundle } from './protocol/wire/bundle'
 import {
   buildOwnBundle,
   ensureIdentity,
   generateSignedPreKey,
   requireIdentity,
   respondToKeyExchange
-} from './protocol/deviceKeys'
-import { decodeKeyExchangeWire, encodeKeyExchangeWire } from './protocol/keyExchange'
-import type { ParsedKeyExchange } from './protocol/keyExchange'
+} from './protocol/session/deviceKeys'
+import { decodeKeyExchangeWire, encodeKeyExchangeWire } from './protocol/wire/keyExchange'
+import type { ParsedKeyExchange } from './protocol/wire/keyExchange'
 import {
   decryptPayloadLegacy,
   decryptPayloadOmemo2,
   emptyKeyMaterialPlaintext,
   encryptPayloadLegacy,
   encryptPayloadOmemo2
-} from './protocol/messageCrypto'
-import { PROFILES } from './protocol/profiles'
-import { Session, DEFAULT_LIMITS } from './protocol/session'
-import { sessionInitiator } from './protocol/sessionInit'
-import type { PendingKeyExchange, RatchetLimits } from './protocol/session'
-import { deserializeSession, serializeSession } from './protocol/sessionData'
-import { x3dhInitiate } from './protocol/x3dh'
-import { buildEncryptedElement, parseEncryptedElement } from './protocol/wire'
-import type { EncryptOutputKey, ParsedEncrypted } from './protocol/wire'
+} from './protocol/wire/messageCrypto'
+import { PROFILES } from './protocol/wire/profiles'
+import { DEFAULT_LIMITS } from './protocol/session/session'
+import { sessionInitiator } from './protocol/session/sessionInit'
+import type { PendingKeyExchange, RatchetLimits, Session } from './protocol/session/session'
+import { deserializeSession, serializeSession } from './protocol/session/sessionData'
+import { x3dhInitiate } from './protocol/session/x3dh'
+import { buildEncryptedElement, parseEncryptedElement } from './protocol/wire/encrypted'
+import type { EncryptOutputKey, ParsedEncrypted } from './protocol/wire/encrypted'
 import type { OmemoStore } from './store/interface'
 
 export interface OmemoManagerConfig {

@@ -3,20 +3,20 @@
 // info = profile string, 32 bytes). Associated data is the wire encoding of
 // the initiator identity key followed by the responder identity key.
 
-import { CURVE_KEY_SIZE, X3DH_PAD_BYTE, X3DH_PAD_SIZE } from '../constants'
-import { MissingPreKeyError } from '../errors'
-import { concatBytes } from '../internal/bytes'
-import { hkdfSha256 } from '../crypto/kdf'
+import { CURVE_KEY_SIZE, X3DH_PAD_BYTE, X3DH_PAD_SIZE } from '../../constants'
+import { MissingPreKeyError } from '../../errors'
+import { concatBytes } from '../../internal/bytes'
+import { hkdfSha256 } from '../../crypto/kdf'
 import {
   clampCurve25519Secret,
   edPublicToCurvePublic,
   edSecretToCurveSecret,
   generateX25519KeyPair,
   x25519SharedSecret
-} from '../crypto/keys'
-import type { KeyPair } from '../crypto/keys'
-import type { ParsedBundle } from './bundle'
-import type { WireProfile } from './profiles'
+} from '../../crypto/keys'
+import type { KeyPair } from '../../crypto/keys'
+import type { ParsedBundle } from '../wire/bundle'
+import type { WireProfile } from '../wire/profiles'
 
 export interface IdentityMaterial {
   // Profile native private key: Ed25519 seed for omemo:2, raw Curve25519

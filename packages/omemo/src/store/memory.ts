@@ -3,7 +3,7 @@
 // material wrapped at rest.
 
 import type { KeyPair } from '../crypto/keys'
-import type { SessionData } from '../protocol/sessionData'
+import type { SessionData } from '../protocol/session/sessionData'
 import { sessionKey } from './interface'
 import type { IdentityRecord, OmemoStore, SignedPreKeyRecord } from './interface'
 

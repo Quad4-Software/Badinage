@@ -4,23 +4,23 @@
 
 import { ed25519 } from '@noble/curves/ed25519.js'
 
-import type { Namespace } from '../constants'
-import { MissingPreKeyError, ProtocolError } from '../errors'
+import type { Namespace } from '../../constants'
+import { MissingPreKeyError, ProtocolError } from '../../errors'
 import {
   curveSecretSignBit,
   encodeCurveKeyWire,
   generateCurve25519Identity,
   generateEd25519KeyPair,
   generateX25519KeyPair
-} from '../crypto/keys'
-import { xed25519Sign } from '../crypto/xed25519'
-import type { XmlElement } from '../internal/xml'
-import type { OmemoStore } from '../store/interface'
-import { buildBundleElement } from './bundle'
-import type { OwnBundle } from './bundle'
-import type { ParsedKeyExchange } from './keyExchange'
-import type { WireProfile } from './profiles'
-import { Session } from './session'
+} from '../../crypto/keys'
+import { xed25519Sign } from '../../crypto/xed25519'
+import type { XmlElement } from '../../internal/xml'
+import type { OmemoStore } from '../../store/interface'
+import { buildBundleElement } from '../wire/bundle'
+import type { OwnBundle } from '../wire/bundle'
+import type { ParsedKeyExchange } from '../wire/keyExchange'
+import type { WireProfile } from '../wire/profiles'
+import type { Session } from './session'
 import { sessionResponder } from './sessionInit'
 import type { RatchetLimits } from './session'
 import { x3dhRespond } from './x3dh'

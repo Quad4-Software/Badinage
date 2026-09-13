@@ -48,14 +48,14 @@ import {
   X3DH_PAD_BYTE,
   X3DH_PAD_SIZE
 } from '../src/constants'
-import { PROFILES } from '../src/protocol/profiles'
+import { PROFILES } from '../src/protocol/wire/profiles'
 import { ProtoWriter, readFields } from '../src/internal/protobuf'
 import {
   encodeAuthenticatedMessage,
   encodeBundle,
   encodeKeyExchange,
   encodeOmemoMessage
-} from '../src/protocol/messages'
+} from '../src/protocol/wire/messages'
 
 describe('namespaces match XEP-0384', () => {
   it('omemo:2 uris', () => {

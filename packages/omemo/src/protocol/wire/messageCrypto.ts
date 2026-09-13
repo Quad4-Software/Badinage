@@ -13,17 +13,17 @@ import {
   LEGACY_PAYLOAD_KEY_SIZE,
   OMEMO2_MAC_SIZE,
   OMEMO2_PAYLOAD_KEY_SIZE
-} from '../constants'
-import type { Namespace } from '../constants'
-import { ParseError } from '../errors'
-import { concatBytes, randomBytes } from '../internal/bytes'
+} from '../../constants'
+import type { Namespace } from '../../constants'
+import { ParseError } from '../../errors'
+import { concatBytes, randomBytes } from '../../internal/bytes'
 import {
   aes128GcmDecrypt,
   aes128GcmEncrypt,
   aes256CbcDecrypt,
   aes256CbcEncrypt
-} from '../crypto/aes'
-import { hkdfSha256, hmacSha256 } from '../crypto/kdf'
+} from '../../crypto/aes'
+import { hkdfSha256, hmacSha256 } from '../../crypto/kdf'
 import type { WireProfile } from './profiles'
 
 export interface Omemo2PayloadResult {

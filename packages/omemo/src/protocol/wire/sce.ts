@@ -9,11 +9,11 @@
 //   <time stamp='ISO 8601'/>
 // </envelope>
 
-import { NS_SCE } from '../constants'
-import { ParseError } from '../errors'
-import { randomBytes } from '../internal/bytes'
-import { childrenNamed, el, findChild, serializeXml } from '../internal/xml'
-import type { XmlElement } from '../internal/xml'
+import { NS_SCE } from '../../constants'
+import { ParseError } from '../../errors'
+import { randomBytes } from '../../internal/bytes'
+import { childrenNamed, el, findChild, serializeXml } from '../../internal/xml'
+import type { XmlElement } from '../../internal/xml'
 
 export interface SceEnvelopeInput {
   // The extension elements inside <content>, for example a <body> carrying
@@ -72,10 +72,6 @@ export function parseSceEnvelope(element: XmlElement): ParsedSceEnvelope {
     to: findChild(element, 'to')?.text,
     time
   }
-}
-
-export function serializeEnvelopeContent(content: XmlElement[]): string[] {
-  return content.map(serializeXml)
 }
 
 function randomRpad(length = 16): string {

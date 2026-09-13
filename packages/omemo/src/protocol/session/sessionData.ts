@@ -1,9 +1,9 @@
 // JSON serialization of session state for storage. Byte strings are base64.
 
-import type { Namespace } from '../constants'
-import { ParseError } from '../errors'
-import { base64Decode, base64Encode } from '../internal/bytes'
-import { PROFILES } from './profiles'
+import type { Namespace } from '../../constants'
+import { ParseError } from '../../errors'
+import { base64Decode, base64Encode } from '../../internal/bytes'
+import { PROFILES } from '../wire/profiles'
 import { DEFAULT_LIMITS, Session } from './session'
 import type { PendingKeyExchange, RatchetLimits, SessionState } from './session'
 

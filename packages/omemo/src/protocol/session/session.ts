@@ -3,23 +3,23 @@
 // of header keys and associated-data ordering, all handled by WireProfile.
 // Serialization lives in sessionData.ts.
 
-import { CURVE_KEY_SIZE, KEY_MATERIAL_SIZE, MAX_SKIP, MAX_SKIPPED_KEYS } from '../constants'
-import type { Namespace } from '../constants'
+import { CURVE_KEY_SIZE, KEY_MATERIAL_SIZE, MAX_SKIP, MAX_SKIPPED_KEYS } from '../../constants'
+import type { Namespace } from '../../constants'
 import {
   AuthenticationError,
   DoSProtectionError,
   DuplicateMessageError,
   ParseError,
   ProtocolError
-} from '../errors'
-import { bytesEqual, concatBytes } from '../internal/bytes'
-import { aes256CbcDecrypt, aes256CbcEncrypt } from '../crypto/aes'
-import { chainMessageKey, hkdfSha256, hmacSha256 } from '../crypto/kdf'
-import { generateX25519KeyPair, x25519SharedSecret } from '../crypto/keys'
-import type { KeyPair } from '../crypto/keys'
-import { marshalMessage, unmarshalMessage } from './profiles'
-import type { WireProfile } from './profiles'
-import { decodeOmemoMessage, encodeOmemoMessage } from './messages'
+} from '../../errors'
+import { bytesEqual, concatBytes } from '../../internal/bytes'
+import { aes256CbcDecrypt, aes256CbcEncrypt } from '../../crypto/aes'
+import { chainMessageKey, hkdfSha256, hmacSha256 } from '../../crypto/kdf'
+import { generateX25519KeyPair, x25519SharedSecret } from '../../crypto/keys'
+import type { KeyPair } from '../../crypto/keys'
+import { marshalMessage, unmarshalMessage } from '../wire/profiles'
+import type { WireProfile } from '../wire/profiles'
+import { decodeOmemoMessage, encodeOmemoMessage } from '../wire/messages'
 
 export interface RatchetLimits {
   maxSkip: number
@@ -74,7 +74,7 @@ export interface EncryptResult {
   keyExchange: PendingKeyExchange | null
 }
 
-export function emptySessionState(): SessionState {
+function emptySessionState(): SessionState {
   return {
     initiation: 'active',
     rk: new Uint8Array(0),

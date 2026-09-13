@@ -16,12 +16,12 @@ import {
   LEGACY_MAC_SIZE,
   LEGACY_VERSION_BYTE,
   OMEMO2_MAC_SIZE
-} from '../constants'
-import type { Namespace } from '../constants'
-import { ParseError } from '../errors'
-import { concatBytes, utf8ToBytes } from '../internal/bytes'
+} from '../../constants'
+import type { Namespace } from '../../constants'
+import { ParseError } from '../../errors'
+import { concatBytes, utf8ToBytes } from '../../internal/bytes'
 import { decodeAuthenticatedMessage, encodeAuthenticatedMessage } from './messages'
-import { decodeCurveKeyWire, encodeCurveKeyWire } from '../crypto/keys'
+import { decodeCurveKeyWire, encodeCurveKeyWire } from '../../crypto/keys'
 
 export interface WireProfile {
   namespace: Namespace

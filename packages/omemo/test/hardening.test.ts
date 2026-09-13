@@ -35,22 +35,26 @@ import {
 import type { KeyPair } from '../src/crypto/keys'
 import { xed25519Sign, xed25519Verify } from '../src/crypto/xed25519'
 import { OmemoManager } from '../src/manager'
-import { parseBundle, serializeBundle } from '../src/protocol/bundle'
-import type { OwnBundle, ParsedBundle } from '../src/protocol/bundle'
-import { respondToKeyExchange } from '../src/protocol/deviceKeys'
-import { decodeKeyExchangeWire } from '../src/protocol/keyExchange'
+import { parseBundle, serializeBundle } from '../src/protocol/wire/bundle'
+import type { OwnBundle, ParsedBundle } from '../src/protocol/wire/bundle'
+import { respondToKeyExchange } from '../src/protocol/session/deviceKeys'
+import { decodeKeyExchangeWire } from '../src/protocol/wire/keyExchange'
 import {
   decodeAuthenticatedMessage,
   decodeOmemoMessage,
   encodeOmemoMessage
-} from '../src/protocol/messages'
-import { marshalMessage, PROFILES } from '../src/protocol/profiles'
-import type { Session } from '../src/protocol/session'
-import { deserializeSession, serializeSession } from '../src/protocol/sessionData'
-import { sessionInitiator, sessionResponder } from '../src/protocol/sessionInit'
-import { parseDeviceList, parseEncryptedElement, buildEncryptedElement } from '../src/protocol/wire'
-import { x3dhInitiate, x3dhRespond } from '../src/protocol/x3dh'
-import type { IdentityMaterial } from '../src/protocol/x3dh'
+} from '../src/protocol/wire/messages'
+import { marshalMessage, PROFILES } from '../src/protocol/wire/profiles'
+import type { Session } from '../src/protocol/session/session'
+import { deserializeSession, serializeSession } from '../src/protocol/session/sessionData'
+import { sessionInitiator, sessionResponder } from '../src/protocol/session/sessionInit'
+import {
+  parseDeviceList,
+  parseEncryptedElement,
+  buildEncryptedElement
+} from '../src/protocol/wire/encrypted'
+import { x3dhInitiate, x3dhRespond } from '../src/protocol/session/x3dh'
+import type { IdentityMaterial } from '../src/protocol/session/x3dh'
 import { InMemoryOmemoStore } from '../src/store/memory'
 
 function expectOmemoError(fn: () => unknown, cls: new (...args: never[]) => OmemoError): void {

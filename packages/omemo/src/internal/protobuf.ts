@@ -4,10 +4,10 @@
 
 import { ParseError } from '../errors'
 
-export const WIRE_VARINT = 0
-export const WIRE_64BIT = 1
-export const WIRE_LENGTH = 2
-export const WIRE_32BIT = 5
+const WIRE_VARINT = 0
+const WIRE_64BIT = 1
+const WIRE_LENGTH = 2
+const WIRE_32BIT = 5
 
 export interface ProtoField {
   number: number
@@ -16,7 +16,7 @@ export interface ProtoField {
   bytes: Uint8Array | undefined
 }
 
-export function encodeVarint(value: bigint): number[] {
+function encodeVarint(value: bigint): number[] {
   if (value < 0n) throw new Error('negative varints unsupported')
   const out: number[] = []
   let v = value

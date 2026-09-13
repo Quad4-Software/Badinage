@@ -12,7 +12,7 @@
 //   repeated OMEMOPreKey prekeys = 5; }
 // message OMEMOPreKey { required uint32 pk_id = 1; required bytes pk = 2; }
 
-import { ParseError } from '../errors'
+import { ParseError } from '../../errors'
 import {
   ProtoWriter,
   getBytes,
@@ -20,8 +20,9 @@ import {
   readFields,
   requireBytes,
   requireVarint
-} from '../internal/protobuf'
-import type { ProtoField } from '../internal/protobuf'
+} from '../../internal/protobuf'
+import type { ProtoField } from '../../internal/protobuf'
+import { KEY_EXCHANGE_LAYOUT, OMEMO_MESSAGE_LAYOUT, fieldMap, writeLayout } from './layout'
 
 export interface OmemoMessage {
   n: number
@@ -32,19 +33,18 @@ export interface OmemoMessage {
 
 // The legacy profile keeps the Signal WhisperTextProtocol field order
 // (dh_pub=1, n=2, pn=3, ciphertext=4) while omemo:2 renumbers to
-// n=1, pn=2, dh_pub=3, ciphertext=4.
+// n=1, pn=2, dh_pub=3, ciphertext=4. The numbering lives in
+// OMEMO_MESSAGE_LAYOUT.
 export function encodeOmemoMessage(
   message: OmemoMessage,
   namespace: 'omemo2' | 'legacy' = 'omemo2'
 ): Uint8Array {
-  const writer = new ProtoWriter()
-  if (namespace === 'legacy') {
-    writer.fieldBytes(1, message.dhPub).fieldVarint(2, message.n).fieldVarint(3, message.pn)
-  } else {
-    writer.fieldVarint(1, message.n).fieldVarint(2, message.pn).fieldBytes(3, message.dhPub)
-  }
-  if (message.ciphertext !== undefined) writer.fieldBytes(4, message.ciphertext)
-  return writer.finish()
+  return writeLayout(OMEMO_MESSAGE_LAYOUT, namespace, {
+    n: message.n,
+    pn: message.pn,
+    dhPub: message.dhPub,
+    ciphertext: message.ciphertext
+  })
 }
 
 export function decodeOmemoMessage(
@@ -52,19 +52,12 @@ export function decodeOmemoMessage(
   namespace: 'omemo2' | 'legacy' = 'omemo2'
 ): OmemoMessage {
   const fields = readFields(data)
-  if (namespace === 'legacy') {
-    return {
-      dhPub: requireBytes(fields, 1, 'OMEMOMessage'),
-      n: requireVarint(fields, 2, 'OMEMOMessage'),
-      pn: requireVarint(fields, 3, 'OMEMOMessage'),
-      ciphertext: getBytes(fields, 4)
-    }
-  }
+  const f = fieldMap(OMEMO_MESSAGE_LAYOUT, namespace)
   return {
-    n: requireVarint(fields, 1, 'OMEMOMessage'),
-    pn: requireVarint(fields, 2, 'OMEMOMessage'),
-    dhPub: requireBytes(fields, 3, 'OMEMOMessage'),
-    ciphertext: getBytes(fields, 4)
+    n: requireVarint(fields, f.n, 'OMEMOMessage'),
+    pn: requireVarint(fields, f.pn, 'OMEMOMessage'),
+    dhPub: requireBytes(fields, f.dhPub, 'OMEMOMessage'),
+    ciphertext: getBytes(fields, f.ciphertext)
   }
 }
 
@@ -95,28 +88,20 @@ export interface OmemoKeyExchange {
 
 // The legacy profile keeps the Signal PreKeyWhisperMessage layout:
 // pk_id=1, ek=2, ik=3, message=4, unused=5, spk_id=6. omemo:2 renumbers
-// to pk_id=1, spk_id=2, ik=3, ek=4, message=5. A negative pkId means the
-// key exchange did not use a one-time pre key; the field is omitted then.
+// to pk_id=1, spk_id=2, ik=3, ek=4, message=5. The numbering lives in
+// KEY_EXCHANGE_LAYOUT. A negative pkId means the key exchange did not use
+// a one-time pre key; the field is omitted then.
 export function encodeKeyExchange(
   kex: OmemoKeyExchange,
   namespace: 'omemo2' | 'legacy' = 'omemo2'
 ): Uint8Array {
-  const writer = new ProtoWriter()
-  if (kex.pkId >= 0) writer.fieldVarint(1, kex.pkId)
-  if (namespace === 'legacy') {
-    return writer
-      .fieldBytes(2, kex.ek)
-      .fieldBytes(3, kex.ik)
-      .fieldBytes(4, kex.message)
-      .fieldVarint(6, kex.spkId)
-      .finish()
-  }
-  return writer
-    .fieldVarint(2, kex.spkId)
-    .fieldBytes(3, kex.ik)
-    .fieldBytes(4, kex.ek)
-    .fieldBytes(5, kex.message)
-    .finish()
+  return writeLayout(KEY_EXCHANGE_LAYOUT, namespace, {
+    pkId: kex.pkId >= 0 ? kex.pkId : undefined,
+    spkId: kex.spkId,
+    ik: kex.ik,
+    ek: kex.ek,
+    message: kex.message
+  })
 }
 
 // pk_id is -1 when the field is absent (no one-time pre key was used).
@@ -134,21 +119,13 @@ export function decodeKeyExchange(
   namespace: 'omemo2' | 'legacy' = 'omemo2'
 ): OmemoKeyExchange {
   const fields = readFields(data)
-  if (namespace === 'legacy') {
-    return {
-      pkId: decodePkId(fields),
-      ek: requireBytes(fields, 2, 'OMEMOKeyExchange'),
-      ik: requireBytes(fields, 3, 'OMEMOKeyExchange'),
-      message: requireBytes(fields, 4, 'OMEMOKeyExchange'),
-      spkId: requireVarint(fields, 6, 'OMEMOKeyExchange')
-    }
-  }
+  const f = fieldMap(KEY_EXCHANGE_LAYOUT, namespace)
   return {
     pkId: decodePkId(fields),
-    spkId: requireVarint(fields, 2, 'OMEMOKeyExchange'),
-    ik: requireBytes(fields, 3, 'OMEMOKeyExchange'),
-    ek: requireBytes(fields, 4, 'OMEMOKeyExchange'),
-    message: requireBytes(fields, 5, 'OMEMOKeyExchange')
+    spkId: requireVarint(fields, f.spkId, 'OMEMOKeyExchange'),
+    ik: requireBytes(fields, f.ik, 'OMEMOKeyExchange'),
+    ek: requireBytes(fields, f.ek, 'OMEMOKeyExchange'),
+    message: requireBytes(fields, f.message, 'OMEMOKeyExchange')
   }
 }
 

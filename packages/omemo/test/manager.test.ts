@@ -4,8 +4,13 @@ import type { Namespace } from '../src/constants'
 import { bytesToUtf8, utf8ToBytes } from '../src/internal/bytes'
 import { parseXml } from '../src/internal/xml'
 import { OmemoManager } from '../src/manager'
-import { parseBundle } from '../src/protocol/bundle'
-import { bodyText, parseSceEnvelope, serializeSceEnvelope, textEnvelope } from '../src/protocol/sce'
+import { parseBundle } from '../src/protocol/wire/bundle'
+import {
+  bodyText,
+  parseSceEnvelope,
+  serializeSceEnvelope,
+  textEnvelope
+} from '../src/protocol/wire/sce'
 import { InMemoryOmemoStore } from '../src/store/memory'
 import { bundleFingerprint } from '../src/trust'
 

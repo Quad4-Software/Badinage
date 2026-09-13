@@ -4,14 +4,15 @@
 // a kex attribute on the key element, legacy prepends the 0x33 version byte
 // and uses a prekey attribute.
 
-import { LEGACY_VERSION_BYTE } from '../constants'
-import type { Namespace } from '../constants'
-import { ParseError } from '../errors'
-import { concatBytes } from '../internal/bytes'
-import { getVarint, readFields, requireBytes, requireVarint } from '../internal/protobuf'
+import { LEGACY_VERSION_BYTE } from '../../constants'
+import type { Namespace } from '../../constants'
+import { ParseError } from '../../errors'
+import { concatBytes } from '../../internal/bytes'
+import { getVarint, readFields, requireBytes, requireVarint } from '../../internal/protobuf'
+import { KEY_EXCHANGE_LAYOUT, fieldMap } from './layout'
 import { encodeKeyExchange } from './messages'
-import { decodeCurveKeyWire } from '../crypto/keys'
-import type { PendingKeyExchange } from './session'
+import { decodeCurveKeyWire } from '../../crypto/keys'
+import type { PendingKeyExchange } from '../session/session'
 
 export interface ParsedKeyExchange {
   pkId: number
@@ -51,20 +52,18 @@ export function decodeKeyExchangeWire(namespace: Namespace, data: Uint8Array): P
     proto = data.slice(1)
   }
   const fields = readFields(proto)
-  // The legacy profile keeps the Signal PreKeyWhisperMessage layout:
-  // pk_id=1, ek=2, ik=3, message=4, unused=5, spk_id=6.
-  const ekField = namespace === 'legacy' ? 2 : 4
-  const messageField = namespace === 'legacy' ? 4 : 5
-  const spkIdField = namespace === 'legacy' ? 6 : 2
-  const pkIdRaw = getVarint(fields, 1)
+  // Field numbering per profile lives in KEY_EXCHANGE_LAYOUT; the legacy
+  // layout additionally wire-encodes ek as a 33 byte Curve25519 key.
+  const f = fieldMap(KEY_EXCHANGE_LAYOUT, namespace)
+  const pkIdRaw = getVarint(fields, f.pkId)
   if (pkIdRaw !== undefined && (pkIdRaw < 0n || pkIdRaw > 0xffffffffn)) {
     throw new ParseError('OMEMOKeyExchange: missing or invalid field 1')
   }
   const pkId = pkIdRaw === undefined ? -1 : Number(pkIdRaw)
-  const spkId = requireVarint(fields, spkIdField, 'OMEMOKeyExchange')
-  const ik = requireBytes(fields, 3, 'OMEMOKeyExchange')
-  const ekRaw = requireBytes(fields, ekField, 'OMEMOKeyExchange')
-  const message = requireBytes(fields, messageField, 'OMEMOKeyExchange')
+  const spkId = requireVarint(fields, f.spkId, 'OMEMOKeyExchange')
+  const ik = requireBytes(fields, f.ik, 'OMEMOKeyExchange')
+  const ekRaw = requireBytes(fields, f.ek, 'OMEMOKeyExchange')
+  const message = requireBytes(fields, f.message, 'OMEMOKeyExchange')
   const ek = namespace === 'legacy' ? decodeCurveKeyWire(ekRaw) : ekRaw
   return { pkId, spkId, ik, ek, message }
 }

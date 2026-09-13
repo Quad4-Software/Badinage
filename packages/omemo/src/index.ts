@@ -92,58 +92,58 @@ export {
   decodeKeyExchange,
   encodeBundle,
   decodeBundle
-} from './protocol/messages'
+} from './protocol/wire/messages'
 export type {
   OmemoMessage,
   OmemoAuthenticatedMessage,
   OmemoKeyExchange,
   OmemoBundle,
   BundlePreKey
-} from './protocol/messages'
-export { PROFILES, marshalMessage, unmarshalMessage } from './protocol/profiles'
-export type { WireProfile } from './protocol/profiles'
-export { x3dhInitiate, x3dhRespond } from './protocol/x3dh'
+} from './protocol/wire/messages'
+export { PROFILES, marshalMessage, unmarshalMessage } from './protocol/wire/profiles'
+export type { WireProfile } from './protocol/wire/profiles'
+export { x3dhInitiate, x3dhRespond } from './protocol/session/x3dh'
 export type {
   IdentityMaterial,
   X3dhActiveResult,
   X3dhPassiveInput,
   X3dhPassiveResult
-} from './protocol/x3dh'
-export { Session, DEFAULT_LIMITS, deriveMessageKeyMaterial } from './protocol/session'
+} from './protocol/session/x3dh'
+export { Session, DEFAULT_LIMITS, deriveMessageKeyMaterial } from './protocol/session/session'
 export type {
   SessionState,
   EncryptResult,
   PendingKeyExchange,
   SkippedKey,
   RatchetLimits
-} from './protocol/session'
-export { serializeSession, deserializeSession } from './protocol/sessionData'
-export { sessionInitiator, sessionResponder } from './protocol/sessionInit'
-export type { SessionData } from './protocol/sessionData'
-export { buildBundleElement, serializeBundle, parseBundle } from './protocol/bundle'
-export type { ParsedBundle, OwnBundle } from './protocol/bundle'
+} from './protocol/session/session'
+export { serializeSession, deserializeSession } from './protocol/session/sessionData'
+export { sessionInitiator, sessionResponder } from './protocol/session/sessionInit'
+export type { SessionData } from './protocol/session/sessionData'
+export { buildBundleElement, serializeBundle, parseBundle } from './protocol/wire/bundle'
+export type { ParsedBundle, OwnBundle } from './protocol/wire/bundle'
 export {
   encodeKeyExchangeWire,
   decodeKeyExchangeWire,
   looksLikeKeyExchange
-} from './protocol/keyExchange'
-export type { ParsedKeyExchange } from './protocol/keyExchange'
+} from './protocol/wire/keyExchange'
+export type { ParsedKeyExchange } from './protocol/wire/keyExchange'
 export {
   encryptPayloadOmemo2,
   decryptPayloadOmemo2,
   encryptPayloadLegacy,
   decryptPayloadLegacy,
   emptyKeyMaterialPlaintext
-} from './protocol/messageCrypto'
-export type { Omemo2PayloadResult, LegacyPayloadResult } from './protocol/messageCrypto'
+} from './protocol/wire/messageCrypto'
+export type { Omemo2PayloadResult, LegacyPayloadResult } from './protocol/wire/messageCrypto'
 export {
   buildSceEnvelope,
   serializeSceEnvelope,
   parseSceEnvelope,
   textEnvelope,
   bodyText
-} from './protocol/sce'
-export type { SceEnvelopeInput, ParsedSceEnvelope } from './protocol/sce'
+} from './protocol/wire/sce'
+export type { SceEnvelopeInput, ParsedSceEnvelope } from './protocol/wire/sce'
 export {
   buildEncryptedElement,
   serializeEncrypted,
@@ -151,8 +151,8 @@ export {
   buildDeviceListElement,
   serializeDeviceList,
   parseDeviceList
-} from './protocol/wire'
-export type { WireKey, ParsedEncrypted, EncryptOutputKey } from './protocol/wire'
+} from './protocol/wire/encrypted'
+export type { WireKey, ParsedEncrypted, EncryptOutputKey } from './protocol/wire/encrypted'
 
 export { sessionKey } from './store/interface'
 export type {

@@ -12,14 +12,14 @@ import {
 } from '../src/crypto/keys'
 import type { KeyPair } from '../src/crypto/keys'
 import { xed25519Sign } from '../src/crypto/xed25519'
-import type { ParsedBundle } from '../src/protocol/bundle'
-import { PROFILES } from '../src/protocol/profiles'
-import type { Session } from '../src/protocol/session'
-import { sessionInitiator, sessionResponder } from '../src/protocol/sessionInit'
-import { x3dhInitiate, x3dhRespond } from '../src/protocol/x3dh'
-import type { IdentityMaterial } from '../src/protocol/x3dh'
-import { encodeKeyExchangeWire, decodeKeyExchangeWire } from '../src/protocol/keyExchange'
-import { serializeSession, deserializeSession } from '../src/protocol/sessionData'
+import type { ParsedBundle } from '../src/protocol/wire/bundle'
+import { PROFILES } from '../src/protocol/wire/profiles'
+import type { Session } from '../src/protocol/session/session'
+import { sessionInitiator, sessionResponder } from '../src/protocol/session/sessionInit'
+import { x3dhInitiate, x3dhRespond } from '../src/protocol/session/x3dh'
+import type { IdentityMaterial } from '../src/protocol/session/x3dh'
+import { encodeKeyExchangeWire, decodeKeyExchangeWire } from '../src/protocol/wire/keyExchange'
+import { serializeSession, deserializeSession } from '../src/protocol/session/sessionData'
 
 interface TestPeer {
   identity: IdentityMaterial

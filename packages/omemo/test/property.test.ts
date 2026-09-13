@@ -28,7 +28,7 @@ import {
   encodeBundle,
   encodeKeyExchange,
   encodeOmemoMessage
-} from '../src/protocol/messages'
+} from '../src/protocol/wire/messages'
 import { el, parseXml, serializeXml } from '../src/internal/xml'
 
 const bytes32 = fc.uint8Array({ minLength: 32, maxLength: 32 })

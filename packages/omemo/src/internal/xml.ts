@@ -68,7 +68,7 @@ export function serializeXml(node: XmlElement): string {
   return `${out}</${node.name}>`
 }
 
-const NAME_CHAR = /[A-Za-z0-9_.:\-]/
+const NAME_CHAR = /[A-Za-z0-9_.:-]/
 
 export function parseXml(input: string): XmlElement {
   let pos = 0

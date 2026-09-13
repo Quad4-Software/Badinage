@@ -1,11 +1,11 @@
 // Session construction after X3DH, for both the initiating and the
 // responding side.
 
-import { CURVE_KEY_SIZE } from '../constants'
-import { hkdfSha256 } from '../crypto/kdf'
-import { generateX25519KeyPair, x25519SharedSecret } from '../crypto/keys'
-import type { KeyPair } from '../crypto/keys'
-import type { WireProfile } from './profiles'
+import { CURVE_KEY_SIZE } from '../../constants'
+import { hkdfSha256 } from '../../crypto/kdf'
+import { generateX25519KeyPair, x25519SharedSecret } from '../../crypto/keys'
+import type { KeyPair } from '../../crypto/keys'
+import type { WireProfile } from '../wire/profiles'
 import { DEFAULT_LIMITS, Session } from './session'
 import type { PendingKeyExchange, RatchetLimits } from './session'
 

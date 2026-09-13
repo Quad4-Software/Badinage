@@ -11,29 +11,29 @@ import {
 } from '../src/crypto/keys'
 import { xed25519Sign } from '../src/crypto/xed25519'
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { parseBundle, serializeBundle } from '../src/protocol/bundle'
-import type { OwnBundle } from '../src/protocol/bundle'
+import { parseBundle, serializeBundle } from '../src/protocol/wire/bundle'
+import type { OwnBundle } from '../src/protocol/wire/bundle'
 import {
   decryptPayloadLegacy,
   decryptPayloadOmemo2,
   encryptPayloadLegacy,
   encryptPayloadOmemo2
-} from '../src/protocol/messageCrypto'
-import { PROFILES } from '../src/protocol/profiles'
+} from '../src/protocol/wire/messageCrypto'
+import { PROFILES } from '../src/protocol/wire/profiles'
 import {
   bodyText,
   buildSceEnvelope,
   parseSceEnvelope,
   serializeSceEnvelope,
   textEnvelope
-} from '../src/protocol/sce'
+} from '../src/protocol/wire/sce'
 import {
   buildEncryptedElement,
   parseDeviceList,
   parseEncryptedElement,
   serializeDeviceList,
   serializeEncrypted
-} from '../src/protocol/wire'
+} from '../src/protocol/wire/encrypted'
 
 describe('bundle', () => {
   it('omemo2 bundle round trips and verifies', () => {

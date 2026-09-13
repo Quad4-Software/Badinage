@@ -20,7 +20,7 @@ import {
   encodeBundle,
   encodeKeyExchange,
   encodeOmemoMessage
-} from '../src/protocol/messages'
+} from '../src/protocol/wire/messages'
 
 describe('bytes', () => {
   it('base64 round trips', () => {

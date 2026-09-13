@@ -5,7 +5,7 @@
 // layers fit naturally.
 
 import type { KeyPair } from '../crypto/keys'
-import type { SessionData } from '../protocol/sessionData'
+import type { SessionData } from '../protocol/session/sessionData'
 
 export interface IdentityRecord {
   privateKey: Uint8Array

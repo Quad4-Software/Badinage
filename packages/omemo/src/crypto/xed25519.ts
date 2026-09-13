@@ -83,7 +83,7 @@ export function xed25519Verify(
 
   const strict = Uint8Array.from(signature)
   strict[63] = (strict[63] ?? 0) & 0x7f
-  let valid = false
+  let valid: boolean
   try {
     valid = ed25519.verify(strict, message, ed25519PublicKey)
   } catch {

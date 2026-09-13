@@ -17,8 +17,8 @@ import {
   x25519SharedSecret
 } from '../src/crypto/keys'
 import { xed25519Sign, xed25519Verify } from '../src/crypto/xed25519'
-import { PROFILES } from '../src/protocol/profiles'
-import { deriveMessageKeyMaterial } from '../src/protocol/session'
+import { PROFILES } from '../src/protocol/wire/profiles'
+import { deriveMessageKeyMaterial } from '../src/protocol/session/session'
 
 import { ed25519 } from '@noble/curves/ed25519.js'
 

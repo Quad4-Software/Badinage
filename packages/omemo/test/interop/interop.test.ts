@@ -41,17 +41,17 @@ import {
   encodeAuthenticatedMessage,
   encodeKeyExchange,
   encodeOmemoMessage
-} from '../../src/protocol/messages'
-import { PROFILES, unmarshalMessage } from '../../src/protocol/profiles'
-import { Session } from '../../src/protocol/session'
-import type { SessionState } from '../../src/protocol/session'
-import { sessionInitiator, sessionResponder } from '../../src/protocol/sessionInit'
-import { serializeSceEnvelope, textEnvelope } from '../../src/protocol/sce'
-import { x3dhInitiate, x3dhRespond } from '../../src/protocol/x3dh'
-import type { OwnBundle, ParsedBundle } from '../../src/protocol/bundle'
-import { parseBundle, serializeBundle } from '../../src/protocol/bundle'
-import { decodeKeyExchangeWire, encodeKeyExchangeWire } from '../../src/protocol/keyExchange'
-import { parseEncryptedElement, serializeEncrypted } from '../../src/protocol/wire'
+} from '../../src/protocol/wire/messages'
+import { PROFILES, unmarshalMessage } from '../../src/protocol/wire/profiles'
+import { Session } from '../../src/protocol/session/session'
+import type { SessionState } from '../../src/protocol/session/session'
+import { sessionInitiator, sessionResponder } from '../../src/protocol/session/sessionInit'
+import { serializeSceEnvelope, textEnvelope } from '../../src/protocol/wire/sce'
+import { x3dhInitiate, x3dhRespond } from '../../src/protocol/session/x3dh'
+import type { OwnBundle, ParsedBundle } from '../../src/protocol/wire/bundle'
+import { parseBundle, serializeBundle } from '../../src/protocol/wire/bundle'
+import { decodeKeyExchangeWire, encodeKeyExchangeWire } from '../../src/protocol/wire/keyExchange'
+import { parseEncryptedElement, serializeEncrypted } from '../../src/protocol/wire/encrypted'
 import { InMemoryOmemoStore } from '../../src/store/memory'
 import type { Namespace } from '../../src/constants'
 
