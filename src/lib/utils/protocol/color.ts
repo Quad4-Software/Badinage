@@ -111,3 +111,13 @@ export function consistentColor(text: string, options?: ConsistentColorOptions):
   const [r, g, b] = hsluvToRgb(colorAngle(text), s, l)
   return `rgb(${to255(r)} ${to255(g)} ${to255(b)})`
 }
+
+// The raw l=55 swatch sits under the 4.5:1 wcag aa floor at small text
+// sizes on both schemes, so ui surfaces take the same hue shifted to a
+// darker step for the light theme and a lighter step for dark
+export function consistentInk(text: string): { light: string; dark: string } {
+  return {
+    light: consistentColor(text, { lightness: 38 }),
+    dark: consistentColor(text, { lightness: 82 })
+  }
+}

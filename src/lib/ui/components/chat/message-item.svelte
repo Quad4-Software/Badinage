@@ -7,7 +7,7 @@
   import { settings } from '$lib/state/settings.svelte'
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { cn } from '$lib/utils/cn'
-  import { consistentColor } from '$lib/utils/protocol/color'
+  import { consistentInk } from '$lib/utils/protocol/color'
   import { isEmojiOnly } from '$lib/utils/emoji'
   import { isGeoUri, osmUrl, tileFor, tileUrl } from '$lib/utils/protocol/geo'
   import { meAction } from '$lib/utils/message-commands'
@@ -140,8 +140,12 @@
     class={cn('flex max-w-[75%] min-w-0 flex-col', message.outgoing ? 'items-end' : 'items-start')}
   >
     {#if showNick && !message.outgoing && message.nick}
+      {@const ink = consistentInk(message.nick)}
       <!-- XEP-0392: stable per-nick color so senders stay scannable -->
-      <span class="mb-0.5 ml-1 text-xs" style:color={consistentColor(message.nick)}>
+      <span
+        class="peer-ink mb-0.5 ml-1 text-xs"
+        style="--peer-ink-light: {ink.light}; --peer-ink-dark: {ink.dark}"
+      >
         {message.nick}
       </span>
     {/if}

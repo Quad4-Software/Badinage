@@ -32,6 +32,7 @@ RUN set -eu; \
     rm /tmp/pnpm.tgz
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches/ patches/
 COPY packages/omemo/package.json packages/omemo/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile

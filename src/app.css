@@ -205,6 +205,23 @@
   animation: typing-bounce 1.2s ease-in-out infinite;
 }
 
+/* XEP-0392 peer colors: the raw consistent color sits under the 4.5:1
+   wcag aa floor at small text sizes on both schemes, so callers pass the
+   same hue at a darker and a lighter step as custom properties and the
+   theme picks. peer-ink colors text, peer-tint lays the raw color down
+   as a 16 percent tile behind it. */
+.peer-ink {
+  color: var(--peer-ink-light);
+}
+
+.dark .peer-ink {
+  color: var(--peer-ink-dark);
+}
+
+.peer-tint {
+  background: color-mix(in oklab, var(--peer-tint) 16%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .typing-dot {
     animation: none;

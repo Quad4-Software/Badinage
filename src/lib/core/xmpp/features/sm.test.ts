@@ -1,8 +1,25 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { SMState } from 'strophe.js'
 
 import { ScopedSmStorage, smConnectionOptions } from './sm'
+
+// the suite runs in the node environment, which has no web storage, so
+// sessionStorage gets an in-memory stand-in that keeps the scoped-key
+// assertions honest
+function fakeStorage(): Storage {
+  const map = new Map<string, string>()
+  return {
+    get length() {
+      return map.size
+    },
+    clear: () => map.clear(),
+    getItem: (key) => map.get(key) ?? null,
+    key: (index) => [...map.keys()][index] ?? null,
+    removeItem: (key) => void map.delete(key),
+    setItem: (key, value) => void map.set(key, String(value))
+  }
+}
 
 function state(id: string): SMState {
   // only the fields this test round-trips matter; the backend treats the
@@ -11,6 +28,14 @@ function state(id: string): SMState {
 }
 
 describe('ScopedSmStorage', () => {
+  beforeEach(() => {
+    vi.stubGlobal('sessionStorage', fakeStorage())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('round-trips state under the per-account scoped key', () => {
     const backend = new ScopedSmStorage()
     backend.save('strophe-sm:me@example.net', state('sm-1'))
