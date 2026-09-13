@@ -14,9 +14,12 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { sendFileMessage } from '$lib/state/upload'
   import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { Separator } from '$lib/ui/primitives/separator'
+  import { toast } from '$lib/ui/primitives/sonner'
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { presenceLabel } from '$lib/ui/presence'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
@@ -47,6 +50,42 @@
 
   let showOccupants = $state(false)
   let confirmBlock = $state(false)
+  let dragOver = $state(false)
+
+  function onDragOver(event: DragEvent) {
+    if (event.dataTransfer?.types.includes('Files')) {
+      event.preventDefault()
+      dragOver = true
+    }
+  }
+
+  // dragleave fires when entering a child too; only clear the overlay when
+  // the pointer actually left the column
+  function onDragLeave(event: DragEvent) {
+    const next = event.relatedTarget
+    if (next instanceof Node && event.currentTarget instanceof Node) {
+      if (event.currentTarget.contains(next)) return
+    }
+    dragOver = false
+  }
+
+  function onDrop(event: DragEvent) {
+    event.preventDefault()
+    dragOver = false
+    if (!account || !conversation) return
+    const chatType = conversation.kind === 'muc' ? 'groupchat' : 'chat'
+    for (const file of event.dataTransfer?.files ?? []) {
+      sendFileMessage(
+        account,
+        conversation.peerJid,
+        chatType,
+        file,
+        file.name,
+        file.type || 'application/octet-stream',
+        () => toast.error($LL.uploadFailed())
+      )
+    }
+  }
 
   const peerBlocked = $derived(peer ? (account?.isBlocked(peer) ?? false) : false)
   const typers = $derived(conversation ? [...conversation.typers] : [])
@@ -62,7 +101,20 @@
 {#snippet paneContent()}
   {#if conversation}
     <div class="flex h-full min-w-0">
-      <div class="flex h-full min-w-0 flex-1 flex-col">
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="relative flex h-full min-w-0 flex-1 flex-col"
+        ondragover={onDragOver}
+        ondragleave={onDragLeave}
+        ondrop={onDrop}
+      >
+        {#if dragOver}
+          <div
+            class="border-primary bg-primary/5 pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-lg border-2 border-dashed text-sm font-medium"
+          >
+            {$LL.dropToSend()}
+          </div>
+        {/if}
         <div class="flex items-center gap-2 p-3">
           {#if !split}
             <Button
@@ -91,7 +143,16 @@
                   : contact?.name || conversation.peerJid}
               </span>
               {#if !isRoom && conversation.encrypted}
-                <Lock class="text-success size-3.5 shrink-0" aria-label={$LL.encryptedChat()} />
+                <Tooltip>
+                  <TooltipTrigger>
+                    {#snippet child({ props })}
+                      <span {...props} class="inline-flex">
+                        <Lock class="text-success size-3.5 shrink-0" />
+                      </span>
+                    {/snippet}
+                  </TooltipTrigger>
+                  <TooltipContent>{$LL.encryptedChat()}</TooltipContent>
+                </Tooltip>
               {/if}
             </h1>
             <p class="text-muted-foreground flex items-center gap-1.5 text-xs">

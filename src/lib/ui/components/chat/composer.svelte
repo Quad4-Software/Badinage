@@ -6,14 +6,14 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { settings } from '$lib/state/settings.svelte'
-  import type { Attachment, ConversationKind } from '$lib/state/chats.svelte'
-  import { uploadAndSend } from '$lib/state/upload'
+  import type { ConversationKind } from '$lib/state/chats.svelte'
+  import { sendFileMessage } from '$lib/state/upload'
   import { bareJid } from '$lib/utils/jid'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Button } from '$lib/ui/primitives/button'
-  import { Input } from '$lib/ui/primitives/input'
 
   import EmojiPicker from './emoji-picker.svelte'
+  import RecordingMeter from './recording-meter.svelte'
   import { createVoiceRecorder } from '../../voice.svelte'
 
   let {
@@ -25,7 +25,7 @@
   // writable derived: resets to the per-peer draft whenever peerJid changes,
   // user typing overrides it until then
   let body = $derived(app.getDraft(peerJid))
-  let inputEl = $state<HTMLInputElement | null>(null)
+  let inputEl = $state<HTMLTextAreaElement | null>(null)
   let fileEl = $state<HTMLInputElement | null>(null)
   let emojiOpen = $state(false)
   let composingSent = false
@@ -40,6 +40,18 @@
 
   $effect(() => {
     return app.registerComposerFocus(peerJid, () => inputEl?.focus())
+  })
+
+  // grow the textarea with its content, capped so it scrolls past the cap.
+  // reading body tracks it, so draft restores, emoji inserts, and post-send
+  // clears all resize too
+  const MAX_COMPOSER_HEIGHT = 200
+  $effect(() => {
+    const el = inputEl
+    if (!el) return
+    if (el.value !== body) el.value = body
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, MAX_COMPOSER_HEIGHT)}px`
   })
 
   const composerCtx = $derived(app.composerFor(peerJid))
@@ -61,26 +73,6 @@
         account.connection.sendChatState(peerJid, 'paused')
       }
     }, TYPING_NOTICE_MS)
-  }
-
-  function pushOutgoing(text: string, attachments?: Attachment[], id?: string) {
-    if (!account) return
-    const store = app.chatsFor(account.jid)
-    const msgId = id ?? account.connection.uniqueId('local')
-    store.push(peerJid, {
-      id: msgId,
-      wireId: id,
-      peerJid,
-      body: text,
-      outgoing: true,
-      timestamp: Date.now(),
-      encrypted: false,
-      delivered: false,
-      read: false,
-      reactions: {},
-      attachments,
-      nick: kind === 'muc' ? store.open(peerJid).ourNick : undefined
-    })
   }
 
   async function send() {
@@ -212,19 +204,36 @@
     await sendFile(file, file.name, file.type || 'application/octet-stream')
   }
 
+  // pasted files ride the same upload path as picked ones; nameless
+  // clipboard blobs get a generated name with an extension from the type
+  function onPaste(event: ClipboardEvent) {
+    const files = event.clipboardData?.files
+    if (!files?.length) return
+    event.preventDefault()
+    for (const file of files) {
+      const name = file.name || `pasted-${Date.now()}.${file.type.split('/')[1] ?? 'bin'}`
+      sendFile(file, name, file.type || 'application/octet-stream')
+    }
+  }
+
   function sendFile(file: Blob, name: string, mediaType: string, duration?: number) {
     if (!account) return
-    uploadAndSend(
+    sendFileMessage(
       account,
       peerJid,
       kind === 'muc' ? 'groupchat' : 'chat',
       file,
       name,
       mediaType,
-      duration,
-      (url, attachment, id) => pushOutgoing(url, [attachment], id),
-      () => toast.error($LL.uploadFailed())
+      () => toast.error($LL.uploadFailed()),
+      duration
     )
+  }
+
+  // m:ss clock for the recording row
+  function formatElapsed(ms: number): string {
+    const total = Math.floor(ms / 1000)
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
   }
 
   const voice = createVoiceRecorder((blob, mime) => {
@@ -278,7 +287,7 @@
     </div>
   {/if}
 
-  <div class="flex items-center gap-1.5 p-3">
+  <div class="flex items-end gap-1.5 p-3">
     <input
       bind:this={fileEl}
       type="file"
@@ -308,22 +317,29 @@
         <Smile class="size-4" />
       </Button>
       {#if emojiOpen}
-        <EmojiPicker onPick={pickEmoji} onClose={() => (emojiOpen = false)} />
+        <div class="absolute bottom-full left-0 z-50 mb-2">
+          <EmojiPicker onPick={pickEmoji} onClose={() => (emojiOpen = false)} />
+        </div>
       {/if}
     </div>
-    <Input
+    <textarea
       bind:value={body}
-      bind:ref={inputEl}
+      bind:this={inputEl}
+      rows={1}
       onkeydown={onKeydown}
+      onpaste={onPaste}
       {placeholder}
       aria-label={placeholder}
-      class="min-w-0 flex-1"
       disabled={voice.recording}
-    />
+      class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+    ></textarea>
     {#if voice.recording}
-      <span class="text-destructive animate-pulse px-1 text-xs font-medium" role="status">
-        {$LL.recording()}
-      </span>
+      <div class="flex min-w-0 flex-1 items-center gap-2">
+        <RecordingMeter analyser={voice.analyser} />
+        <span class="text-destructive shrink-0 text-xs font-medium tabular-nums">
+          {formatElapsed(voice.elapsedMs)}
+        </span>
+      </div>
       <Button
         variant="ghost"
         size="icon"

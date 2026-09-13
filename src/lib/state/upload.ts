@@ -7,8 +7,9 @@ import type { Attachment } from '$lib/core/xmpp/stanzas'
 import { blobToDataUri } from '$lib/utils/blob'
 
 import type { Account } from './accounts.svelte'
+import { app } from './app.svelte'
 
-export function uploadAndSend(
+function uploadAndSend(
   account: Account,
   peerJid: string,
   type: 'chat' | 'groupchat',
@@ -51,4 +52,47 @@ export function uploadAndSend(
     })
     onSent(url, { url, mediaType, name, size: file.size, duration }, id)
   })
+}
+
+// Upload a file and push the outgoing message into the chat store so the
+// composer can show it optimistically. Shared by the attach button, voice
+// messages, paste and drag-and-drop.
+export function sendFileMessage(
+  account: Account,
+  peerJid: string,
+  chatType: 'chat' | 'groupchat',
+  file: Blob,
+  name: string,
+  mediaType: string,
+  onError: () => void,
+  duration?: number
+): void {
+  uploadAndSend(
+    account,
+    peerJid,
+    chatType,
+    file,
+    name,
+    mediaType,
+    duration,
+    (url, attachment, id) => {
+      const store = app.chatsFor(account.jid)
+      const msgId = id ?? account.connection.uniqueId('local')
+      store.push(peerJid, {
+        id: msgId,
+        wireId: id,
+        peerJid,
+        body: url,
+        outgoing: true,
+        timestamp: Date.now(),
+        encrypted: false,
+        delivered: false,
+        read: false,
+        reactions: {},
+        attachments: [attachment],
+        nick: chatType === 'groupchat' ? store.open(peerJid).ourNick : undefined
+      })
+    },
+    onError
+  )
 }

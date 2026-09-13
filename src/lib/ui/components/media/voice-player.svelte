@@ -28,6 +28,12 @@
 
   const total = $derived(measured > 0 ? measured : (duration ?? 0))
   const progress = $derived(total > 0 ? Math.min(1, elapsed / total) : 0)
+  // before playback starts show just the total, then elapsed / total
+  const clockLabel = $derived(
+    !playing && elapsed === 0
+      ? formatClock(total)
+      : `${formatClock(elapsed)} / ${formatClock(total)}`
+  )
 
   function formatClock(seconds: number): string {
     const s = Math.max(0, Math.floor(seconds))
@@ -82,7 +88,7 @@
   </button>
 
   <div
-    class="flex h-8 flex-1 cursor-pointer items-center gap-0.5"
+    class="relative flex h-9 flex-1 cursor-pointer items-center gap-0.5"
     role="slider"
     tabindex="0"
     aria-label={$LL.voiceMessage()}
@@ -102,11 +108,12 @@
         style:height="{height}%"
       ></span>
     {/each}
+    <span
+      class="bg-card/80 text-muted-foreground absolute right-0 bottom-0 rounded px-0.5 text-[0.6rem] leading-none tabular-nums"
+    >
+      {clockLabel}
+    </span>
   </div>
-
-  <span class="text-muted-foreground shrink-0 text-[0.65rem] tabular-nums">
-    {formatClock(elapsed)} / {formatClock(total)}
-  </span>
 
   <audio
     bind:this={audio}
