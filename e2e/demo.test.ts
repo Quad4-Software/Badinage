@@ -11,7 +11,7 @@ test('demo mode signs in without a server', async ({ page }) => {
 test('demo mode shows contacts, rooms and a subscription request', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Try the demo' }).click()
-  await expect(page.getByText('aria@badinage.local').first()).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText('Aria').first()).toBeVisible({ timeout: 10_000 })
   await expect(page.getByRole('button', { name: /lobby/ }).first()).toBeVisible()
   await expect(page.getByText('wren@badinage.local wants to see your presence')).toBeVisible({
     timeout: 10_000
@@ -73,6 +73,40 @@ test('scrolling to top loads an older archive page', async ({ page }) => {
   await loadOlder.click()
   await expect(page.getByText('Beginning of the conversation')).toBeVisible({ timeout: 10_000 })
   expect(await page.locator('ol li').count()).toBeGreaterThan(before)
+})
+
+test('demo encrypts direct messages and shows the lock', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Try the demo' }).click()
+  const conversation = page.getByRole('button', { name: /Aria/ }).first()
+  await expect(conversation).toBeVisible({ timeout: 10_000 })
+  await conversation.click()
+  const input = page.getByLabel(/Message Aria/)
+  await input.fill('secret message')
+  await input.press('Enter')
+  await expect(page.locator('ol').getByText('secret message')).toBeVisible()
+  // the outgoing bubble and the demo reply both carry the encrypted flag
+  await expect(page.locator('[aria-label="Encrypted"]').first()).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByLabel('End-to-end encrypted')).toBeVisible()
+})
+
+test('demo settings show the encryption section with fingerprints', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Try the demo' }).click()
+  await expect(page.getByRole('button', { name: 'demo@badinage.local' })).toBeVisible({
+    timeout: 10_000
+  })
+  await page.keyboard.press('Control+,')
+  const dialog = page.getByRole('dialog')
+  // the side nav only exists on desktop; the section is always mounted
+  await expect(dialog.getByText('Your device fingerprint')).toBeVisible()
+  await expect(dialog.getByLabel('Blindly trust new devices')).toBeVisible()
+  // contacts publish real omemo devices in demo mode
+  await dialog.getByRole('button', { name: /Aria/ }).click()
+  await expect(dialog.getByRole('button', { name: 'Verify' }).first()).toBeVisible({
+    timeout: 10_000
+  })
+  await expect(dialog.getByText('Blindly trusted').first()).toBeVisible()
 })
 
 test('composer placeholder uses the contact name', async ({ page }) => {

@@ -74,7 +74,7 @@ test.describe('settings dialog', () => {
     await page.goto('/')
     await page.keyboard.press('Control+,')
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByText('Keyboard shortcuts')).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Keyboard shortcuts' })).toBeVisible()
 
     const rebind = dialog.getByRole('button', { name: 'Rebind Toggle theme' })
     await rebind.click()
