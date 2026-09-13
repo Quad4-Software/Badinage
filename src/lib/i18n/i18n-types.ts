@@ -371,6 +371,43 @@ type RootTranslation = {
 	 */
 	react: string
 	/**
+	 * +​{​c​o​u​n​t​}​ ​m​o​r​e
+	 * @param {number} count
+	 */
+	moreSenders: RequiredParams<'count'>
+	/**
+	 * R​e​t​r​a​c​t​ ​m​e​s​s​a​g​e
+	 */
+	retractMessage: string
+	/**
+	 * R​e​t​r​a​c​t​ ​t​h​i​s​ ​m​e​s​s​a​g​e​?
+	 */
+	retractMessageTitle: string
+	/**
+	 * T​h​e​ ​m​e​s​s​a​g​e​ ​i​s​ ​r​e​m​o​v​e​d​ ​f​o​r​ ​e​v​e​r​y​o​n​e​ ​w​h​o​ ​h​o​n​o​u​r​s​ ​t​h​e​ ​r​e​t​r​a​c​t​i​o​n​.​ ​A​n​y​o​n​e​ ​w​h​o​ ​a​l​r​e​a​d​y​ ​s​a​w​ ​i​t​ ​m​a​y​ ​s​t​i​l​l​ ​r​e​m​e​m​b​e​r​ ​o​r​ ​h​a​v​e​ ​c​o​p​i​e​d​ ​i​t​.
+	 */
+	retractMessageDescription: string
+	/**
+	 * R​e​t​r​a​c​t
+	 */
+	retract: string
+	/**
+	 * M​e​s​s​a​g​e​ ​r​e​t​r​a​c​t​e​d
+	 */
+	messageRetracted: string
+	/**
+	 * S​p​o​i​l​e​r
+	 */
+	spoiler: string
+	/**
+	 * U​p​l​o​a​d​i​n​g​ ​a​t​t​a​c​h​m​e​n​t
+	 */
+	uploading: string
+	/**
+	 * C​a​n​c​e​l​ ​u​p​l​o​a​d
+	 */
+	cancelUpload: string
+	/**
 	 * C​o​p​y​ ​m​e​s​s​a​g​e​ ​t​e​x​t
 	 */
 	copyMessage: string
@@ -1509,6 +1546,42 @@ export type TranslationFunctions = {
 	 * Add reaction
 	 */
 	react: () => LocalizedString
+	/**
+	 * +{count} more
+	 */
+	moreSenders: (arg: { count: number }) => LocalizedString
+	/**
+	 * Retract message
+	 */
+	retractMessage: () => LocalizedString
+	/**
+	 * Retract this message?
+	 */
+	retractMessageTitle: () => LocalizedString
+	/**
+	 * The message is removed for everyone who honours the retraction. Anyone who already saw it may still remember or have copied it.
+	 */
+	retractMessageDescription: () => LocalizedString
+	/**
+	 * Retract
+	 */
+	retract: () => LocalizedString
+	/**
+	 * Message retracted
+	 */
+	messageRetracted: () => LocalizedString
+	/**
+	 * Spoiler
+	 */
+	spoiler: () => LocalizedString
+	/**
+	 * Uploading attachment
+	 */
+	uploading: () => LocalizedString
+	/**
+	 * Cancel upload
+	 */
+	cancelUpload: () => LocalizedString
 	/**
 	 * Copy message text
 	 */

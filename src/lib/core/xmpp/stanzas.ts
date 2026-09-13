@@ -62,6 +62,17 @@ export interface IncomingMessage {
   reactionTo?: { id: string; emojis: string[] } | undefined
   // XEP-0308: this body replaces the stanza with this id.
   replaceId?: string | undefined
+  // XEP-0424: this stanza asks receivers to retract the message whose id
+  // it names (the stanza id attribute in a dm, the room stanza-id in a
+  // muc). An empty string means a retract element that carried no usable
+  // id; the fallback body must still never render. The older draft form
+  // wrapped message-retract:0 in a fasten apply-to and is also accepted.
+  retractId?: string | undefined
+  // XEP-0382: the body is a spoiler; the element text is an optional
+  // hint. An empty string means a spoiler without a hint.
+  spoilerHint?: string | undefined
+  // XEP-0393: the sender asked receivers to render the body unstyled.
+  unstyled?: boolean | undefined
   attachments?: Attachment[] | undefined
   // signature state for the UI: set by transports that can prove it
   // (OMEMO once verification lands, OpenPGP later). Not parsed here.
@@ -373,26 +384,44 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
   }
   const replace = firstNsTag(inner, NS.CORRECT, 'replace')
   if (replace) message.replaceId = replace.getAttribute('id') ?? undefined
-  const attachments = parseAttachments(inner)
-  if (attachments.length > 0) message.attachments = attachments
 
-  const occupantId = firstNsTag(inner, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
-  if (occupantId) message.occupantId = occupantId
-
-  // XEP-0425: a live moderation notice from the room names the stanza-id
-  // being retracted and carries a moderated element inside the retract.
+  // XEP-0424 retraction: a direct <retract id> child is the current
+  // form; older drafts wrapped message-retract:0 inside a fasten
+  // apply-to whose own id names the target. A missing id still marks
+  // the stanza as a retraction so its fallback body never renders.
+  // XEP-0425 room moderation rides the same element but nests a
+  // <moderated> child, which is what separates a room-issued removal
+  // (retraction, no author check) from an author's own retract
+  // (retractId, same-sender checked).
   const retract = firstNsTag(inner, NS.MESSAGE_RETRACT, 'retract')
   if (retract) {
     const moderated = firstNsTag(retract, NS.MESSAGE_MODERATE, 'moderated')
-    message.retraction = {
-      id: retract.getAttribute('id') ?? '',
-      reason: firstTagText(retract, 'reason') ?? undefined,
-      by: moderatedBy(moderated)
+    if (moderated) {
+      message.retraction = {
+        id: retract.getAttribute('id') ?? '',
+        reason: firstTagText(retract, 'reason') ?? undefined,
+        by: moderatedBy(moderated)
+      }
+    } else {
+      message.retractId = retract.getAttribute('id') ?? ''
+    }
+  } else {
+    for (const applyTo of allNsTags(inner, NS.FASTEN, 'apply-to')) {
+      const legacy =
+        firstNsTag(applyTo, NS.MESSAGE_RETRACT, 'retract') ??
+        firstNsTag(applyTo, NS.MESSAGE_RETRACT_LEGACY, 'retract')
+      if (legacy) {
+        message.retractId = legacy.getAttribute('id') ?? applyTo.getAttribute('id') ?? ''
+        break
+      }
     }
   }
   // XEP-0424/0425 tombstone in archive results: the retracted element in
-  // past tense means this stanza itself is already moderated content.
-  const retractedEl = firstNsTag(inner, NS.MESSAGE_RETRACT, 'retracted')
+  // past tense means this stanza itself is already retracted content;
+  // reason and by come from the room's moderated marker when present
+  const retractedEl =
+    firstNsTag(inner, NS.MESSAGE_RETRACT, 'retracted') ??
+    firstNsTag(inner, NS.MESSAGE_RETRACT_LEGACY, 'retracted')
   if (retractedEl) {
     const moderated = firstNsTag(retractedEl, NS.MESSAGE_MODERATE, 'moderated')
     message.retracted = {
@@ -400,6 +429,16 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
       by: moderatedBy(moderated)
     }
   }
+
+  const spoiler = firstNsTag(inner, NS.SPOILER, 'spoiler')
+  if (spoiler) message.spoilerHint = spoiler.textContent ?? ''
+  if (firstNsTag(inner, NS.STYLING, 'unstyled')) message.unstyled = true
+
+  const attachments = parseAttachments(inner)
+  if (attachments.length > 0) message.attachments = attachments
+
+  const occupantId = firstNsTag(inner, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
+  if (occupantId) message.occupantId = occupantId
 
   // OMEMO payloads survive as raw xml for the service layer to decrypt;
   // the wire body is only a fallback for clients without encryption.
@@ -431,6 +470,8 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     !message.receiptFor &&
     !message.marker &&
     !message.reactionTo &&
+    message.retractId === undefined &&
+    !message.retracted &&
     !message.attachments?.length &&
     !message.encryptedXml &&
     !message.retraction &&

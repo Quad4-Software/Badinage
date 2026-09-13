@@ -21,7 +21,7 @@ import {
   type ConversationKind,
   type RoomOccupant
 } from './conversation.svelte'
-import { applyCorrection, applyReactions } from './messages'
+import { applyCorrection, applyReactions, applyRetraction } from './messages'
 import { ConversationPersistence } from './persistence.svelte'
 import { TypingTracker } from './typing'
 
@@ -113,12 +113,39 @@ export class ChatStore {
     if (target) applyReactions(target, sender, emojis)
   }
 
-  applyCorrection(peer: string, replaceId: string, body: string, timestamp: number): boolean {
+  // Optimistic local apply for a retraction we just sent ourselves; the
+  // wire-side sender check is unnecessary here.
+  retract(peer: string, targetId: string): void {
+    const target = this.findMessage(peer, targetId)
+    if (!target) return
+    applyRetraction(target)
+    const conversation = this.conversations.get(bareJid(peer))
+    if (conversation) this.persistence.schedule(conversation)
+  }
+
+  // Drop a message row outright. Used for pending uploads that get
+  // cancelled or fail: nothing reached the wire, so no tombstone.
+  removeMessage(peer: string, id: string): void {
+    const conversation = this.conversations.get(bareJid(peer))
+    if (!conversation) return
+    const index = conversation.messages.findIndex((m) => m.id === id)
+    if (index === -1) return
+    conversation.messages.splice(index, 1)
+    this.persistence.schedule(conversation)
+  }
+
+  applyCorrection(
+    peer: string,
+    replaceId: string,
+    body: string,
+    timestamp: number,
+    spoilerHint?: string | undefined
+  ): boolean {
     const target = this.findMessage(peer, replaceId)
     if (!target) return false
     // keep original position but reflect the correction time for ordering
     void timestamp
-    applyCorrection(target, body)
+    applyCorrection(target, body, spoilerHint)
     return true
   }
 
@@ -187,6 +214,42 @@ export class ChatStore {
         }
       }
     }
+    // XEP-0424: a retraction names the message id to remove (the stanza
+    // id attribute in a dm, the room stanza-id in a muc). The fallback
+    // body must never render, even when no target matches.
+    if (message.retractId !== undefined) {
+      const target =
+        message.retractId === '' ? undefined : this.findMessage(peer, message.retractId)
+      if (target) {
+        // business rules: only the original author may retract. In a dm
+        // that means the same side of the conversation; in a muc the
+        // same nick, which stands in for the full jid in non-anonymous
+        // rooms (occupant-id verification is not implemented).
+        const sameSender =
+          conversation.kind === 'muc' ? target.nick === sender : target.outgoing === outgoing
+        if (sameSender) {
+          applyRetraction(target)
+          this.persistence.schedule(conversation)
+        }
+      }
+      return
+    }
+    // an archive tombstone is the original stanza with its contents
+    // swapped for a retracted marker, so its own ids name the message it
+    // replaced. Unknown targets are dropped without a row.
+    if (message.retracted) {
+      for (const ref of [message.stanzaId, message.id, message.originId]) {
+        if (!ref) continue
+        const target = this.findMessage(peer, ref)
+        if (target) {
+          applyRetraction(target)
+          this.persistence.schedule(conversation)
+          return
+        }
+      }
+      // no stored copy of the original: fall through and keep the
+      // tombstone itself as a placeholder row
+    }
     if (message.reactionTo) {
       this.applyReaction(peer, reactionSender, message.reactionTo.id, message.reactionTo.emojis)
     }
@@ -206,7 +269,13 @@ export class ChatStore {
     // corrections replace an existing message instead of appending
     if (message.replaceId && message.body) {
       if (
-        this.applyCorrection(peer, message.replaceId, message.body, message.delay ?? Date.now())
+        this.applyCorrection(
+          peer,
+          message.replaceId,
+          message.body,
+          message.delay ?? Date.now(),
+          message.spoilerHint
+        )
       ) {
         return
       }
@@ -269,6 +338,8 @@ export class ChatStore {
     }
     if (message.replyTo) stored.replyTo = message.replyTo
     if (message.attachments?.length) stored.attachments = message.attachments
+    if (message.spoilerHint !== undefined) stored.spoilerHint = message.spoilerHint
+    if (message.unstyled) stored.unstyled = true
     if (message.signed) stored.signed = true
     if (message.encrypted) stored.encrypted = true
     if (message.undecryptable) stored.undecryptable = true
@@ -400,6 +471,8 @@ export class ChatStore {
     for (const raw of stored) {
       // older caches lack newer fields
       raw.reactions ??= {}
+      // a still-pending upload left no wire trace, drop the zombie row
+      if (raw.pending) continue
       batch.push(raw)
       if (seen.size < DEDUP_CAP) seen.add(raw.id)
     }

@@ -51,8 +51,19 @@ export const NS = {
   // XEP-0425 moderated message retraction, version 1 of the protocol
   // dropped the fasten apply-to wrapper in favor of a direct iq
   MESSAGE_MODERATE: 'urn:xmpp:message-moderate:1',
-  // XEP-0424 message retraction, shared with XEP-0425 tombstones
+  // XEP-0424 message retraction, shared with XEP-0425 tombstones. The
+  // current spec retracts via a direct <retract> child in
+  // urn:xmpp:message-retract:1; older drafts wrapped a
+  // urn:xmpp:message-retract:0 element in a fasten apply-to, which we
+  // still accept on the receive side for interop.
   MESSAGE_RETRACT: 'urn:xmpp:message-retract:1',
+  MESSAGE_RETRACT_LEGACY: 'urn:xmpp:message-retract:0',
+  FASTEN: 'urn:xmpp:fasten:0',
+  FALLBACK: 'urn:xmpp:fallback:0',
+  // XEP-0382 spoiler hint element
+  SPOILER: 'urn:xmpp:spoiler:0',
+  // XEP-0393 message styling: used for the unstyled opt-out element
+  STYLING: 'urn:xmpp:styling:0',
   // RFC 6120 stanza error conditions
   STANZA_ERROR: 'urn:ietf:params:xml:ns:xmpp-stanzas'
 } as const

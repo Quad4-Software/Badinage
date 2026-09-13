@@ -25,7 +25,8 @@ import {
   sendChatState,
   sendMarker,
   sendReaction,
-  sendReceipt
+  sendReceipt,
+  sendRetraction
 } from './features/messaging'
 import {
   banOccupant,
@@ -171,6 +172,10 @@ export class XmppConnection implements ChatConnection {
     sendMarker(this.transport, to, id, marker)
   }
 
+  sendRetraction(to: string, targetId: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    sendRetraction(this.transport, to, targetId, type)
+  }
+
   // ---- HTTP upload, implemented in features/upload.ts -----------------------
 
   discoverUploadService(onDone: (serviceJid: string | null) => void): void {
@@ -190,9 +195,10 @@ export class XmppConnection implements ChatConnection {
     putUrl: string,
     file: Blob,
     headers?: Record<string, string>,
-    onProgress?: (fraction: number) => void
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
-    return uploadFile(putUrl, file, headers, onProgress)
+    return uploadFile(putUrl, file, headers, onProgress, signal)
   }
 
   // ---- PEP / OMEMO, implemented in features/pep.ts ---------------------------

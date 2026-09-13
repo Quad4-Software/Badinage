@@ -31,7 +31,8 @@ export interface ChatMessage {
   // keys prefer it over the nick so renames do not split reactions
   occupantId?: string | undefined
   // XEP-0424/0425 tombstone: the message was retracted, optionally with
-  // a reason given by the moderator
+  // a reason given by the moderator; body, attachments and reactions are
+  // cleared but the row stays so replies still anchor
   retracted?: boolean | undefined
   retractReason?: string | undefined
   // decryption failed or the stanza could not be shown as text
@@ -45,6 +46,18 @@ export interface ChatMessage {
   edited?: boolean
   // signing state placeholder: 'signed' once verification lands
   signed?: boolean
+  // XEP-0382: the body is a spoiler hidden behind a reveal control; the
+  // string is the sender's optional hint, empty for a hintless spoiler
+  spoilerHint?: string | undefined
+  // XEP-0393: the sender asked for the body to render unstyled
+  unstyled?: boolean | undefined
+  // local-only upload state for an outgoing attachment that is still in
+  // flight; never persists meaningfully across restarts
+  pending?: boolean | undefined
+  // 0..1 upload progress while pending
+  uploadProgress?: number | undefined
+  // file name shown on the pending upload row
+  pendingName?: string | undefined
 }
 
 export interface RoomOccupant {

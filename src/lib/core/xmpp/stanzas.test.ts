@@ -264,6 +264,79 @@ my answer</body>
     expect(m?.encryptedXml).toContain('sid="123"')
   })
 
+  it('parses a direct message retraction', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat" id="retract-1">
+        <retract xmlns="urn:xmpp:message-retract:1" id="m1"/>
+        <fallback xmlns="urn:xmpp:fallback:0" for="urn:xmpp:message-retract:1"/>
+        <body>/me retracted a message</body>
+        <store xmlns="urn:xmpp:hints"/>
+      </message>`)
+    )
+    expect(m?.retractId).toBe('m1')
+    // the fallback body is parsed but must never render; ingest swallows it
+    expect(m?.body).toBe('/me retracted a message')
+  })
+
+  it('marks a retraction stanza even when the retract element lacks an id', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <retract xmlns="urn:xmpp:message-retract:1"/>
+        <body>secret fallback</body>
+      </message>`)
+    )
+    expect(m?.retractId).toBe('')
+  })
+
+  it('parses a legacy fasten-wrapped retraction', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <apply-to xmlns="urn:xmpp:fasten:0" id="m2">
+          <retract xmlns="urn:xmpp:message-retract:0"/>
+        </apply-to>
+      </message>`)
+    )
+    expect(m?.retractId).toBe('m2')
+  })
+
+  it('marks an archive tombstone on the stanza itself', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat" id="m1">
+        <retracted xmlns="urn:xmpp:message-retract:1" id="retract-9" stamp="2024-03-01T10:00:00Z"/>
+      </message>`)
+    )
+    expect(m?.retracted).toEqual({ reason: undefined, by: undefined })
+    expect(m?.retractId).toBeUndefined()
+  })
+
+  it('parses a spoiler with and without a hint', () => {
+    const hinted = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>the butler did it</body>
+        <spoiler xmlns="urn:xmpp:spoiler:0">book ending</spoiler>
+      </message>`)
+    )
+    expect(hinted?.spoilerHint).toBe('book ending')
+
+    const hintless = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>the butler did it</body>
+        <spoiler xmlns="urn:xmpp:spoiler:0"/>
+      </message>`)
+    )
+    expect(hintless?.spoilerHint).toBe('')
+  })
+
+  it('parses the unstyled opt-out', () => {
+    const m = parseMessage(
+      xml(`<message from="a@b.c" to="x@y.z" type="chat">
+        <body>*not bold*</body>
+        <unstyled xmlns="urn:xmpp:styling:0"/>
+      </message>`)
+    )
+    expect(m?.unstyled).toBe(true)
+  })
+
   it('returns null for empty stanzas', () => {
     const m = parseMessage(xml(`<message from="a@b.c" to="x@y.z" type="chat"/>`))
     expect(m).toBeNull()

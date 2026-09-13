@@ -52,6 +52,10 @@ export const AUTHFAIL_BACKOFF_MS = [2_000, 5_000, 15_000, 60_000] as const
 // abort a stalled in-band registration handshake after this long
 export const REGISTER_TIMEOUT_MS = 15_000
 
+// reaction tooltips list at most this many sender names before a
+// "+N more" tail
+export const REACTION_TOOLTIP_CAP = 8
+
 // cleartext body on omemo stanzas for clients that cannot decrypt
 export const OMEMO_FALLBACK_BODY =
   'I sent you an OMEMO encrypted message but your client does not support it.'

@@ -19,7 +19,7 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
-  import { sendFileMessage } from '$lib/state/upload'
+  import { cancelUpload, sendFileMessage } from '$lib/state/upload'
   import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { Input } from '$lib/ui/primitives/input'
@@ -81,6 +81,37 @@
   const canEditSubject = $derived(selfOccupant?.role === 'moderator')
   const canConfigure = $derived(selfOccupant?.affiliation === 'owner')
   const canModerate = $derived(isRoom && selfOccupant?.role === 'moderator')
+
+  // the outgoing message awaiting a retract confirm
+  let retractTarget = $state<ChatMessage | null>(null)
+
+  // reaction sender keys are bare jids in dms and nicks or XEP-0421
+  // occupant ids in mucs; resolve all three to display names so the
+  // tooltip stays readable
+  function senderLabel(sender: string): string {
+    if (!account || !conversation) return sender
+    if (isRoom) {
+      if (sender === conversation.ourNick || sender === conversation.ourOccupantId) {
+        return $LL.you()
+      }
+      for (const occupant of conversation.occupants.values()) {
+        if (occupant.occupantId === sender || occupant.nick === sender) return occupant.nick
+      }
+      return sender
+    }
+    if (sender === account.jid) return $LL.you()
+    return account.roster.find((c) => c.jid === sender)?.name || sender
+  }
+
+  function retractMessage() {
+    const target = retractTarget
+    if (!target || !account || !conversation) return
+    // dm retractions reference the stanza id attribute; muc retractions
+    // the room stanza-id, which lands in message.id after the echo merge
+    const ref = isRoom ? target.id : (target.wireId ?? target.id)
+    account.connection.sendRetraction(conversation.peerJid, ref, isRoom ? 'groupchat' : 'chat')
+    app.chatsFor(account.jid).retract(conversation.peerJid, ref)
+  }
 
   function onDragOver(event: DragEvent) {
     if (event.dataTransfer?.types.includes('Files')) {
@@ -414,6 +445,9 @@
             account.connection.sendReaction(conversation.peerJid, ref, emojis, type)
             app.chatsFor(account.jid).applyReaction(conversation.peerJid, self, ref, emojis)
           }}
+          {senderLabel}
+          onRetract={(message) => (retractTarget = message)}
+          onCancelUpload={(message) => cancelUpload(message.id)}
           {canModerate}
           onModerate={(message) => {
             moderateReason = ''
@@ -515,3 +549,15 @@
     />
   </ConfirmDialog>
 {/if}
+
+<ConfirmDialog
+  open={retractTarget !== null}
+  onOpenChange={(open) => {
+    if (!open) retractTarget = null
+  }}
+  title={$LL.retractMessageTitle()}
+  description={$LL.retractMessageDescription()}
+  confirmLabel={$LL.retract()}
+  destructive
+  onConfirm={retractMessage}
+/>

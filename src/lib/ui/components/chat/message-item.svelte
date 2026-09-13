@@ -1,13 +1,30 @@
 <script lang="ts">
-  import { Copy, Lock, Pencil, Reply, Smile, SmilePlus, Trash2 } from '@lucide/svelte'
+  import {
+    Copy,
+    Eye,
+    File,
+    Lock,
+    Pencil,
+    Reply,
+    Smile,
+    SmilePlus,
+    Trash2,
+    Undo2,
+    X
+  } from '@lucide/svelte'
 
+  import { REACTION_TOOLTIP_CAP } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
   import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { cn } from '$lib/utils/cn'
   import { isEmojiOnly } from '$lib/utils/emoji'
+  import { meAction } from '$lib/utils/message-commands'
+  import { reactionSenderNames } from '$lib/utils/reactions'
 
   import MessageAttachments from './message-attachments.svelte'
+  import MessageBody from './message-body.svelte'
   import MessageMeta from './message-meta.svelte'
   import EmojiPicker from './emoji-picker.svelte'
 
@@ -19,16 +36,17 @@
     avatarName?: string
     // bare jid (dm) or nick (muc) used to mark our own reaction pills
     selfJid?: string
+    // maps a reaction sender key (bare jid or muc nick) to a display name
+    senderLabel?: ((sender: string) => string) | undefined
     onQuoteClick?: ((id: string) => void) | undefined
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((emoji: string) => void) | undefined
+    onRetract?: ((message: ChatMessage) => void) | undefined
+    onCancelUpload?: ((message: ChatMessage) => void) | undefined
     // XEP-0425: shown only when our own room role allows moderation
     canModerate?: boolean
     onModerate?: ((message: ChatMessage) => void) | undefined
-    // maps a reaction sender key (occupant id or nick) to a display
-    // name; identity when absent
-    senderLabel?: ((key: string) => string) | undefined
   }
 
   let {
@@ -37,30 +55,33 @@
     showAvatar = false,
     avatarName = '',
     selfJid = '',
+    senderLabel,
     onQuoteClick,
     onReply,
     onEdit,
     onReact,
+    onRetract,
+    onCancelUpload,
     canModerate = false,
-    onModerate,
-    senderLabel = (key: string) => key
+    onModerate
   }: Props = $props()
 
   let pickerOpen = $state(false)
   let pickerAnchor = $state<'top' | 'bottom'>('top')
-
-  const URL_RE = /(https?:\/\/\S+)/g
-  const isUrl = (part: string) => /^https?:\/\/\S+$/.test(part)
+  let spoilerRevealed = $state(false)
 
   // senders put the oob url in the body as a fallback; when the body is
   // exactly that url the attachment block already renders it
   const bodyIsAttachmentUrl = $derived(
     (message.attachments ?? []).some((a) => a.url === message.body.trim())
   )
-  const bodyParts = $derived(bodyIsAttachmentUrl ? [] : message.body.split(URL_RE))
   const reactionEntries = $derived(Object.entries(message.reactions))
   const jumbo = $derived(isEmojiOnly(message.body))
   const initials = $derived((avatarName || message.nick || '?').slice(0, 2))
+  // XEP-0245: a "/me " body renders as an italic action line
+  const meText = $derived(meAction(message.body))
+  const meName = $derived(message.nick ?? (message.outgoing ? $LL.you() : avatarName))
+  const uploadPercent = $derived(Math.round((message.uploadProgress ?? 0) * 100))
 
   const actionClass =
     'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded'
@@ -75,48 +96,69 @@
     pickerAnchor = anchor
     pickerOpen = !pickerOpen
   }
+
+  function senderNames(senders: string[]): string {
+    const { names, extra } = reactionSenderNames(
+      senders,
+      (sender) => senderLabel?.(sender) ?? sender,
+      REACTION_TOOLTIP_CAP
+    )
+    return extra > 0 ? [...names, $LL.moreSenders({ count: extra })].join(', ') : names.join(', ')
+  }
 </script>
 
-{#if message.retracted}
-  <!-- XEP-0424/0425 tombstone: body and attachments are gone, only the
-       placeholder remains -->
-  <div class={cn('flex items-end gap-2', message.outgoing && 'justify-end')}>
-    <p class="text-muted-foreground text-sm italic">
-      {$LL.messageRemoved()}{message.retractReason ? ` · ${message.retractReason}` : ''}
-    </p>
-  </div>
-{:else}
-  <div class={cn('group flex items-end gap-2', message.outgoing && 'justify-end')}>
-    {#if !message.outgoing}
-      {#if showAvatar}
-        <Avatar class="size-7">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-      {:else}
-        <!-- keeps continuation bubbles aligned under the avatar column -->
-        <span class="size-7 shrink-0" aria-hidden="true"></span>
-      {/if}
+{#snippet bodyContent()}
+  {#if meText !== null}
+    <p class="break-words italic">* {meName} {meText}</p>
+  {:else if message.body && !bodyIsAttachmentUrl}
+    {#if jumbo}
+      <p class="text-4xl leading-tight break-words">{message.body}</p>
+    {:else}
+      <MessageBody body={message.body} unstyled={message.unstyled} />
+    {/if}
+  {/if}
+{/snippet}
+
+<div class={cn('group flex items-end gap-2', message.outgoing && 'justify-end')}>
+  {#if !message.outgoing}
+    {#if showAvatar}
+      <Avatar class="size-7">
+        <AvatarFallback>{initials}</AvatarFallback>
+      </Avatar>
+    {:else}
+      <!-- keeps continuation bubbles aligned under the avatar column -->
+      <span class="size-7 shrink-0" aria-hidden="true"></span>
+    {/if}
+  {/if}
+
+  <div
+    class={cn('flex max-w-[75%] min-w-0 flex-col', message.outgoing ? 'items-end' : 'items-start')}
+  >
+    {#if showNick && !message.outgoing && message.nick}
+      <span class="text-muted-foreground mb-0.5 ml-1 text-xs">{message.nick}</span>
     {/if}
 
-    <div
-      class={cn(
-        'flex max-w-[75%] min-w-0 flex-col',
-        message.outgoing ? 'items-end' : 'items-start'
-      )}
-    >
-      {#if showNick && !message.outgoing && message.nick}
-        <span class="text-muted-foreground mb-0.5 ml-1 text-xs">{message.nick}</span>
-      {/if}
-
-      <div class="relative max-w-full">
-        <div
-          class={cn(
-            'density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
-            message.outgoing
-              ? 'bg-primary text-primary-foreground rounded-br-sm'
-              : 'bg-muted rounded-bl-sm'
-          )}
-        >
+    <div class="relative max-w-full">
+      <div
+        class={cn(
+          'density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
+          message.outgoing
+            ? 'bg-primary text-primary-foreground rounded-br-sm'
+            : 'bg-muted rounded-bl-sm'
+        )}
+      >
+        {#if message.retracted}
+          <!-- the row survives retraction so replies still anchor -->
+          <p
+            class={cn(
+              'flex items-center gap-1.5 italic',
+              message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
+            )}
+          >
+            <Undo2 class="size-3.5 shrink-0" />
+            {$LL.messageRetracted()}{message.retractReason ? ` · ${message.retractReason}` : ''}
+          </p>
+        {:else}
           {#if message.replyTo}
             <button
               type="button"
@@ -142,40 +184,82 @@
             </button>
           {/if}
 
-          {#if message.attachments?.length}
-            <div class="mb-1">
-              <MessageAttachments attachments={message.attachments} />
+          {#if message.pending}
+            <div class="flex min-w-48 items-center gap-2">
+              <File class="size-4 shrink-0" />
+              <div class="min-w-0 flex-1">
+                <span class="block truncate">{message.pendingName ?? $LL.fileAttachment()}</span>
+                <div
+                  role="progressbar"
+                  aria-valuenow={uploadPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={$LL.uploading()}
+                  class="bg-primary-foreground/30 mt-1 h-1 rounded-full"
+                >
+                  <div
+                    class="bg-primary-foreground h-full rounded-full transition-[width]"
+                    style:width="{uploadPercent}%"
+                  ></div>
+                </div>
+              </div>
+              <button
+                type="button"
+                class={actionClass}
+                aria-label={$LL.cancelUpload()}
+                onclick={() => onCancelUpload?.(message)}
+              >
+                <X class="size-3.5" />
+              </button>
             </div>
-          {/if}
+          {:else}
+            {#if message.attachments?.length}
+              <div class="mb-1">
+                <MessageAttachments attachments={message.attachments} />
+              </div>
+            {/if}
 
-          {#if message.undecryptable}
-            <p
-              class={cn(
-                'flex items-center gap-1.5 italic',
-                message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
-              )}
-            >
-              <Lock class="size-3.5 shrink-0" />
-              {$LL.couldNotDecrypt()}
-            </p>
-          {:else if message.body && !bodyIsAttachmentUrl}
-            <p class={cn('break-words whitespace-pre-wrap', jumbo && 'text-4xl leading-tight')}>
-              {#each bodyParts as part, i (i)}
-                {#if isUrl(part)}
-                  <a
-                    href={part}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="underline underline-offset-2">{part}</a
-                  >
-                {:else}{part}{/if}
-              {/each}
-            </p>
+            {#if message.undecryptable}
+              <p
+                class={cn(
+                  'flex items-center gap-1.5 italic',
+                  message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
+                )}
+              >
+                <Lock class="size-3.5 shrink-0" />
+                {$LL.couldNotDecrypt()}
+              </p>
+            {:else if message.spoilerHint !== undefined}
+              <!-- XEP-0382: the body stays hidden until the reveal control -->
+              <button
+                type="button"
+                aria-expanded={spoilerRevealed}
+                class={cn(
+                  'mb-1 flex items-center gap-1.5 rounded-md border border-dashed px-2 py-1 text-xs',
+                  message.outgoing
+                    ? 'border-primary-foreground/50'
+                    : 'border-foreground/30 hover:bg-accent'
+                )}
+                onclick={() => (spoilerRevealed = !spoilerRevealed)}
+              >
+                <Eye class="size-3.5 shrink-0" />
+                {message.spoilerHint || $LL.spoiler()}
+              </button>
+              {#if spoilerRevealed}
+                {@render bodyContent()}
+              {/if}
+            {:else}
+              {@render bodyContent()}
+            {/if}
           {/if}
+        {/if}
 
+        {#if !message.pending}
           <MessageMeta {message} />
-        </div>
+        {/if}
+      </div>
 
+      {#if !message.retracted && !message.pending}
         <div
           class={cn(
             'bg-popover absolute right-1 bottom-full z-10 mb-0.5 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm transition-opacity',
@@ -209,6 +293,14 @@
               onclick={() => onEdit?.(message)}
             >
               <Pencil class="size-3.5" />
+            </button>
+            <button
+              type="button"
+              class={actionClass}
+              aria-label={$LL.retractMessage()}
+              onclick={() => onRetract?.(message)}
+            >
+              <Trash2 class="size-3.5" />
             </button>
           {/if}
           <button
@@ -260,28 +352,37 @@
             <SmilePlus class="size-3.5" />
           </button>
         {/if}
-      </div>
+      {/if}
+    </div>
 
-      {#if reactionEntries.length > 0}
-        <div class={cn('mt-1 flex flex-wrap gap-1', message.outgoing && 'justify-end')}>
-          {#each reactionEntries as [emoji, senders] (emoji)}
-            {@const mine = selfJid !== '' && senders.includes(selfJid)}
-            <button
-              type="button"
-              class={cn(
-                'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
-                mine
-                  ? 'bg-primary/15 text-primary ring-primary/40 ring-1 ring-inset'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              )}
-              title={senders.map(senderLabel).join(', ')}
-              aria-pressed={mine}
-              onclick={() => onReact?.(emoji)}
-            >
-              <span>{emoji}</span>
-              <span class="tabular-nums">{senders.length}</span>
-            </button>
-          {/each}
+    {#if reactionEntries.length > 0}
+      <div class={cn('mt-1 flex flex-wrap gap-1', message.outgoing && 'justify-end')}>
+        {#each reactionEntries as [emoji, senders] (emoji)}
+          {@const mine = selfJid !== '' && senders.includes(selfJid)}
+          <Tooltip>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <button
+                  {...props}
+                  type="button"
+                  class={cn(
+                    'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
+                    mine
+                      ? 'bg-primary/15 text-primary ring-primary/40 ring-1 ring-inset'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  )}
+                  aria-pressed={mine}
+                  onclick={() => onReact?.(emoji)}
+                >
+                  <span>{emoji}</span>
+                  <span class="tabular-nums">{senders.length}</span>
+                </button>
+              {/snippet}
+            </TooltipTrigger>
+            <TooltipContent>{senderNames(senders)}</TooltipContent>
+          </Tooltip>
+        {/each}
+        {#if !message.retracted && !message.pending}
           <button
             type="button"
             class="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
@@ -290,8 +391,8 @@
           >
             <SmilePlus class="size-3.5" />
           </button>
-        </div>
-      {/if}
-    </div>
+        {/if}
+      </div>
+    {/if}
   </div>
-{/if}
+</div>
