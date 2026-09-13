@@ -51,6 +51,8 @@
     // XEP-0425: shown only when our own room role allows moderation
     canModerate?: boolean
     onModerate?: ((message: ChatMessage) => void) | undefined
+    // removes the message; only rendered for undecryptable tombstones
+    onDismiss?: ((message: ChatMessage) => void) | undefined
   }
 
   let {
@@ -69,7 +71,8 @@
     onRetract,
     onCancelUpload,
     canModerate = false,
-    onModerate
+    onModerate,
+    onDismiss
   }: Props = $props()
 
   let pickerOpen = $state(false)
@@ -224,15 +227,20 @@
             {/if}
 
             {#if message.undecryptable}
-              <p
+              <div
                 class={cn(
                   'flex items-center gap-1.5 italic',
                   message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
                 )}
               >
                 <Lock class="size-3.5 shrink-0" />
-                {$LL.couldNotDecrypt()}
-              </p>
+                <span class="min-w-0">
+                  {$LL.couldNotDecrypt()}
+                  {#if message.keyRequested}
+                    <span class="mt-0.5 block text-xs not-italic">{$LL.keyRequested()}</span>
+                  {/if}
+                </span>
+              </div>
             {:else if message.spoilerHint !== undefined}
               <!-- XEP-0382: the body stays hidden until the reveal control -->
               <button
@@ -323,6 +331,16 @@
               onclick={() => onModerate?.(message)}
             >
               <Trash2 class="size-3.5" />
+            </button>
+          {/if}
+          {#if message.undecryptable && onDismiss}
+            <button
+              type="button"
+              class={actionClass}
+              aria-label={$LL.dismissMessage()}
+              onclick={() => onDismiss(message)}
+            >
+              <X class="size-3.5" />
             </button>
           {/if}
         </div>

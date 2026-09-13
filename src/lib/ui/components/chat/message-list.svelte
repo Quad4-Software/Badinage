@@ -29,6 +29,8 @@
     // XEP-0425 moderation affordance, gated on our own room role
     canModerate?: boolean
     onModerate?: ((message: ChatMessage) => void) | undefined
+    // dismisses a message outright - only offered on undecryptable tombstones
+    onDismiss?: ((message: ChatMessage) => void) | undefined
   }
 
   let {
@@ -42,7 +44,8 @@
     onRetract,
     onCancelUpload,
     canModerate = false,
-    onModerate
+    onModerate,
+    onDismiss
   }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
@@ -198,6 +201,7 @@
           {onCancelUpload}
           {canModerate}
           onModerate={onModerate ? () => onModerate(message) : undefined}
+          {onDismiss}
         />
       </li>
     {/each}

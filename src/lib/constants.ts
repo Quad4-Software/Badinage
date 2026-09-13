@@ -99,3 +99,15 @@ export const MUC_SELF_PING_MS = 60_000
 // each delayed by the base delay times two to the attempt number
 export const ROOM_REJOIN_MAX_ATTEMPTS = 3
 export const ROOM_REJOIN_DELAY_MS = 5_000
+
+// omemo signed prekeys are rotated once they are older than this
+export const OMEMO_SPK_ROTATE_MS = 30 * 24 * 60 * 60 * 1000
+
+// undecryptable stanzas kept for one-shot retry per sending device
+export const OMEMO_RETRY_QUEUE_MAX = 50
+
+// XEP-0454 aesgcm media sharing: AES-256-GCM key + 12 byte IV, tag
+// appended to the ciphertext, fragment is hex(iv) followed by hex(key)
+export const AESGCM_KEY_BYTES = 32
+export const AESGCM_IV_BYTES = 12
+export const AESGCM_TAG_BYTES = 16

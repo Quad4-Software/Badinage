@@ -1,3 +1,4 @@
+import { OMEMO_RETRY_QUEUE_MAX } from '$lib/constants'
 import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
@@ -200,6 +201,14 @@ class AppStore {
     const sessions = new RoomSessions(account.connection, store)
     this.roomSessions.set(accountJid, sessions)
 
+    // undecryptable omemo stanzas waiting on a session repair, keyed by
+    // namespace + sender + sending device. Retried exactly once when a
+    // later stanza from the same device decrypts, then dropped. Internal
+    // bookkeeping only - no reactivity needed.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const undecryptable = new Map<string, IncomingMessage[]>()
+    const queueKey = (ns: string, from: string, sid: number) => `${ns}:${bareJid(from)}/${sid}`
+
     account.connection.events.on('status', (status) => {
       sessions.noteStatus(status)
       if (status === 'disconnected') void store.flush()
@@ -225,9 +234,9 @@ class AppStore {
           store.ingest(message, this.activePeer)
           return
         }
-        void omemo.decryptInto(message).then(() => {
+        void omemo.decryptInto(message).then((report) => {
           if (account.blocked.has(bareJid(message.from))) return
-          store.ingest(message, this.activePeer)
+          const stored = store.ingest(message, this.activePeer)
           if (
             settings.current.sendReceipts &&
             message.receiptRequest &&
@@ -236,6 +245,47 @@ class AppStore {
             message.id
           ) {
             account.connection.sendReceipt(bareJid(message.from), message.id)
+          }
+          if (
+            report.status === 'failed' &&
+            report.sid !== undefined &&
+            report.namespace !== undefined &&
+            message.type === 'chat'
+          ) {
+            const key = queueKey(report.namespace, message.from, report.sid)
+            const list = undecryptable.get(key) ?? []
+            list.push(message)
+            if (list.length > OMEMO_RETRY_QUEUE_MAX) list.shift()
+            undecryptable.set(key, list)
+            void omemo.sendKeyTransport(message.from, report.sid, report.namespace).then((sent) => {
+              if (sent && stored) stored.keyRequested = true
+            })
+            return
+          }
+          if (
+            (report.status === 'decrypted' || report.status === 'empty') &&
+            message.type === 'chat'
+          ) {
+            // the session with this device now works; give each queued
+            // stanza from it one retry, then drop it for good
+            const key = queueKey(report.namespace ?? '', message.from, report.sid ?? 0)
+            const queued = undecryptable.get(key)
+            if (!queued?.length) return
+            undecryptable.delete(key)
+            for (const stale of queued) {
+              void omemo.decryptInto(stale).then((retry) => {
+                // 'decrypted' patches the payload in; 'empty' carried no
+                // payload and 'duplicate' means a resend already landed,
+                // so the tombstone is stale either way
+                if (
+                  retry.status === 'decrypted' ||
+                  retry.status === 'empty' ||
+                  retry.status === 'duplicate'
+                ) {
+                  store.resolveDecrypted(stale)
+                }
+              })
+            }
           }
         })
         return
