@@ -9,6 +9,7 @@
 
   const actions: Record<string, () => void> = {
     'app.settings': () => (app.settingsOpen = !app.settingsOpen),
+    'app.commandPalette': () => (app.paletteOpen = !app.paletteOpen),
     'app.toggleTheme': toggleMode,
     'nav.nextConversation': () => app.cycleConversation(1),
     'nav.prevConversation': () => app.cycleConversation(-1),

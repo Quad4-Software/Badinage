@@ -20,10 +20,6 @@
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="w-full justify-between">
-          <PresenceDot
-            presence={active?.status === 'connected' ? active.presence : 'offline'}
-            class="mr-1"
-          />
           <span class="truncate">{active?.jid ?? ''}</span>
           <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
         </Button>

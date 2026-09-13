@@ -10,7 +10,6 @@ class AppStore {
   activePeer = $state<string | null>(null)
   // optional second chat pane (paneforge split view)
   splitPeer = $state<string | null>(null)
-  sidebarOpen = $state(false)
   // desktop pane collapse state; the rail content is driven off the
   // pane's data-pane-state attribute, this mirrors it for other widgets
   sidebarCollapsed = $state(false)
@@ -18,6 +17,9 @@ class AppStore {
   loginOpen = $state(false)
   joinRoomOpen = $state(false)
   addContactOpen = $state(false)
+  paletteOpen = $state(false)
+  // deep-link target consumed by the settings dialog on open
+  pendingSettingsSection = $state<string | null>(null)
   // drafts, reply/edit context and focus callbacks live in the composer
   // store; the methods below delegate, keyed per account:peer
   private composer = new ComposerStore()

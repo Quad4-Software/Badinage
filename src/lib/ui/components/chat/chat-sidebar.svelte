@@ -61,7 +61,8 @@
   function open(peerJid: string) {
     store?.open(peerJid)
     app.selectPeer(peerJid)
-    app.sidebarOpen = false
+    // no composer focus on touch devices: it would pop the keyboard
+    if (window.matchMedia('(pointer: fine)').matches) app.focusComposer(peerJid)
   }
 </script>
 
@@ -75,17 +76,6 @@
       <SubscriptionRequests requests={subscriptions} />
 
       <SidebarSection title={$LL.conversations()} bind:expanded={showConversations} class="mt-2">
-        {#snippet action()}
-          <Button
-            variant="ghost"
-            size="icon"
-            class="size-6 shrink-0"
-            onclick={() => (app.addContactOpen = true)}
-            aria-label={$LL.addContact()}
-          >
-            <UserPlus class="size-3.5" />
-          </Button>
-        {/snippet}
         {#each conversations as conversation (conversation.peerJid)}
           <ConversationRow
             {conversation}
@@ -119,6 +109,17 @@
       </SidebarSection>
 
       <SidebarSection title={$LL.contacts()} bind:expanded={showContacts}>
+        {#snippet action()}
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-6 shrink-0"
+            onclick={() => (app.addContactOpen = true)}
+            aria-label={$LL.addContact()}
+          >
+            <UserPlus class="size-3.5" />
+          </Button>
+        {/snippet}
         {#each contacts as contact (contact.jid)}
           <ContactRow
             {contact}

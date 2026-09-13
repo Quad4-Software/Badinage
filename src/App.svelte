@@ -9,11 +9,14 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { settings } from '$lib/state/settings.svelte'
   import AddContactDialog from '$lib/ui/components/dialogs/add-contact-dialog.svelte'
   import JoinRoomDialog from '$lib/ui/components/dialogs/join-room-dialog.svelte'
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
+  import CommandPalette from '$lib/ui/components/shell/command-palette.svelte'
   import CrashView from '$lib/ui/components/shell/crash-view.svelte'
+  import DemoBadge from '$lib/ui/components/shell/demo-badge.svelte'
   import Keyboard from '$lib/ui/components/shell/keyboard.svelte'
   import LoginForm from '$lib/ui/components/shell/login-form.svelte'
   import StatusToasts from '$lib/ui/components/shell/status-toasts.svelte'
@@ -25,6 +28,19 @@
     DialogTitle
   } from '$lib/ui/primitives/dialog'
   import { Sonner } from '$lib/ui/primitives/sonner'
+  import { TooltipProvider } from '$lib/ui/primitives/tooltip'
+
+  $effect(() => {
+    const hue = settings.current.accentHue
+    const root = document.documentElement
+    if (hue === null) {
+      root.removeAttribute('data-accent')
+      root.style.removeProperty('--accent-h')
+    } else {
+      root.dataset.accent = 'custom'
+      root.style.setProperty('--accent-h', String(hue))
+    }
+  })
 
   onMount(() => {
     loadLocale('en')
@@ -53,34 +69,40 @@
   })
 </script>
 
-<ModeWatcher />
-<Sonner />
-<Keyboard />
-<StatusToasts />
-<SettingsDialog />
-<JoinRoomDialog />
-<AddContactDialog />
-
-<Dialog bind:open={app.loginOpen}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>{$LL.addAccount()}</DialogTitle>
-      <DialogDescription>{$LL.signInTitle()}</DialogDescription>
-    </DialogHeader>
-    <LoginForm embedded />
-  </DialogContent>
-</Dialog>
-
-<svelte:boundary onerror={(error) => reportError(error, { source: 'crash-boundary' })}>
-  {#snippet failed(error, reset)}
-    <CrashView {error} {reset} />
-  {/snippet}
-
-  {#if accounts.list.length === 0}
-    <main class="h-full">
-      <LoginForm />
-    </main>
-  {:else}
-    <AppShell />
+<TooltipProvider delayDuration={250}>
+  <ModeWatcher />
+  <Sonner />
+  <Keyboard />
+  <StatusToasts />
+  {#if accounts.active?.options.demo}
+    <DemoBadge />
   {/if}
-</svelte:boundary>
+  <SettingsDialog />
+  <JoinRoomDialog />
+  <AddContactDialog />
+  <CommandPalette />
+
+  <Dialog bind:open={app.loginOpen}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{$LL.addAccount()}</DialogTitle>
+        <DialogDescription>{$LL.signInTitle()}</DialogDescription>
+      </DialogHeader>
+      <LoginForm embedded />
+    </DialogContent>
+  </Dialog>
+
+  <svelte:boundary onerror={(error: unknown) => reportError(error, { source: 'crash-boundary' })}>
+    {#snippet failed(error: unknown, reset: () => void)}
+      <CrashView {error} {reset} />
+    {/snippet}
+
+    {#if accounts.list.length === 0}
+      <main class="h-full">
+        <LoginForm />
+      </main>
+    {:else}
+      <AppShell />
+    {/if}
+  </svelte:boundary>
+</TooltipProvider>

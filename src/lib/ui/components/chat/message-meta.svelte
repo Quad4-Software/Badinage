@@ -3,6 +3,7 @@
 
   import LL, { locale } from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { cn } from '$lib/utils/cn'
   import { formatTime } from '$lib/utils/time'
 
@@ -19,24 +20,60 @@
     <span>{$LL.edited()}</span>
   {/if}
   {#if message.encrypted}
-    <Lock
-      class={cn('size-3', message.untrustedDevice && 'text-warning')}
-      aria-label={message.untrustedDevice ? $LL.untrustedDevice() : $LL.encrypted()}
-    />
+    <Tooltip>
+      <TooltipTrigger>
+        {#snippet child({ props })}
+          <span {...props} class="inline-flex">
+            <Lock class={cn('size-3', message.untrustedDevice && 'text-warning')} />
+          </span>
+        {/snippet}
+      </TooltipTrigger>
+      <TooltipContent>
+        {message.untrustedDevice ? $LL.untrustedDevice() : $LL.encrypted()}
+      </TooltipContent>
+    </Tooltip>
   {/if}
   {#if message.signed}
-    <ShieldCheck class="text-success size-3" aria-label={$LL.signed()} />
+    <Tooltip>
+      <TooltipTrigger>
+        {#snippet child({ props })}
+          <span {...props} class="inline-flex"><ShieldCheck class="text-success size-3" /></span>
+        {/snippet}
+      </TooltipTrigger>
+      <TooltipContent>{$LL.signed()}</TooltipContent>
+    </Tooltip>
   {/if}
   <time datetime={new Date(message.timestamp).toISOString()}>
     {formatTime(message.timestamp, $locale)}
   </time>
   {#if message.outgoing}
     {#if message.read}
-      <CheckCheck class="text-success size-3" aria-label={$LL.read()} />
+      <Tooltip>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <span {...props} class="inline-flex"><CheckCheck class="text-success size-3" /></span>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent>{$LL.read()}</TooltipContent>
+      </Tooltip>
     {:else if message.delivered}
-      <CheckCheck class="size-3 opacity-60" aria-label={$LL.delivered()} />
+      <Tooltip>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <span {...props} class="inline-flex"><CheckCheck class="size-3 opacity-60" /></span>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent>{$LL.delivered()}</TooltipContent>
+      </Tooltip>
     {:else}
-      <Check class="size-3 opacity-60" aria-label={$LL.sent()} />
+      <Tooltip>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <span {...props} class="inline-flex"><Check class="size-3 opacity-60" /></span>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent>{$LL.sent()}</TooltipContent>
+      </Tooltip>
     {/if}
   {/if}
 </div>
