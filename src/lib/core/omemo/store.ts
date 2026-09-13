@@ -3,61 +3,28 @@
 // key kept in the kv store so raw private keys never appear in the
 // database in plain form.
 
+import {
+  decodeRecord,
+  decryptRecord,
+  encodeRecord,
+  encryptRecord,
+  isWrappedRecord,
+  loadWrapKey
+} from '$lib/core/storage/crypto'
 import { idb } from '$lib/core/storage/idb'
 import { scopedKey } from '$lib/core/storage/keys'
 import type { TrustStore, TrustRecord } from './trust'
 
-import { base64Decode, base64Encode, randomBytes, sessionKey } from '@quad4-software/omemo'
+import { sessionKey } from '@quad4-software/omemo'
 import type { IdentityRecord, KeyPair, OmemoStore, SignedPreKeyRecord } from '@quad4-software/omemo'
 import type { SessionData } from '@quad4-software/omemo'
-
-interface Wrapped {
-  __enc: 1
-  iv: string
-  data: string
-}
-
-function isWrapped(value: unknown): value is Wrapped {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    (value as Wrapped).__enc === 1 &&
-    typeof (value as Wrapped).iv === 'string'
-  )
-}
-
-// JSON does not round-trip Uint8Array, so encode byte fields explicitly.
-function encodeRecord(value: unknown): string {
-  return JSON.stringify(value, (_key, v: unknown) =>
-    v instanceof Uint8Array ? { $u8: base64Encode(v) } : v
-  )
-}
-
-function decodeRecord<T>(text: string): T {
-  return JSON.parse(text, (_key, v: unknown) => {
-    if (typeof v === 'object' && v !== null && '$u8' in (v as object)) {
-      return base64Decode((v as { $u8: string }).$u8)
-    }
-    return v
-  }) as T
-}
 
 // The wrapping key lives in the kv store as a structured-cloned
 // non-extractable CryptoKey. Without a user passphrase this is a
 // best-effort barrier: the key bytes themselves never appear in storage,
 // which is what the repo's at-rest rule is about.
 async function wrapKeyFor(accountJid: string): Promise<CryptoKey | undefined> {
-  const subtle = globalThis.crypto?.subtle
-  if (!subtle) return undefined
-  const key = scopedKey(accountJid, 'omemo-wrap')
-  const existing = await idb.get<CryptoKey>('kv', key)
-  if (existing) return existing
-  const generated = await subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
-    'encrypt',
-    'decrypt'
-  ])
-  await idb.set('kv', key, generated)
-  return generated
+  return loadWrapKey(scopedKey(accountJid, 'omemo-wrap'))
 }
 
 export class IdbOmemoStore implements OmemoStore {
@@ -104,34 +71,17 @@ export class IdbOmemoStore implements OmemoStore {
   private async getRecord<T>(key: string): Promise<T | undefined> {
     const raw = await idb.get<unknown>('omemo', key)
     if (raw === undefined) return undefined
-    if (!isWrapped(raw)) return raw as T
+    if (!isWrappedRecord(raw)) return raw as T
     if (!this.wrapKey) return undefined
-    const plain = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: base64Decode(raw.iv) as BufferSource },
-      this.wrapKey,
-      base64Decode(raw.data) as BufferSource
-    )
-    return decodeRecord<T>(new TextDecoder().decode(plain))
+    return decryptRecord<T>(this.wrapKey, raw)
   }
 
   private async putRecord(key: string, value: unknown): Promise<void> {
-    const encoded = encodeRecord(value)
     if (!this.wrapKey) {
-      await idb.set('omemo', key, decodeRecord(encoded))
+      await idb.set('omemo', key, decodeRecord(encodeRecord(value)))
       return
     }
-    const iv = randomBytes(12)
-    const data = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: iv as BufferSource },
-      this.wrapKey,
-      new TextEncoder().encode(encoded) as BufferSource
-    )
-    const wrapped: Wrapped = {
-      __enc: 1,
-      iv: base64Encode(iv),
-      data: base64Encode(new Uint8Array(data))
-    }
-    await idb.set('omemo', key, wrapped)
+    await idb.set('omemo', key, await encryptRecord(this.wrapKey, value))
   }
 
   private async listByPrefix(prefix: string): Promise<string[]> {

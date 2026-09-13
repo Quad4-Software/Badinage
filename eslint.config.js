@@ -104,6 +104,12 @@ export default defineConfig([
   {
     files: ['src/lib/ui/**/*.ts', 'src/lib/ui/**/*.svelte', 'src/lib/ui/**/*.svelte.ts'],
     rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'localStorage', message: 'go through core/storage instead' },
+        { name: 'sessionStorage', message: 'go through core/storage/session instead' },
+        { name: 'indexedDB', message: 'go through core/storage/idb instead' }
+      ],
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {

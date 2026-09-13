@@ -58,6 +58,14 @@ type RootTranslation = {
 	 */
 	rememberSession: string
 	/**
+	 * T​h​i​s​ ​i​s​ ​a​ ​p​u​b​l​i​c​ ​o​r​ ​s​h​a​r​e​d​ ​d​e​v​i​c​e
+	 */
+	sharedDevice: string
+	/**
+	 * N​o​t​h​i​n​g​ ​i​s​ ​k​e​p​t​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​:​ ​n​o​ ​s​a​v​e​d​ ​s​e​s​s​i​o​n​,​ ​n​o​ ​m​e​s​s​a​g​e​ ​h​i​s​t​o​r​y​,​ ​n​o​ ​e​n​c​r​y​p​t​i​o​n​ ​k​e​y​s​.
+	 */
+	sharedDeviceHint: string
+	/**
 	 * C​o​n​n​e​c​t
 	 */
 	connect: string
@@ -950,6 +958,14 @@ export type TranslationFunctions = {
 	 * Keep me signed in until I close this tab
 	 */
 	rememberSession: () => LocalizedString
+	/**
+	 * This is a public or shared device
+	 */
+	sharedDevice: () => LocalizedString
+	/**
+	 * Nothing is kept on this device: no saved session, no message history, no encryption keys.
+	 */
+	sharedDeviceHint: () => LocalizedString
 	/**
 	 * Connect
 	 */

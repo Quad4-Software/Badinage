@@ -19,6 +19,7 @@
   let password = $state('')
   let server = $state('')
   let remember = $state(false)
+  let untrusted = $state(false)
   let submitting = $state(false)
   let error = $state('')
 
@@ -38,7 +39,9 @@
     event.preventDefault()
     error = ''
     submitting = true
-    const options: AccountOptions = { jid, password, remember }
+    // remember stays in the options so the session layer can prove the
+    // untrusted flag wins over it
+    const options: AccountOptions = { jid, password, remember, untrusted }
     if (server) {
       if (isWebSocketUrl(server)) {
         options.websocketUrl = server
@@ -139,9 +142,19 @@
     </div>
 
     <label class="flex items-center gap-2 text-sm">
-      <Checkbox id="remember" bind:checked={remember} />
+      <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
       {$LL.rememberSession()}
     </label>
+
+    <div class="grid gap-1">
+      <label class="flex items-center gap-2 text-sm">
+        <Checkbox id="untrusted" bind:checked={untrusted} />
+        {$LL.sharedDevice()}
+      </label>
+      {#if untrusted}
+        <p class="text-muted-foreground ps-6 text-xs">{$LL.sharedDeviceHint()}</p>
+      {/if}
+    </div>
 
     {#if error}
       <p role="alert" class="text-destructive text-sm">{error}</p>
