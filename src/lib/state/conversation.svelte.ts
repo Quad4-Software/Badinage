@@ -27,6 +27,13 @@ export interface ChatMessage {
   delivered: boolean
   read: boolean
   nick?: string | undefined
+  // XEP-0421 stable sender id on groupchat messages; reaction sender
+  // keys prefer it over the nick so renames do not split reactions
+  occupantId?: string | undefined
+  // XEP-0424/0425 tombstone: the message was retracted, optionally with
+  // a reason given by the moderator
+  retracted?: boolean | undefined
+  retractReason?: string | undefined
   // decryption failed or the stanza could not be shown as text
   undecryptable?: boolean | undefined
   // decrypted, but the sending device is distrusted or changed keys
@@ -46,6 +53,24 @@ export interface RoomOccupant {
   affiliation: string
   role: string
   self: boolean
+  // muc#user status codes seen on the latest presence for this occupant
+  codes: string[]
+  // real jid, exposed only by non-anonymous rooms
+  jid?: string | undefined
+  // XEP-0421 stable id
+  occupantId?: string | undefined
+  // item nick attribute on a 303 nick-change broadcast
+  newNick?: string | undefined
+  // kick or ban reason when the room sent one
+  reason?: string | undefined
+}
+
+// A MUC join failure surfaced to the ui: the RFC 6120 code and the
+// stanza error condition, plus any human readable text.
+export interface JoinError {
+  code?: string | undefined
+  condition?: string | undefined
+  text?: string | undefined
 }
 
 export interface Conversation {
@@ -65,6 +90,20 @@ export interface Conversation {
   // several members can show as typing at once
   typers: SvelteSet<string>
   ourNick?: string | undefined
+  // every nick we have held in this room, so a late self-echo still
+  // merges after a rename
+  ourNicks: SvelteSet<string>
+  // our own XEP-0421 id when the room assigns one
+  ourOccupantId?: string | undefined
+  // room password remembered for rejoins
+  password?: string | undefined
+  // last join failure, shown as a banner with retry affordances
+  joinError?: JoinError | undefined
+  // self-presence codes 307 and 301: kicked triggers bounded
+  // auto-rejoin, banned never does
+  kicked?: boolean | undefined
+  kickReason?: string | undefined
+  banned?: boolean | undefined
   joined?: boolean
   // true once omemo traffic was observed on this conversation (dm)
   encrypted?: boolean | undefined
@@ -99,7 +138,8 @@ export function createConversation(peerJid: string, kind: ConversationKind): Con
     messages: [],
     unread: 0,
     occupants: new SvelteMap(),
-    typers: new SvelteSet()
+    typers: new SvelteSet(),
+    ourNicks: new SvelteSet()
   })
   return conversation
 }

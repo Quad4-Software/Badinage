@@ -11,6 +11,7 @@
 
   import ContactRow from './sidebar/contact-row.svelte'
   import ConversationRow from './sidebar/conversation-row.svelte'
+  import RoomInvites from './sidebar/room-invites.svelte'
   import SidebarHeader from './sidebar/sidebar-header.svelte'
   import SidebarSection from './sidebar/sidebar-section.svelte'
   import SubscriptionRequests from './sidebar/subscription-requests.svelte'
@@ -19,6 +20,7 @@
   const store = $derived(account ? app.chatsFor(account.jid) : undefined)
   const roster = $derived(account?.roster ?? [])
   const subscriptions = $derived(account?.subscriptions ?? [])
+  const roomInvites = $derived(account?.roomInvites ?? [])
 
   let query = $state('')
   const q = $derived(query.trim().toLowerCase())
@@ -74,6 +76,7 @@
   <ScrollArea class="flex-1">
     <nav class="flex flex-col gap-0.5 p-2" aria-label={$LL.conversations()}>
       <SubscriptionRequests requests={subscriptions} />
+      <RoomInvites invites={roomInvites} />
 
       <SidebarSection title={$LL.conversations()} bind:expanded={showConversations} class="mt-2">
         {#each conversations as conversation (conversation.peerJid)}

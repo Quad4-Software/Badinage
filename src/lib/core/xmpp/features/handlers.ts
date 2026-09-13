@@ -6,12 +6,25 @@ import { $iq } from 'strophe.js'
 
 import type { Emitter } from '$lib/core/events'
 
-import { parseBlockPush, parseMessage, parsePresence, parseRosterItems } from '../stanzas'
+import {
+  parseBlockPush,
+  parseMessage,
+  parsePresence,
+  parseRoomDecline,
+  parseRoomInvite,
+  parseRosterItems
+} from '../stanzas'
 import type { ConnectionEvents } from '../types'
 import { acceptInstantRoom, ROOM_CREATED_CODE } from './muc'
 import type { XmppTransport } from './transport'
 
 export function handleMessage(stanza: Element, events: Emitter<ConnectionEvents>): boolean {
+  // invites and declines ride in message stanzas too; emit them as
+  // their own events whether or not the stanza also parses as a message
+  const invite = parseRoomInvite(stanza)
+  if (invite) events.emit('roomInvite', invite)
+  const decline = parseRoomDecline(stanza)
+  if (decline) events.emit('roomDecline', decline)
   const message = parseMessage(stanza)
   if (message) events.emit('message', message)
   return true
@@ -31,6 +44,8 @@ export function handlePresence(
       acceptInstantRoom(conn, parsed.occupant.room)
     }
     events.emit('occupant', parsed.occupant)
+  } else if (parsed.kind === 'presenceError') {
+    events.emit('presenceError', parsed.error)
   } else if (parsed.kind === 'subscribe') {
     events.emit('subscriptionRequest', { from: parsed.from, status: parsed.status })
   } else {
@@ -66,6 +81,17 @@ export function handleBlockPush(
   const { blocked, unblocked } = parseBlockPush(stanza)
   if (blocked) events.emit('blocked', blocked)
   if (unblocked) events.emit('unblocked', unblocked)
+  replyResult(stanza, conn)
+  return true
+}
+
+// XEP-0199: answer incoming pings. Required for MUC self-ping, where
+// the room routes our own ping back at us and expects a result.
+export function handlePing(
+  stanza: Element,
+  _events: Emitter<ConnectionEvents>,
+  conn: XmppTransport
+): boolean {
   replyResult(stanza, conn)
   return true
 }

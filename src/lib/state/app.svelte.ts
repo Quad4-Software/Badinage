@@ -4,6 +4,7 @@ import { bareJid } from '$lib/utils/jid'
 import { accounts, type Account } from './accounts.svelte'
 import { ChatStore } from './chats.svelte'
 import { ComposerStore, type ComposerContext } from './composer.svelte'
+import { RoomSessions } from './muc-session'
 
 class AppStore {
   chats = new Map<string, ChatStore>()
@@ -28,6 +29,8 @@ class AppStore {
   // jid -> Account: re-adding a removed account creates a new Account with
   // a new connection, so identity matters more than the jid string
   private bound = new Map<string, Account>()
+  // per-account room watchdog (self-ping, rejoin, join errors)
+  private roomSessions = new Map<string, RoomSessions>()
 
   chatsFor(accountJid: string): ChatStore {
     let store = this.chats.get(accountJid)
@@ -46,6 +49,18 @@ class AppStore {
 
   dispatch(id: string): void {
     this.handlers.get(id)?.()
+  }
+
+  // Every join goes through here: the store remembers nick and password
+  // before the presence goes out so the rejoin watchdog can replay them
+  // and presence-error banners can retry without asking again.
+  joinRoom(room: string, nick: string, password?: string): void {
+    const account = accounts.active
+    if (!account) return
+    const bare = bareJid(room)
+    const store = this.chatsFor(account.jid)
+    store.noteJoin(bare, nick, password)
+    account.joinRoom(bare, nick, password)
   }
 
   conversationList(accountJid: string): string[] {
@@ -145,9 +160,17 @@ class AppStore {
     if (!account || this.bound.get(accountJid) === account) return
     this.bound.set(accountJid, account)
     const store = this.chatsFor(accountJid)
+    this.roomSessions.get(accountJid)?.dispose()
+    const sessions = new RoomSessions(account.connection, store)
+    this.roomSessions.set(accountJid, sessions)
 
     account.connection.events.on('status', (status) => {
+      sessions.noteStatus(status)
       if (status === 'disconnected') void store.flush()
+    })
+
+    account.connection.events.on('presenceError', (error) => {
+      sessions.noteJoinError(error)
     })
 
     account.connection.events.on('message', (message) => {
@@ -195,12 +218,18 @@ class AppStore {
       }
     })
     account.connection.events.on('occupant', (occupant) => {
+      sessions.noteOccupant(occupant)
       store.setOccupant(occupant.room, {
         nick: occupant.nick,
         presence: occupant.presence,
         affiliation: occupant.affiliation,
         role: occupant.role,
-        self: occupant.self
+        self: occupant.self,
+        codes: occupant.codes,
+        jid: occupant.jid,
+        occupantId: occupant.occupantId,
+        newNick: occupant.newNick,
+        reason: occupant.reason
       })
     })
   }
@@ -210,6 +239,8 @@ class AppStore {
   // removed account was the active one.
   releaseAccount(jid: string): void {
     this.bound.delete(jid)
+    this.roomSessions.get(jid)?.dispose()
+    this.roomSessions.delete(jid)
     const store = this.chats.get(jid)
     void store?.flush()
     this.chats.delete(jid)

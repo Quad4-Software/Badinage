@@ -8,10 +8,14 @@ import type { Emitter } from '$lib/core/events'
 
 import type {
   ChatState,
+  DataForm,
   IncomingMessage,
   MamPageResult,
   MarkerType,
+  MucDecline,
+  MucInvite,
   MucOccupant,
+  PresenceError,
   PresenceUpdate,
   RosterItem,
   UploadSlot
@@ -58,6 +62,13 @@ export type ConnectionEvents = {
   // blocklist. An empty unblocked list means the list was cleared.
   blocked: string[]
   unblocked: string[]
+  // XEP-0249 direct or XEP-0045 mediated room invitations
+  roomInvite: MucInvite
+  // a mediated decline relayed by the room
+  roomDecline: MucDecline
+  // presence type=error with the stanza error details; MUC join
+  // failures (401/403/404/407/409) arrive this way
+  presenceError: PresenceError
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
@@ -120,6 +131,31 @@ export interface ChatConnection {
   joinRoom(room: string, nick: string, password?: string): void
   leaveRoom(room: string, nick: string): void
   setRoomSubject(room: string, subject: string): void
+  // in-room nick change via the unavailable-plus-join presence dance
+  changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void
+  // XEP-0249 direct invite plus XEP-0045 mediated invite; sending both
+  // covers open rooms and members-only rooms without disco probing.
+  // password is carried on the direct invite so protected rooms stay
+  // joinable from the invite alone.
+  inviteToRoom(
+    room: string,
+    to: string,
+    opts?: { reason?: string | undefined; password?: string | undefined }
+  ): void
+  // XEP-0045 decline, mediated through the room
+  declineRoomInvite(room: string, to: string, reason?: string): void
+  // XEP-0045 kick and ban; ban needs the occupant's real jid
+  kickOccupant(room: string, nick: string, reason?: string): void
+  banOccupant(room: string, jid: string, reason?: string): void
+  // XEP-0425: retract the room message carrying this stanza-id
+  moderateMessage(room: string, stanzaId: string, reason?: string): void
+  // XEP-0045 owner configuration via a XEP-0004 form; fetch resolves
+  // null when the room refuses (not an owner) or errors
+  fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void
+  submitRoomConfig(room: string, form: DataForm): void
+  // XEP-0199 self-ping to our own occupant jid; alive=false means the
+  // room dropped us or the stream timed out
+  pingOccupant(room: string, nick: string, onDone: (alive: boolean) => void): void
   queryArchive(
     peerJid: string,
     opts: { max?: number; before?: string | undefined; room?: boolean | undefined },

@@ -10,7 +10,7 @@ import {
   type ConnectionStatus
 } from '$lib/core/xmpp/connection'
 import { DemoConnection } from '$lib/core/xmpp/demo'
-import type { RosterItem } from '$lib/core/xmpp/stanzas'
+import type { MucDecline, MucInvite, RosterItem } from '$lib/core/xmpp/stanzas'
 import { discoverEndpoints } from '$lib/core/xmpp/discovery'
 import { bareJid, jidDomain } from '$lib/utils/jid'
 import { settings } from '$lib/state/settings.svelte'
@@ -31,6 +31,9 @@ export interface PendingSubscription {
   status: string
 }
 
+// An inbound room invite waiting for accept or decline in the sidebar.
+export type PendingInvite = MucInvite
+
 export class Account {
   readonly jid: string
   readonly connection: ChatConnection
@@ -41,6 +44,10 @@ export class Account {
   lastError = $state<'authfail' | 'error' | null>(null)
   roster = $state<RosterContact[]>([])
   subscriptions = $state<PendingSubscription[]>([])
+  // inbound room invites, both direct (XEP-0249) and mediated
+  roomInvites = $state<PendingInvite[]>([])
+  // latest mediated decline relayed by a room, surfaced as a toast
+  lastDecline = $state<MucDecline | null>(null)
   // our own advertised presence, re-sent after every reconnect
   presence = $state('online')
   presenceStatus = $state('')
@@ -204,6 +211,19 @@ export class Account {
     this.connection.leaveRoom(bareJid(room), nick)
   }
 
+  // mediated decline through the room, per XEP-0045; works for direct
+  // XEP-0249 invites too since the decline always goes via the room
+  declineRoomInvite(invite: PendingInvite, reason?: string): void {
+    this.connection.declineRoomInvite(invite.room, invite.from, reason)
+    this.dismissRoomInvite(invite)
+  }
+
+  dismissRoomInvite(invite: PendingInvite): void {
+    this.roomInvites = this.roomInvites.filter(
+      (i) => !(i.room === invite.room && i.from === invite.from)
+    )
+  }
+
   private bind(): void {
     this.connection.events.on('status', (status) => {
       this.status = status
@@ -269,6 +289,15 @@ export class Account {
       if (!this.subscriptions.some((s) => s.from === request.from)) {
         this.subscriptions.push(request)
       }
+    })
+    this.connection.events.on('roomInvite', (invite) => {
+      if (this.blocked.has(bareJid(invite.from))) return
+      if (!this.roomInvites.some((i) => i.room === invite.room && i.from === invite.from)) {
+        this.roomInvites.push(invite)
+      }
+    })
+    this.connection.events.on('roomDecline', (decline) => {
+      this.lastDecline = decline
     })
   }
 }

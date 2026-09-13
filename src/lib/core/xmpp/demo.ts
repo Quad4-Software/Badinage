@@ -15,6 +15,7 @@ import type {
 } from './connection'
 import {
   DemoOmemoPeers,
+  demoRoomConfig,
   demoRosterItems,
   emitArchivePage,
   emitContactPresence,
@@ -30,7 +31,7 @@ import {
   roomOccupants,
   scheduleLiveEvents
 } from './demo-data'
-import type { ChatState, MarkerType } from './stanzas'
+import type { ChatState, DataForm, MarkerType } from './stanzas'
 
 const DEMO_CONNECT_DELAY_MS = 400
 const DEMO_REPLY_DELAY_MS = 1200
@@ -251,8 +252,11 @@ export class DemoConnection implements ChatConnection {
     this.events.emit('unblocked', jids)
   }
 
-  joinRoom(room: string, nick: string): void {
-    for (const occupant of roomOccupants(room, nick)) this.events.emit('occupant', occupant)
+  joinRoom(room: string, nick: string, password?: string): void {
+    void password
+    for (const occupant of roomOccupants(room, nick, this.jid)) {
+      this.events.emit('occupant', occupant)
+    }
     this.events.emit('message', {
       from: room,
       to: this.jid,
@@ -275,8 +279,112 @@ export class DemoConnection implements ChatConnection {
   }
 
   setRoomSubject(room: string, subject: string): void {
+    // echo the subject back as a room message so the header updates
+    this.events.emit('message', {
+      from: room,
+      to: this.jid,
+      body: '',
+      type: 'groupchat',
+      subject
+    })
+  }
+
+  changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void {
+    void password
+    // the real flow is unavailable-with-303 for the old nick followed by
+    // available presence for the new one
+    this.events.emit('occupant', {
+      room,
+      nick: oldNick,
+      presence: 'offline',
+      affiliation: 'owner',
+      role: 'none',
+      self: true,
+      codes: ['110', '303'],
+      newNick
+    })
+    this.timers.push(
+      setTimeout(() => {
+        this.events.emit('occupant', {
+          room,
+          nick: newNick,
+          presence: 'online',
+          affiliation: 'owner',
+          role: 'moderator',
+          self: true,
+          codes: ['110'],
+          jid: this.jid,
+          occupantId: 'occ-self'
+        })
+      }, 300)
+    )
+  }
+
+  inviteToRoom(room: string, to: string, opts?: { reason?: string; password?: string }): void {
     void room
-    void subject
+    void to
+    void opts
+  }
+
+  declineRoomInvite(room: string, to: string, reason?: string): void {
+    void room
+    void to
+    void reason
+  }
+
+  kickOccupant(room: string, nick: string, reason?: string): void {
+    this.events.emit('occupant', {
+      room,
+      nick,
+      presence: 'offline',
+      affiliation: 'member',
+      role: 'none',
+      self: false,
+      codes: ['307'],
+      reason
+    })
+  }
+
+  banOccupant(room: string, jid: string, reason?: string): void {
+    // the ban iq names a jid; the room then drops the matching occupant
+    const nick = jid.split('@')[0] ?? jid
+    this.events.emit('occupant', {
+      room,
+      nick,
+      presence: 'offline',
+      affiliation: 'none',
+      role: 'none',
+      self: false,
+      codes: ['301'],
+      reason
+    })
+  }
+
+  moderateMessage(room: string, stanzaId: string, reason?: string): void {
+    // the room broadcasts a retraction notice addressed at nobody
+    this.events.emit('message', {
+      from: room,
+      to: this.jid,
+      body: '',
+      type: 'groupchat',
+      retraction: { id: stanzaId, reason }
+    })
+  }
+
+  fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void {
+    void room
+    this.timers.push(setTimeout(() => onDone(demoRoomConfig()), DEMO_MAM_PAGE_DELAY_MS))
+  }
+
+  submitRoomConfig(room: string, form: DataForm): void {
+    void room
+    void form
+  }
+
+  pingOccupant(room: string, nick: string, onDone: (alive: boolean) => void): void {
+    void room
+    void nick
+    onDone(true)
   }
 
   queryArchive(

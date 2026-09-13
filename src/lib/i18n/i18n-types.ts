@@ -769,6 +769,158 @@ type RootTranslation = {
 	 */
 	groupVisitors: string
 	/**
+	 * R​o​o​m​ ​o​p​t​i​o​n​s
+	 */
+	roomOptions: string
+	/**
+	 * C​h​a​n​g​e​ ​n​i​c​k​n​a​m​e
+	 */
+	changeNickname: string
+	/**
+	 * R​o​o​m​ ​p​a​s​s​w​o​r​d​ ​(​o​p​t​i​o​n​a​l​)
+	 */
+	roomPasswordOptional: string
+	/**
+	 * I​n​v​i​t​e​ ​t​o​ ​t​h​i​s​ ​r​o​o​m
+	 */
+	inviteToRoom: string
+	/**
+	 * A​d​d​r​e​s​s​ ​t​o​ ​i​n​v​i​t​e
+	 */
+	inviteAddress: string
+	/**
+	 * S​e​n​d​ ​i​n​v​i​t​e
+	 */
+	sendInvite: string
+	/**
+	 * I​n​v​i​t​a​t​i​o​n​ ​s​e​n​t
+	 */
+	inviteSent: string
+	/**
+	 * R​o​o​m​ ​i​n​v​i​t​a​t​i​o​n​s
+	 */
+	roomInvites: string
+	/**
+	 * {​f​r​o​m​}​ ​i​n​v​i​t​e​d​ ​y​o​u​ ​t​o​ ​{​r​o​o​m​}
+	 * @param {string} from
+	 * @param {string} room
+	 */
+	invitedToRoom: RequiredParams<'from' | 'room'>
+	/**
+	 * {​f​r​o​m​}​ ​d​e​c​l​i​n​e​d​ ​t​h​e​ ​i​n​v​i​t​a​t​i​o​n​ ​t​o​ ​{​r​o​o​m​}
+	 * @param {string} from
+	 * @param {string} room
+	 */
+	inviteDeclined: RequiredParams<'from' | 'room'>
+	/**
+	 * D​e​c​l​i​n​e
+	 */
+	decline: string
+	/**
+	 * R​e​a​s​o​n​ ​(​o​p​t​i​o​n​a​l​)
+	 */
+	reasonOptional: string
+	/**
+	 * E​d​i​t​ ​s​u​b​j​e​c​t
+	 */
+	editSubject: string
+	/**
+	 * S​a​v​e
+	 */
+	save: string
+	/**
+	 * R​o​o​m​ ​c​o​n​f​i​g​u​r​a​t​i​o​n
+	 */
+	roomConfig: string
+	/**
+	 * T​h​e​ ​r​o​o​m​ ​d​i​d​ ​n​o​t​ ​o​f​f​e​r​ ​a​ ​c​o​n​f​i​g​u​r​a​t​i​o​n​ ​f​o​r​m
+	 */
+	roomConfigFailed: string
+	/**
+	 * r​e​q​u​i​r​e​d
+	 */
+	fieldRequired: string
+	/**
+	 * R​e​m​o​v​e​ ​m​e​s​s​a​g​e
+	 */
+	removeMessage: string
+	/**
+	 * R​e​m​o​v​e​ ​t​h​i​s​ ​m​e​s​s​a​g​e​?
+	 */
+	removeMessageTitle: string
+	/**
+	 * T​h​e​ ​m​e​s​s​a​g​e​ ​i​s​ ​r​e​t​r​a​c​t​e​d​ ​f​o​r​ ​e​v​e​r​y​o​n​e​ ​i​n​ ​t​h​e​ ​r​o​o​m​.​ ​T​h​i​s​ ​c​a​n​n​o​t​ ​b​e​ ​u​n​d​o​n​e​.
+	 */
+	removeMessageDescription: string
+	/**
+	 * M​e​s​s​a​g​e​ ​r​e​m​o​v​e​d
+	 */
+	messageRemoved: string
+	/**
+	 * O​c​c​u​p​a​n​t​ ​o​p​t​i​o​n​s
+	 */
+	occupantOptions: string
+	/**
+	 * K​i​c​k
+	 */
+	kick: string
+	/**
+	 * K​i​c​k​ ​{​n​i​c​k​}​?
+	 * @param {string} nick
+	 */
+	kickOccupantTitle: RequiredParams<'nick'>
+	/**
+	 * {​n​i​c​k​}​ ​i​s​ ​r​e​m​o​v​e​d​ ​f​r​o​m​ ​t​h​e​ ​r​o​o​m​ ​a​n​d​ ​c​a​n​ ​r​e​j​o​i​n​ ​a​t​ ​a​n​y​ ​t​i​m​e​.
+	 * @param {string} nick
+	 */
+	kickOccupantDescription: RequiredParams<'nick'>
+	/**
+	 * B​a​n
+	 */
+	ban: string
+	/**
+	 * B​a​n​ ​{​j​i​d​}​?
+	 * @param {string} jid
+	 */
+	banOccupantTitle: RequiredParams<'jid'>
+	/**
+	 * {​j​i​d​}​ ​w​i​l​l​ ​n​o​t​ ​b​e​ ​a​b​l​e​ ​t​o​ ​j​o​i​n​ ​t​h​i​s​ ​r​o​o​m​ ​a​g​a​i​n​.
+	 * @param {string} jid
+	 */
+	banOccupantDescription: RequiredParams<'jid'>
+	/**
+	 * T​h​i​s​ ​r​o​o​m​ ​r​e​q​u​i​r​e​s​ ​a​ ​p​a​s​s​w​o​r​d
+	 */
+	joinNeedsPassword: string
+	/**
+	 * Y​o​u​ ​a​r​e​ ​b​a​n​n​e​d​ ​f​r​o​m​ ​t​h​i​s​ ​r​o​o​m
+	 */
+	joinBanned: string
+	/**
+	 * T​h​i​s​ ​r​o​o​m​ ​d​o​e​s​ ​n​o​t​ ​e​x​i​s​t
+	 */
+	joinMissing: string
+	/**
+	 * T​h​a​t​ ​n​i​c​k​n​a​m​e​ ​i​s​ ​a​l​r​e​a​d​y​ ​i​n​ ​u​s​e
+	 */
+	joinNickTaken: string
+	/**
+	 * C​o​u​l​d​ ​n​o​t​ ​j​o​i​n​ ​t​h​i​s​ ​r​o​o​m
+	 */
+	joinFailed: string
+	/**
+	 * R​e​j​o​i​n
+	 */
+	rejoin: string
+	/**
+	 * Y​o​u​ ​w​e​r​e​ ​k​i​c​k​e​d​ ​f​r​o​m​ ​t​h​i​s​ ​r​o​o​m
+	 */
+	kickedFromRoom: string
+	/**
+	 * Y​o​u​ ​a​r​e​ ​b​a​n​n​e​d​ ​f​r​o​m​ ​t​h​i​s​ ​r​o​o​m
+	 */
+	bannedFromRoom: string
+	/**
 	 * E​n​c​r​y​p​t​i​o​n
 	 */
 	encryption: string
@@ -1646,6 +1798,150 @@ export type TranslationFunctions = {
 	 * Visitors
 	 */
 	groupVisitors: () => LocalizedString
+	/**
+	 * Room options
+	 */
+	roomOptions: () => LocalizedString
+	/**
+	 * Change nickname
+	 */
+	changeNickname: () => LocalizedString
+	/**
+	 * Room password (optional)
+	 */
+	roomPasswordOptional: () => LocalizedString
+	/**
+	 * Invite to this room
+	 */
+	inviteToRoom: () => LocalizedString
+	/**
+	 * Address to invite
+	 */
+	inviteAddress: () => LocalizedString
+	/**
+	 * Send invite
+	 */
+	sendInvite: () => LocalizedString
+	/**
+	 * Invitation sent
+	 */
+	inviteSent: () => LocalizedString
+	/**
+	 * Room invitations
+	 */
+	roomInvites: () => LocalizedString
+	/**
+	 * {from} invited you to {room}
+	 */
+	invitedToRoom: (arg: { from: string, room: string }) => LocalizedString
+	/**
+	 * {from} declined the invitation to {room}
+	 */
+	inviteDeclined: (arg: { from: string, room: string }) => LocalizedString
+	/**
+	 * Decline
+	 */
+	decline: () => LocalizedString
+	/**
+	 * Reason (optional)
+	 */
+	reasonOptional: () => LocalizedString
+	/**
+	 * Edit subject
+	 */
+	editSubject: () => LocalizedString
+	/**
+	 * Save
+	 */
+	save: () => LocalizedString
+	/**
+	 * Room configuration
+	 */
+	roomConfig: () => LocalizedString
+	/**
+	 * The room did not offer a configuration form
+	 */
+	roomConfigFailed: () => LocalizedString
+	/**
+	 * required
+	 */
+	fieldRequired: () => LocalizedString
+	/**
+	 * Remove message
+	 */
+	removeMessage: () => LocalizedString
+	/**
+	 * Remove this message?
+	 */
+	removeMessageTitle: () => LocalizedString
+	/**
+	 * The message is retracted for everyone in the room. This cannot be undone.
+	 */
+	removeMessageDescription: () => LocalizedString
+	/**
+	 * Message removed
+	 */
+	messageRemoved: () => LocalizedString
+	/**
+	 * Occupant options
+	 */
+	occupantOptions: () => LocalizedString
+	/**
+	 * Kick
+	 */
+	kick: () => LocalizedString
+	/**
+	 * Kick {nick}?
+	 */
+	kickOccupantTitle: (arg: { nick: string }) => LocalizedString
+	/**
+	 * {nick} is removed from the room and can rejoin at any time.
+	 */
+	kickOccupantDescription: (arg: { nick: string }) => LocalizedString
+	/**
+	 * Ban
+	 */
+	ban: () => LocalizedString
+	/**
+	 * Ban {jid}?
+	 */
+	banOccupantTitle: (arg: { jid: string }) => LocalizedString
+	/**
+	 * {jid} will not be able to join this room again.
+	 */
+	banOccupantDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * This room requires a password
+	 */
+	joinNeedsPassword: () => LocalizedString
+	/**
+	 * You are banned from this room
+	 */
+	joinBanned: () => LocalizedString
+	/**
+	 * This room does not exist
+	 */
+	joinMissing: () => LocalizedString
+	/**
+	 * That nickname is already in use
+	 */
+	joinNickTaken: () => LocalizedString
+	/**
+	 * Could not join this room
+	 */
+	joinFailed: () => LocalizedString
+	/**
+	 * Rejoin
+	 */
+	rejoin: () => LocalizedString
+	/**
+	 * You were kicked from this room
+	 */
+	kickedFromRoom: () => LocalizedString
+	/**
+	 * You are banned from this room
+	 */
+	bannedFromRoom: () => LocalizedString
 	/**
 	 * Encryption
 	 */

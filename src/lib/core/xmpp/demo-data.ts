@@ -13,18 +13,21 @@ import {
 } from '$lib/core/omemo'
 
 import type { ConnectionEvents } from './connection'
-import type { IncomingMessage, MucOccupant, RosterItem } from './stanzas'
+import type { DataForm, IncomingMessage, MucOccupant, RosterItem } from './stanzas'
 
 type DemoEmitter = Emitter<ConnectionEvents>
 
 export const ROOM = 'lobby@conference.badinage.local'
 export const ROOM_SUBJECT = 'Badinage lobby: be nice'
+// the invite scheduled a few seconds in points at this room
+const INVITE_ROOM = 'lounge@conference.badinage.local'
 
 // delays for the scripted live traffic emitted by scheduleLiveEvents
 const DEMO_LIVE_MESSAGE_DELAY_MS = 2500
 const DEMO_SUBSCRIPTION_REQUEST_DELAY_MS = 4000
 const DEMO_LIVE_REACTION_DELAY_MS = 5000
 const DEMO_SECOND_LIVE_MESSAGE_DELAY_MS = 5500
+const DEMO_ROOM_INVITE_DELAY_MS = 7000
 
 const CONTACTS: { jid: string; name: string; presence: string; status: string }[] = [
   { jid: 'aria@badinage.local', name: 'Aria', presence: 'online', status: 'around' },
@@ -254,17 +257,22 @@ export function demoRosterItems(): RosterItem[] {
 }
 
 // the occupants a joined room pretends to have: our own self presence
-// plus the fixed lobby cast
-export function roomOccupants(room: string, selfNick: string): MucOccupant[] {
+// plus the fixed lobby cast. We join as owner/moderator so every
+// moderation and configuration control is reachable in demo mode, and
+// everyone carries a real jid plus an XEP-0421 occupant id because the
+// demo room is non-anonymous.
+export function roomOccupants(room: string, selfNick: string, selfJid = ''): MucOccupant[] {
   return [
     {
       room,
       nick: selfNick,
       presence: 'online',
-      affiliation: 'member',
-      role: 'participant',
+      affiliation: 'owner',
+      role: 'moderator',
       self: true,
-      codes: ['110']
+      codes: ['110'],
+      jid: selfJid || undefined,
+      occupantId: 'occ-self'
     },
     ...ROOM_OCCUPANTS.map((o) => ({
       room,
@@ -273,9 +281,82 @@ export function roomOccupants(room: string, selfNick: string): MucOccupant[] {
       affiliation: o.affiliation,
       role: o.role,
       self: false,
-      codes: []
+      codes: [] as string[],
+      jid: `${o.nick}@badinage.local`,
+      occupantId: `occ-${o.nick}`
     }))
   ]
+}
+
+// XEP-0004 fixture for the owner configuration dialog: one field per
+// rendered widget type so every branch of the generic form shows.
+export function demoRoomConfig(): DataForm {
+  return {
+    title: 'Room configuration',
+    instructions: 'Adjust how the lobby behaves.',
+    fields: [
+      {
+        var: 'FORM_TYPE',
+        type: 'hidden',
+        required: false,
+        values: ['http://jabber.org/protocol/muc#roomconfig'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_roomname',
+        type: 'text-single',
+        label: 'Room name',
+        required: false,
+        values: ['Lobby'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_roomdesc',
+        type: 'text-single',
+        label: 'Description',
+        desc: 'Shown in room listings',
+        required: false,
+        values: ['Badinage lobby'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_persistentroom',
+        type: 'boolean',
+        label: 'Persistent room',
+        required: false,
+        values: ['1'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_membersonly',
+        type: 'boolean',
+        label: 'Members only',
+        desc: 'Only members may join',
+        required: false,
+        values: ['0'],
+        options: []
+      },
+      {
+        var: 'muc#roomconfig_whois',
+        type: 'list-single',
+        label: 'Who can see real addresses',
+        required: false,
+        values: ['moderators'],
+        options: [
+          { value: 'moderators', label: 'Moderators only' },
+          { value: 'anyone', label: 'Anyone' }
+        ]
+      },
+      {
+        var: 'muc#roomconfig_roomadmins',
+        type: 'jid-multi',
+        label: 'Room admins',
+        required: false,
+        values: ['cleo@badinage.local'],
+        options: []
+      }
+    ]
+  }
 }
 
 export function emitContactPresence(events: DemoEmitter): void {
@@ -379,6 +460,15 @@ export function scheduleLiveEvents(
       stanzaId: uniqueId('live')
     })
   }, DEMO_SECOND_LIVE_MESSAGE_DELAY_MS)
+  schedule(() => {
+    // a direct XEP-0249 invite so the accept/decline flow is visible
+    events.emit('roomInvite', {
+      room: INVITE_ROOM,
+      from: 'aria@badinage.local',
+      kind: 'direct',
+      reason: 'quieter room for release talk'
+    })
+  }, DEMO_ROOM_INVITE_DELAY_MS)
 }
 
 // The one older page of history behind every peer, emitted when
