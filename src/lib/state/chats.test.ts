@@ -90,6 +90,34 @@ describe('ChatStore ingest', () => {
     expect(store.conversations.get('peer@example.net')?.messages).toHaveLength(1)
   })
 
+  it('deduplicates a live message against its MAM copy', () => {
+    // live delivery carries origin-id but no stanza-id; the archived copy
+    // adds the archive stanza-id. The two copies must land once.
+    connection.events.emit('message', incoming({ id: 'w1', originId: 'o1' }))
+    connection.events.emit(
+      'message',
+      incoming({ id: 'w1', stanzaId: 'srv-1', originId: 'o1', delay: 1000 })
+    )
+    expect(store.conversations.get('peer@example.net')?.messages).toHaveLength(1)
+  })
+
+  it('deduplicates a locally sent message against its sent MAM copy', () => {
+    const sent = { ...emptyMessage('peer@example.net'), id: 'w1', outgoing: true }
+    store.push('peer@example.net', sent)
+    connection.events.emit(
+      'message',
+      incoming({
+        from: 'me@example.net/web',
+        to: 'peer@example.net',
+        carbon: 'sent',
+        id: 'w1',
+        stanzaId: 'srv-1',
+        originId: 'o1'
+      })
+    )
+    expect(store.conversations.get('peer@example.net')?.messages).toHaveLength(1)
+  })
+
   it('applies a reaction stanza to the stored target', () => {
     connection.events.emit('message', incoming({ id: 'w1', stanzaId: 's1' }))
     connection.events.emit(

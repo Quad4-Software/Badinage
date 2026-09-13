@@ -74,10 +74,13 @@ export class ChatStore {
     return this.persistence.flush()
   }
 
-  push(peerJid: string, message: ChatMessage, active = false): boolean {
+  // seenIds are the other aliases the same stanza can carry on the wire:
+  // a live delivery has no stanza-id while its MAM copy adds the archive
+  // id, so dedup must match on every candidate, not just the chosen key
+  push(peerJid: string, message: ChatMessage, active = false, seenIds: string[] = []): boolean {
     const bare = bareJid(peerJid)
     const conversation = this.open(bare)
-    if (this.isDuplicate(bare, message.id)) return false
+    if (this.isDuplicate(bare, [message.id, ...seenIds])) return false
     // keep messages ordered by timestamp so archive pages and delayed
     // stanzas land in the right place instead of at the tail
     let at = conversation.messages.length
@@ -192,8 +195,11 @@ export class ChatStore {
       }
     }
 
-    const id =
-      message.stanzaId ?? message.originId ?? `${peer}:${message.delay ?? ''}:${message.body}`
+    const fallbackId = `${peer}:${message.delay ?? ''}:${message.body}`
+    const id = message.stanzaId ?? message.originId ?? fallbackId
+    const seenIds = [message.stanzaId, message.originId, message.id, fallbackId].filter(
+      (candidate): candidate is string => candidate !== undefined && candidate !== id
+    )
     const stored: ChatMessage = {
       ...emptyMessage(peer),
       id,
@@ -210,7 +216,7 @@ export class ChatStore {
     if (message.encrypted) stored.encrypted = true
     if (message.undecryptable) stored.undecryptable = true
     if (message.untrustedDevice) stored.untrustedDevice = true
-    this.push(peer, stored, activePeer === peer)
+    this.push(peer, stored, activePeer === peer, seenIds)
   }
 
   markDelivered(peerJid: string, id: string): void {
@@ -261,15 +267,15 @@ export class ChatStore {
     }
   }
 
-  private isDuplicate(peer: string, id: string): boolean {
+  private isDuplicate(peer: string, ids: string[]): boolean {
     let set = this.seen.get(peer)
     if (!set) {
       // eslint-disable-next-line svelte/prefer-svelte-reactivity
       set = new Set()
       this.seen.set(peer, set)
     }
-    if (set.has(id)) return true
-    set.add(id)
+    if (ids.some((id) => set.has(id))) return true
+    for (const id of ids) set.add(id)
     if (set.size > DEDUP_CAP) {
       // drop the oldest entries; Set iterates in insertion order
       for (const old of set) {
