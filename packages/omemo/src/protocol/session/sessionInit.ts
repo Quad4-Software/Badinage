@@ -49,7 +49,7 @@ export function sessionInitiator(
 }
 
 // Passive initiation: shared secret from X3DH. The own signed pre key pair
-// is the initial ratchet key pair; the first incoming message performs a
+// is the initial ratchet key pair. The first incoming message performs a
 // DH ratchet step against the ratchet public key in its header, which
 // derives the receiving chain and a fresh sending chain.
 export function sessionResponder(

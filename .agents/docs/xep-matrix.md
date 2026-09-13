@@ -15,7 +15,7 @@ Status: done | partial | planned | deferred
 | XEP-0004      | Data forms                 | done     | MUC config form submit, registration fields                    |
 | XEP-0045      | Multi-user chat            | done     | join/leave, nick change, invites, config, moderation, rejoin   |
 | XEP-0050      | Ad-hoc commands            | deferred |                                                                |
-| XEP-0054      | vCard                      | partial  | avatars via vCard4 + PEP; full profile fields open             |
+| XEP-0054      | vCard                      | partial  | avatars via vCard4 + PEP. Full profile fields open             |
 | XEP-0059      | Result set management      | partial  | max/before in MAM queries, fin parsing                         |
 | XEP-0066      | Out of band data           | done     | parsed on incoming attachments                                 |
 | XEP-0077      | In-band registration       | done     | register mode on the login screen                              |
@@ -27,7 +27,7 @@ Status: done | partial | planned | deferred
 | XEP-0199      | Ping                       | done     | keepalive + latency display, MUC self-ping for rejoin          |
 | XEP-0203      | Delayed delivery           | done     | parsed on live, carbon and MAM paths                           |
 | XEP-0245      | /me command                | done     | typed as emote, styled in the message list                     |
-| XEP-0249      | Direct MUC invitations     | done     | accept/decline with reason; mediated invites open              |
+| XEP-0249      | Direct MUC invitations     | done     | accept/decline with reason. Mediated invites open              |
 | XEP-0280      | Message carbons            | done     | enable gated on stream feature, sent/received unwrapped        |
 | XEP-0297      | Stanza forwarding          | done     | used by carbons and MAM                                        |
 | XEP-0308      | Message correction         | done     | edit own message, replace by id                                |
@@ -63,7 +63,7 @@ Status: done | partial | planned | deferred
 | XEP-0372      | References                 | done     | mention references on MUC sends, parsed for mentions           |
 | XEP-0392      | Consistent color           | done     | avatar fallbacks and MUC nicks via HSLuv                       |
 | XEP-0433      | Channel search             | done     | explore-rooms dialog over the search service form              |
-| XEP-0450      | OMEMO ATM                  | partial  | decrypt-observe trust, bulk verify; full ATM protocol open     |
+| XEP-0450      | OMEMO ATM                  | partial  | decrypt-observe trust, bulk verify. Full ATM protocol open     |
 | XEP-0466      | Ephemeral messages         | partial  | per-chat timer, stanza + envelope timers, sweep on expiry      |
 | XEP-0490      | Message display sync       | partial  | MDS publish on view, remote markers sync unread                |
 | XEP-0492      | Chat notification settings | done     | per-chat notify overrides, bookmark notify extension           |

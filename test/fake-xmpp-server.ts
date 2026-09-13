@@ -2,7 +2,7 @@
 // Implements just enough of the stream handshake for a real
 // Strophe.Connection to reach CONNECTED: <open/>, SASL PLAIN, the stream
 // restart after auth, and resource binding. Incoming frames are parsed
-// leniently with regexes; each websocket frame carries one stanza.
+// leniently with regexes. Each websocket frame carries one stanza.
 
 import { WebSocketServer } from 'ws'
 import type { WebSocket } from 'ws'
@@ -50,7 +50,7 @@ export interface FakeXmppServerOptions {
   // the json error doc carrying openid-configuration, a bearer equal to
   // token authenticates, anything else fails
   oauth?: { discoveryUrl: string; token?: string }
-  // custom iq responder, consulted after binding; return xml to send, or
+  // custom iq responder, consulted after binding. Return xml to send, or
   // null to fall through to the default handling
   respond?: (stanza: string) => string | null
 }
@@ -151,7 +151,7 @@ export class FakeXmppServer {
     // must be answered with a <failure/>
     let oauthChallengeSent = false
     // XEP-0198: whether an sm session is live on this stream. The flag is
-    // per socket; the counters and sm id live on the server so a resumed
+    // per socket. The counters and sm id live on the server so a resumed
     // stream continues where the dropped one left off
     const sm = { enabled: false }
 

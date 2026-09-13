@@ -49,7 +49,7 @@
     if (key === 'notifications' && value) {
       void requestNotifyPermission().then((result) => (permission = result))
     }
-    // the protocol handler registration also needs a user gesture; the
+    // the protocol handler registration also needs a user gesture. The
     // installed-pwa manifest entry works regardless of this toggle
     if (key === 'xmppLinkHandler' && value) {
       try {
@@ -58,7 +58,7 @@
           `${window.location.origin}${import.meta.env.BASE_URL}?uri=%s`
         )
       } catch {
-        // scheme not allowed here (e.g. non-https); the manifest handler
+        // scheme not allowed here (e.g. non-https). The manifest handler
         // still applies once the app is installed
       }
     }
@@ -79,7 +79,7 @@
 
   async function importSettings(file: File | undefined) {
     if (!file) return
-    // a settings file is a few kilobytes; anything bigger is not ours
+    // a settings file is a few kilobytes. Anything bigger is not ours
     if (file.size > 256 * 1024) {
       toast.error($LL.settingsImportFailed())
       return

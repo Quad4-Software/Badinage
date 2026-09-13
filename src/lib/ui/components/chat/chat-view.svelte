@@ -102,7 +102,7 @@
   })
 
   // reaction sender keys are bare jids in dms and nicks or XEP-0421
-  // occupant ids in mucs; resolve all three to display names so the
+  // occupant ids in mucs. Resolve all three to display names so the
   // tooltip stays readable
   const actions = createChatActions({
     account: () => account,
@@ -139,7 +139,7 @@
     }
   }
 
-  // dragleave fires when entering a child too; only clear the overlay when
+  // dragleave fires when entering a child too. Only clear the overlay when
   // the pointer actually left the column
   function onDragLeave(event: DragEvent) {
     const next = event.relatedTarget
@@ -167,7 +167,7 @@
     }
   }
 
-  // toggling an emoji keeps every other reaction of ours; muc reactions
+  // toggling an emoji keeps every other reaction of ours. Muc reactions
   // reference the room stanza-id, dms the wire id
   function reactToMessage(message: ChatMessage, emoji: string) {
     if (!account || !conversation) return
@@ -194,7 +194,7 @@
   const peerBookmarked = $derived(peer ? (account?.isBookmarked(peer) ?? false) : false)
   const typers = $derived(conversation ? [...conversation.typers] : [])
 
-  // polite announcements for live incoming traffic; onLive already filters
+  // polite announcements for live incoming traffic. OnLive already filters
   // out mam pages, delayed deliveries and our own carbons, and the split
   // pane skips mounting so messages never announce twice
   let liveSeq = $state(0)
@@ -206,7 +206,7 @@
     })
   )
 
-  // XEP-0301: live text buffers still inside their ttl; dm uses the ''
+  // XEP-0301: live text buffers still inside their ttl. Dm uses the ''
   // key, muc shows the first composing nick's buffer
   const rttPreview = $derived(
     conversation

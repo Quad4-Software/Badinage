@@ -55,7 +55,7 @@ export function pepPublish(
   if (payload) stanza.cnode(payload).up()
   stanza.up().up() // item -> publish -> pubsub
   if (options) {
-    // c() descends into each named child; c() with text does not, so
+    // c() descends into each named child. C() with text does not, so
     // each field only needs one up() to get back to the form element
     stanza
       .c('publish-options')

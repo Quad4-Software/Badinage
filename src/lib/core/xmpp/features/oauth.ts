@@ -1,6 +1,6 @@
 // XEP-0493 oauth client login: the probe half. The client connects to
 // the XMPP server, offers an OAUTHBEARER attempt with an empty token,
-// and reads the RFC 7628 JSON error document the server returns; its
+// and reads the RFC 7628 JSON error document the server returns. Its
 // openid-configuration field is the discovery URL for the authorization
 // server, which may live on another host entirely (PocketID, Keycloak).
 //
@@ -38,7 +38,7 @@ export function parseOauthDiscovery(payload: string | null | undefined): string 
   return typeof url === 'string' && url.startsWith('https://') ? url : undefined
 }
 
-// whether the offered mechanism list contains OAUTHBEARER; reads the
+// whether the offered mechanism list contains OAUTHBEARER. Reads the
 // stream:features element strophe stashes on conn.features
 export function oauthAdvertised(features: Element | null | undefined): boolean {
   if (!features) return false
@@ -54,7 +54,7 @@ export function oauthAdvertised(features: Element | null | undefined): boolean {
 }
 
 // Connect with an empty bearer token purely to harvest the discovery
-// url. The server must answer with the json error doc; whether it puts
+// url. The server must answer with the json error doc. Whether it puts
 // it in a challenge or in the failure body depends on the server, so
 // both are captured.
 export function probeOauthSupport(service: string, jid: string): Promise<OauthProbe> {
@@ -63,7 +63,7 @@ export function probeOauthSupport(service: string, jid: string): Promise<OauthPr
     let failurePayload: string | null = null
     let settled = false
 
-    // strophe instantiates registered mechanisms itself; a shared slot
+    // strophe instantiates registered mechanisms itself. A shared slot
     // carries the captured challenge back out
     type Conn = InstanceType<typeof Strophe.Connection>
     class ProbeBearer extends Strophe.SASLOAuthBearer {
@@ -112,7 +112,7 @@ export function probeOauthSupport(service: string, jid: string): Promise<OauthPr
           })
         }
         // a successful connect with an empty token would mean the server
-        // accepted nothing as a credential; treat it as unsupported
+        // accepted nothing as a credential. Treat it as unsupported
         else if (status === Strophe.Status.CONNECTED) {
           finish({ supported: oauthAdvertised(conn.features) })
         }

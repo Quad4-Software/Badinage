@@ -10,7 +10,7 @@
 
   let { src, alt, mediaType, class: className }: Props = $props()
 
-  // only formats that can animate get an observer; freezing a static
+  // only formats that can animate get an observer. Freezing a static
   // image would just double its memory for no gain
   const canAnimate = $derived(!mediaType || /^image\/(gif|webp|apng|avif)$/i.test(mediaType))
 
@@ -27,12 +27,12 @@
     canvas.width = img.naturalWidth
     canvas.height = img.naturalHeight
     try {
-      // cross-origin sources paint fine here; the canvas is tainted but
+      // cross-origin sources paint fine here. The canvas is tainted but
       // we never read pixels back
       ctx.drawImage(img, 0, 0)
       frozen = true
     } catch {
-      // drawImage can throw on broken sources; keep the img visible
+      // drawImage can throw on broken sources. Keep the img visible
       frozen = false
     }
   }

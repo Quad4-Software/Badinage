@@ -42,6 +42,14 @@ const RULES: { name: string; pattern: RegExp; glob: RegExp; roots: string[] }[] 
     pattern: /\{@html\b|\binnerHTML\s*=|\beval\s*\(|\bdocument\s*\.\s*cookie\b/,
     glob: /\.(?:ts|svelte)$/,
     roots: [SRC_ROOT]
+  },
+  {
+    // prose style bans semicolons; the pattern only matches one followed
+    // by a space or end of line so protocol tokens like ;base64 pass
+    name: 'no semicolons in comments (prose style)',
+    pattern: /\/\/.*(?:;[ \t]+|;[ \t]*$)/,
+    glob: /\.(?:ts|svelte)$/,
+    roots: [SRC_ROOT]
   }
 ]
 

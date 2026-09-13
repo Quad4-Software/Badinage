@@ -56,7 +56,7 @@ describe('XmppConnection stanza forgery resistance', () => {
   })
 
   // A MAM <result> only unwraps while its queryid names an in-flight
-  // query (or the sender is our own account); a forged result carries a
+  // query (or the sender is our own account). A forged result carries a
   // poisoned wrapper and the whole stanza is dropped.
   it('only unwraps archive results that answer an in-flight query', () => {
     const stub = makeStub()
@@ -81,7 +81,7 @@ describe('XmppConnection stanza forgery resistance', () => {
     handler(result('mam-1', 'evil@example.net'))
     expect(onMessage).not.toHaveBeenCalled()
 
-    // the stub mints 'mam-1' as the queryid; while the query is live the
+    // the stub mints 'mam-1' as the queryid. While the query is live the
     // echo unwraps even when the sending entity is an archive component
     stub.xmpp.queryArchive('peer@example.net', {}, vi.fn())
     handler(result('mam-1', 'archive.example.net'))

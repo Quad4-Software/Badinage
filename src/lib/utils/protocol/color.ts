@@ -103,7 +103,7 @@ export interface ConsistentColorOptions {
 }
 
 // s=90 l=55 keeps enough contrast against both light and dark chat
-// backgrounds; s=100 l=50 from the XEP vectors reads too harsh on light
+// backgrounds. S=100 l=50 from the XEP vectors reads too harsh on light
 export function consistentColor(text: string, options?: ConsistentColorOptions): string {
   const s = options?.saturation ?? 90
   const l = options?.lightness ?? 55

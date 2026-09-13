@@ -4,7 +4,7 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { Sheet } from '$lib/ui/primitives/sheet'
 
-  // the mobile attachment menu behind the composer plus button; the
+  // the mobile attachment menu behind the composer plus button. The
   // accept string filters the native file picker
   let {
     open = $bindable(false),

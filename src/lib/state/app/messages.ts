@@ -1,6 +1,6 @@
 // The per-account incoming message pipeline: blocklist filter, OMEMO
 // decrypt-then-ingest, receipt replies, and the undecryptable retry
-// queue. Extracted from app.svelte.ts for the size gate; the wiring in
+// queue. Extracted from app.svelte.ts for the size gate. The wiring in
 // bindAccount stays identical.
 
 import { OMEMO_RETRY_QUEUE_MAX } from '$lib/constants'
@@ -38,7 +38,7 @@ export function messageHandler(
     // server has no XEP-0191 support to filter them for us
     if (account.blocked.has(bareJid(message.from))) return
 
-    // omemo stanzas carry their real body inside the envelope; decrypt
+    // omemo stanzas carry their real body inside the envelope. Decrypt
     // first, then run the normal ingest and receipt path
     if (message.encryptedXml) {
       const omemo = account.omemo
@@ -75,7 +75,7 @@ export function messageHandler(
           (report.status === 'decrypted' || report.status === 'empty') &&
           message.type === 'chat'
         ) {
-          // the session with this device now works; give each queued
+          // the session with this device now works. Give each queued
           // stanza from it one retry, then drop it for good
           const key = queueKey(report.namespace ?? '', message.from, report.sid ?? 0)
           const queued = undecryptable.get(key)
@@ -83,7 +83,7 @@ export function messageHandler(
           undecryptable.delete(key)
           for (const stale of queued) {
             void omemo.decryptInto(stale).then((retry) => {
-              // 'decrypted' patches the payload in; 'empty' carried no
+              // 'decrypted' patches the payload in. 'empty' carried no
               // payload and 'duplicate' means a resend already landed,
               // so the tombstone is stale either way
               if (

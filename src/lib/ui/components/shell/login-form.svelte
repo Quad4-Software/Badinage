@@ -104,7 +104,7 @@
       }
     }
     const account = await accounts.add(options)
-    // 'disconnected' is only terminal once a real attempt was observed;
+    // 'disconnected' is only terminal once a real attempt was observed.
     // the account starts out disconnected before the first status lands
     let started = false
     const timer = setInterval(() => {

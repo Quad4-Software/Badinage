@@ -137,7 +137,7 @@ export class ConversationPersistence {
   }
 
   // Best-effort plaintext migration. A save that lands between our read
-  // and this write can be overwritten by the older payload; the window
+  // and this write can be overwritten by the older payload. The window
   // is milliseconds wide and the next scheduled save repairs it.
   private async rewrap(storageKey: string, value: unknown): Promise<void> {
     const wrapKey = await this.wrapKey()
@@ -145,7 +145,7 @@ export class ConversationPersistence {
     try {
       await idb.set('messages', storageKey, await encryptRecord(wrapKey, value))
     } catch {
-      // leave the plaintext record; the next scheduled save retries
+      // leave the plaintext record. The next scheduled save retries
     }
   }
 

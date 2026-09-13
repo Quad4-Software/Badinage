@@ -1,4 +1,4 @@
-// In-memory OmemoStore for tests and ephemeral use. Not persistent; callers
+// In-memory OmemoStore for tests and ephemeral use. Not persistent. Callers
 // needing durability should implement OmemoStore over IndexedDB with key
 // material wrapped at rest.
 

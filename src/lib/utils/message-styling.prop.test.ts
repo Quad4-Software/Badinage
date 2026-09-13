@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { tokenizeStyling, type BlockToken, type SpanToken } from './message-styling'
 
-// total characters the token tree can render back; styling directives are
+// total characters the token tree can render back. Styling directives are
 // consumed, so the tree can never hold more text than the input
 function leafLength(blocks: BlockToken[]): number {
   const spans = (list: SpanToken[]): number =>

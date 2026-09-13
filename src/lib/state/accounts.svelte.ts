@@ -107,7 +107,7 @@ export class Account {
   }
   // XEP-0191 blocklist, kept in sync by server pushes
   blocked = new SvelteSet<string>()
-  // OMEMO service, created by omemoModule after connect; undefined in
+  // OMEMO service, created by omemoModule after connect. Undefined in
   // demo mode until the first connect tick and in non-secure contexts
   omemo = $state<OmemoService | undefined>(undefined)
   // last omemo init failure, surfaced so the ui can warn that the
@@ -120,13 +120,13 @@ export class Account {
   // resolved avatar data uris keyed by address: bare contact jid, room
   // jid, room/nick occupant key, or our own jid. Missing means initials.
   avatars = new SvelteMap<string, string>()
-  // XEP-0402 PEP bookmarks keyed by the bookmarked bare jid; empty when
+  // XEP-0402 PEP bookmarks keyed by the bookmarked bare jid. Empty when
   // the server has no PEP or the fetch has not landed yet
   bookmarks = new SvelteMap<string, Bookmark>()
 
   private registry = new ModuleRegistry()
 
-  // presence-advertised photo hashes; SvelteMap so a hash change re-runs
+  // presence-advertised photo hashes. SvelteMap so a hash change re-runs
   // the ensureAvatar effects that read it
   private avatarHashes = new SvelteMap<string, string>()
 
@@ -243,7 +243,7 @@ export class Account {
       accountJid: this.jid,
       blindTrust: settings.current.omemoBlindTrust,
       // untrusted devices keep key material and trust decisions in memory
-      // only; nothing OMEMO-shaped reaches IndexedDB
+      // only. Nothing OMEMO-shaped reaches IndexedDB
       ...(this.options.untrusted
         ? { omemoStore: new InMemoryOmemoStore(), trustStore: new InMemoryTrustStore() }
         : {})
@@ -264,7 +264,7 @@ export class Account {
     })
   }
 
-  // Resolve the service if it exists or is still being created; undefined
+  // Resolve the service if it exists or is still being created. Undefined
   // when init never ran (disconnected) or creation failed.
   async omemoService(): Promise<OmemoService | undefined> {
     return this.omemo ?? (await this.omemoInit)
@@ -285,7 +285,7 @@ export class Account {
     this.connection.leaveRoom(bareJid(room), nick)
   }
 
-  // mediated decline through the room, per XEP-0045; works for direct
+  // mediated decline through the room, per XEP-0045. Works for direct
   // XEP-0249 invites too since the decline always goes via the room
   declineRoomInvite(invite: PendingInvite, reason?: string): void {
     this.connection.declineRoomInvite(invite.room, invite.from, reason)
@@ -308,7 +308,7 @@ export class Account {
   }
 
   // Lazily resolve an avatar into the avatars map. Without force the fetch
-  // only runs when presence hinted at a photo; forced callers (open
+  // only runs when presence hinted at a photo. Forced callers (open
   // conversation, own account, room) fetch regardless.
   ensureAvatar(jid: string, force = false): void {
     ensureAvatar(
@@ -353,7 +353,7 @@ export class Account {
 
   // XEP-0492: sync a notification override onto the bookmark carrying
   // the conversation, preserving any extensions we did not author. Only
-  // bookmarked chats sync; unbookmarked dms keep a local-only setting.
+  // bookmarked chats sync. Unbookmarked dms keep a local-only setting.
   setBookmarkNotify(jid: string, notify: Bookmark['notify']): void {
     setBookmarkNotify(this, this.autoJoined, jid, notify)
   }
@@ -376,7 +376,7 @@ export class Account {
         this.lastError = status
         // every failure escalates the session-scoped login backoff
         recordLoginFailure(this.jid)
-        // an expired oauth access token looks like authfail; one refresh
+        // an expired oauth access token looks like authfail. One refresh
         // attempt per session keeps the user off the redirect treadmill
         if (status === 'authfail' && this.options.oauth && !this.oauthRefreshed) {
           this.oauthRefreshed = true
@@ -398,7 +398,7 @@ export class Account {
           this.invisible = true
           this.connection.setInvisible(true, () => undefined)
         }
-        // re-advertise our chosen presence; the transport only sends a
+        // re-advertise our chosen presence. The transport only sends a
         // bare online presence on connect. While the invisible list is
         // active the server drops this outbound presence, which is the
         // intended behavior.
@@ -444,7 +444,7 @@ export class Account {
         contact.presenceStatus = update.status
       }
     })
-    // PEP notifications mean another resource changed the node; refetch
+    // PEP notifications mean another resource changed the node. Refetch
     this.connection.events.on('bookmarks', () => this.refreshBookmarks())
     this.connection.events.on('blocked', (jids) => {
       for (const jid of jids) this.blocked.add(bareJid(jid))
@@ -479,7 +479,7 @@ class AccountsStore {
   private removeListeners: ((jid: string) => void | Promise<void>)[] = []
 
   // subscribers (the app store) get a chance to flush and unbind before
-  // the account leaves the list; returned promises are awaited before
+  // the account leaves the list. Returned promises are awaited before
   // the account's persisted data is deleted
   onRemoved(fn: (jid: string) => void | Promise<void>): void {
     this.removeListeners.push(fn)
@@ -638,7 +638,7 @@ class AccountsStore {
     }
   }
 
-  // oauth accounts fail auth the day the access token expires; with a
+  // oauth accounts fail auth the day the access token expires. With a
   // refresh token we mint a new one and reconnect once without sending
   // the user back through the browser flow
   async refreshOAuth(account: Account): Promise<boolean> {
@@ -699,7 +699,7 @@ class AccountsStore {
   }
 
   // move an account one step in the switcher order and persist the new
-  // arrangement; activeJid is untouched so the view does not jump
+  // arrangement. ActiveJid is untouched so the view does not jump
   move(jid: string, delta: -1 | 1): void {
     const from = this.list.findIndex((a) => a.jid === jid)
     const to = from + delta
@@ -713,7 +713,7 @@ class AccountsStore {
     )
   }
 
-  // sort the live list by the persisted preference; unlisted jids keep
+  // sort the live list by the persisted preference. Unlisted jids keep
   // their arrival order at the end (sort is stable)
   private applyOrder(): void {
     const order = settings.current.accountOrder

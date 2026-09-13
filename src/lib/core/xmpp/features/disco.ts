@@ -21,13 +21,13 @@ import type { XmppTransport } from './transport'
 
 // ---- query cache --------------------------------------------------------
 
-// results live for the session; negative results are retried after
+// results live for the session. Negative results are retried after
 // DISCO_NEGATIVE_TTL_MS so a temporarily unreachable jid does not stay
 // blacklisted forever
 interface CacheEntry<T> {
   value: T | null
   at: number
-  // set while a query is in flight; extra callers queue here
+  // set while a query is in flight. Extra callers queue here
   waiters?: ((value: T | null) => void)[] | undefined
 }
 
@@ -56,7 +56,7 @@ function capsKey(ver: string): string {
   return globalKey('caps', ver)
 }
 
-// a node of the form base#ver points at a caps verification string; its
+// a node of the form base#ver points at a caps verification string. Its
 // disco#info answer is cacheable by ver across contacts and sessions
 function verFromNode(node: string | undefined): string | undefined {
   if (!node) return undefined
@@ -102,7 +102,7 @@ function sendInfoQuery(
 }
 
 // disco#info for a jid, optionally at a node. Results are cached per
-// connection for the session; a node of the form base#ver additionally
+// connection for the session. A node of the form base#ver additionally
 // persists under the caps ver so repeat lookups across contacts that
 // share a client are free.
 export function discoInfo(
@@ -213,7 +213,7 @@ function replyQuery(
 
 // iq get handler for disco#info: our identity plus the shared feature
 // registry. The same answer serves bare-node queries and the caps node
-// of the form CAPS_NODE#ver; any other node gets item-not-found per
+// of the form CAPS_NODE#ver. Any other node gets item-not-found per
 // XEP-0030 section 3.1.
 export function answerDiscoInfo(conn: XmppTransport, stanza: Element): boolean {
   const node = firstNsTag(stanza, NS.DISCO_INFO, 'query')?.getAttribute('node')

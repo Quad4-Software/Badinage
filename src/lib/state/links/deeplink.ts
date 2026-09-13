@@ -44,7 +44,7 @@ export function parseDeepLink(url: URL, hash: string): DeepLink | null {
   }
 }
 
-// share_target POSTs land in IndexedDB before the app exists; ui
+// share_target POSTs land in IndexedDB before the app exists. Ui
 // consumers drain the inbox through here
 export function shareInbox(): Promise<SharePayload | null> {
   return takeShare()

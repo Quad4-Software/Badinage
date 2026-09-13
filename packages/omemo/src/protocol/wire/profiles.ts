@@ -77,7 +77,7 @@ const legacy: WireProfile = {
   infoX3dh: utf8ToBytes(INFO_X3DH_LEGACY),
   infoRoot: utf8ToBytes(INFO_ROOT_LEGACY),
   infoMk: utf8ToBytes(INFO_MK_LEGACY),
-  // The legacy profile has no distinct payload info; AES-128-GCM keys are raw.
+  // The legacy profile has no distinct payload info. AES-128-GCM keys are raw.
   infoPayload: utf8ToBytes(INFO_MK_LEGACY),
   macSize: LEGACY_MAC_SIZE,
   encodeHeaderKey: (key) => encodeCurveKeyWire(key),

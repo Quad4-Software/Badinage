@@ -22,7 +22,7 @@ function fakeStorage(): Storage {
 }
 
 function state(id: string): SMState {
-  // only the fields this test round-trips matter; the backend treats the
+  // only the fields this test round-trips matter. The backend treats the
   // payload as opaque json
   return { id, hIn: 3, enabled: true } as SMState
 }

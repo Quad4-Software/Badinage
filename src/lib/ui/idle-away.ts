@@ -2,7 +2,7 @@
 // input, every connected, non-invisible account currently 'online'
 // flips to 'away' and the next keystroke or pointer event restores it.
 // Accounts we flipped are tracked so a presence the user picked
-// meanwhile is never stomped. Mounted once from App.svelte; returns the
+// meanwhile is never stomped. Mounted once from App.svelte. Returns the
 // cleanup.
 
 import { IDLE_AWAY_MS, IDLE_CHECK_MS } from '$lib/constants'

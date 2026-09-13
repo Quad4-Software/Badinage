@@ -43,7 +43,7 @@ export function createFileSend(deps: FileDeps): {
     sendFile(file, file.name, file.type || 'application/octet-stream')
   }
 
-  // pasted files ride the same upload path as picked ones; nameless
+  // pasted files ride the same upload path as picked ones. Nameless
   // clipboard blobs get a generated name with an extension from the type
   function onPaste(event: ClipboardEvent): void {
     const files = event.clipboardData?.files

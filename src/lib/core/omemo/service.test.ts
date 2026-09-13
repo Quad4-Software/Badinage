@@ -257,7 +257,7 @@ describe('OmemoService', () => {
     expect(a.connection.notifications).toHaveLength(1)
     expect(a.connection.notifications[0]?.to).toBe(JULIET)
 
-    // juliet can decrypt the transport; it carries no payload
+    // juliet can decrypt the transport. It carries no payload
     const message = stanza(`${ROMEO}/desk`, JULIET, a.connection.notifications[0]?.xml ?? '')
     const report = await b.service.decryptInto(message)
     expect(report.status).toBe('empty')

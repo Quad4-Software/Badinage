@@ -21,7 +21,7 @@ import { DEFAULT_TELEMETRY_DSN } from '$lib/constants'
 const ENV_DSN = import.meta.env.VITE_SENTRY_DSN?.trim()
 const DSN = ENV_DSN === 'off' ? '' : ENV_DSN || DEFAULT_TELEMETRY_DSN
 
-// keeps sampled traces cheap; error events are always captured
+// keeps sampled traces cheap. Error events are always captured
 const TRACES_SAMPLE_RATE = 0.1
 
 // matches anything JID- or email-shaped: a run of address characters
@@ -33,7 +33,7 @@ const ADDRESS_RE = /[^\s"'<>@/:;=?#[\](),]+@[^\s"'<>@:;=?#[\](),]+/g
 const REDACTED = '[redacted-address]'
 
 // a breadcrumb whose data carries any of these keys almost certainly
-// holds stanza XML or message content; drop it outright
+// holds stanza XML or message content. Drop it outright
 const SENSITIVE_DATA_KEYS = new Set([
   'stanza',
   'xml',
@@ -53,7 +53,7 @@ const STANZA_RE = /^\s*<(message|presence|iq|stream:\w+)\b/
 // request headers that carry credentials verbatim
 const SENSITIVE_HEADERS = new Set(['cookie', 'set-cookie', 'authorization', 'proxy-authorization'])
 
-// user-facing opt-in; when off the SDK is never initialized and the
+// user-facing opt-in. When off the SDK is never initialized and the
 // beforeSend gates stay armed for anything queued before a toggle off
 let reportingEnabled = false
 let initialized = false
@@ -149,13 +149,13 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
     delete request.query_string
     out.request = request
   }
-  // we never attach user context; make sure nothing else did either
+  // we never attach user context. Make sure nothing else did either
   delete out.user
   return out
 }
 
 // Flips the runtime opt-in. Enabling lazily initializes the SDK on the
-// spot so the toggle takes effect without a reload; disabling drops
+// spot so the toggle takes effect without a reload. Disabling drops
 // every event in the beforeSend gates and makes reportError a no-op.
 export function setTelemetryEnabled(enabled: boolean): void {
   reportingEnabled = enabled
@@ -176,7 +176,7 @@ export function reportError(error: unknown, context?: Record<string, unknown>): 
 }
 
 // Attaches the SDK global handlers and tracing. Runs lazily the first
-// time reporting is enabled; does nothing while opted out or without a
+// time reporting is enabled. Does nothing while opted out or without a
 // DSN.
 function initTelemetry(): void {
   if (!DSN || !reportingEnabled || initialized) return

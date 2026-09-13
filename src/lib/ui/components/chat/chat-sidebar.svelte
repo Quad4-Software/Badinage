@@ -75,7 +75,7 @@
     if (window.matchMedia('(pointer: fine)').matches) app.focusComposer(peerJid)
   }
 
-  // a bookmarked room is joined first when it is not already open;
+  // a bookmarked room is joined first when it is not already open.
   // contacts go straight to the dm view
   function openBookmark(bookmark: Bookmark) {
     if (!account) return
@@ -173,7 +173,7 @@
           />
         {:else}
           {#if q}
-            <!-- a filtered-empty list is a miss, not an empty roster;
+            <!-- a filtered-empty list is a miss, not an empty roster.
                  the nav-level line below reports it -->
           {:else if account?.status === 'connecting'}
             <div class="flex flex-col gap-2 p-2" role="status" aria-label={$LL.loadingContacts()}>

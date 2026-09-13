@@ -30,7 +30,7 @@ async function wrapKeyFor(accountJid: string): Promise<CryptoKey | undefined> {
 export class IdbOmemoStore implements OmemoStore {
   // False when the AES-GCM wrap key could not be created or loaded, meaning
   // key material is stored unwrapped. The store stays functional either
-  // way; callers should surface this instead of assuming at-rest
+  // way. Callers should surface this instead of assuming at-rest
   // encryption.
   readonly secure: boolean
   // Why secure is false: WebCrypto subtle missing, or the error raised

@@ -1,7 +1,7 @@
 // Composer slash-command parsing for message-level XEPs. Pure helpers so
 // they can be unit tested without a component harness.
 
-// XEP-0245: a body starting with "/me " is an action; the wire format is
+// XEP-0245: a body starting with "/me " is an action. The wire format is
 // the literal text, so only the render side needs the split. Returns the
 // action text, or null when the body is not an action.
 export function meAction(body: string): string | null {
@@ -33,7 +33,7 @@ export function parseSpoilerCommand(body: string): { body: string; hint: string 
 // Conversation-level slash commands (converse-style): /clear, /leave,
 // /nick, /topic, /invite, /join act on the conversation or room and
 // never reach the wire as a body. Message-level commands (/me, /spoiler)
-// are not this parser's business; the caller passes them through.
+// are not this parser's business. The caller passes them through.
 export interface SlashCommand {
   name: string
   args: string

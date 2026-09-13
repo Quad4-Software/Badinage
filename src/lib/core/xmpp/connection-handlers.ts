@@ -1,6 +1,6 @@
 // Stanza handler registration for XmppConnection: the seven addHandler
 // calls wired on every connect. Extracted so connection.ts stays under
-// the file size gate; behavior is identical to the previous inline block.
+// the file size gate. Behavior is identical to the previous inline block.
 
 import type { Strophe } from 'strophe.js'
 
@@ -21,7 +21,7 @@ import type { ConnectionEvents } from './types'
 
 type StropheConnection = InstanceType<typeof Strophe.Connection>
 
-// strophe stashes the last stream:features element on the connection;
+// strophe stashes the last stream:features element on the connection.
 // collect the advertised xmlns into the caller's set so feature-gated
 // sends (carbons, csi) can check them.
 export function noteStreamFeatures(conn: StropheConnection, into: Set<string>): void {
@@ -36,7 +36,7 @@ export function noteStreamFeatures(conn: StropheConnection, into: Set<string>): 
 }
 
 // The XmppTransport every feature module sends through. send drops the
-// stanza when it races a teardown (conn._proto is null inside strophe);
+// stanza when it races a teardown (conn._proto is null inside strophe).
 // the stream is gone anyway.
 export function makeTransport(
   conn: StropheConnection,
@@ -80,7 +80,7 @@ export function registerStanzaHandlers(
     'iq',
     'set'
   )
-  // XEP-0199: answer pings; MUC self-ping relies on the room routing
+  // XEP-0199: answer pings. MUC self-ping relies on the room routing
   // our own ping back at us
   conn.addHandler((stanza) => handlePing(stanza, events, transport), NS.PING, 'iq', 'get')
   // XEP-0030/0115: peers disco us to resolve the caps ver we advertise

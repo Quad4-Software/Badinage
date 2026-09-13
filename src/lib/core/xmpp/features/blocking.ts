@@ -1,5 +1,5 @@
 // XEP-0191 blocklist: fetch, block, unblock. The server also pushes
-// block/unblock sets to every resource; those arrive through the
+// block/unblock sets to every resource. Those arrive through the
 // connection's stanza handlers, not here.
 
 import { $iq } from 'strophe.js'

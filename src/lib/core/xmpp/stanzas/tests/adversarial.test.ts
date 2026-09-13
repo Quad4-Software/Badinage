@@ -80,7 +80,7 @@ describe('adversarial inputs', () => {
 
   // CVE-2017-5858 class: a forwarded payload wrapped in carbon markup
   // only unwraps when the outer stanza is addressed to and from the
-  // same account; a failed wrapper poisons the whole stanza so the
+  // same account. A failed wrapper poisons the whole stanza so the
   // nested body cannot leak through the descendant-search helpers.
   it('drops a carbon whose from and to differ', () => {
     const m = parseMessage(
@@ -112,7 +112,7 @@ describe('adversarial inputs', () => {
     expect(m).toBeNull()
   })
 
-  // a forged <result> can smuggle a fabricated archive row; once the
+  // a forged <result> can smuggle a fabricated archive row. Once the
   // pipeline passes context the wrapper only unwraps for an in-flight
   // queryid or our own bare jid.
   it('drops a MAM result with an unknown queryid from a stranger', () => {

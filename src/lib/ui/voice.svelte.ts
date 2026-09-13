@@ -35,7 +35,7 @@ export function createVoiceRecorder(
     return 'audio/webm'
   }
 
-  // release the mic, audio context and clock; safe to call more than once
+  // release the mic, audio context and clock. Safe to call more than once
   function teardown() {
     stream?.getTracks().forEach((track) => track.stop())
     stream = null

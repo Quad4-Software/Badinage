@@ -6,7 +6,7 @@
 // max}. On reconnect it injects <resume previd h/> inside the post-SASL
 // stream-features dispatch, before resource binding, so a resumable
 // session skips bind entirely. <resumed h/> reconciles the counters and
-// re-sends unacked stanzas in wire order; <failed/> falls back to a
+// re-sends unacked stanzas in wire order. <failed/> falls back to a
 // normal bind and salvages the queue for re-send once the fresh session
 // is enabled. All of that lives upstream in strophe's StreamManagement
 // engine (src/stream-management in the package), negotiated only over
@@ -17,7 +17,7 @@
 // - ScopedSmStorage routes strophe's persistence through scopedKey so the
 //   SM state sits under the same badinage:<bare-jid>: sessionStorage
 //   namespacing as every other per-account key. strophe hands the backend
-//   keys shaped like strophe-sm:<bare-jid>; we recover the jid and re-key
+//   keys shaped like strophe-sm:<bare-jid>. We recover the jid and re-key
 //   it. In environments without sessionStorage (unit tests, workers) the
 //   backend falls back to memory, which still covers in-session drops.
 // - smConnectionOptions() keeps the Connection constructor free of SM
@@ -73,7 +73,7 @@ export class ScopedSmStorage implements SMStorageBackend {
 }
 
 // Options fragment for new Strophe.Connection(). SM only negotiates over
-// websocket transports; on BOSH the option is inert.
+// websocket transports. On BOSH the option is inert.
 export function smConnectionOptions(): ConnectionOptions {
   return {
     enableStreamManagement: true,

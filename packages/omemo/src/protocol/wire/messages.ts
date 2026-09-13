@@ -90,7 +90,7 @@ export interface OmemoKeyExchange {
 // pk_id=1, ek=2, ik=3, message=4, unused=5, spk_id=6. omemo:2 renumbers
 // to pk_id=1, spk_id=2, ik=3, ek=4, message=5. The numbering lives in
 // KEY_EXCHANGE_LAYOUT. A negative pkId means the key exchange did not use
-// a one-time pre key; the field is omitted then.
+// a one-time pre key. The field is omitted then.
 export function encodeKeyExchange(
   kex: OmemoKeyExchange,
   namespace: 'omemo2' | 'legacy' = 'omemo2'

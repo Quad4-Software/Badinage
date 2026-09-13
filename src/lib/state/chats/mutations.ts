@@ -43,7 +43,7 @@ export function applyDeliveryError(
   return true
 }
 
-// Optimistic local apply for a retraction we just sent ourselves; the
+// Optimistic local apply for a retraction we just sent ourselves. The
 // wire-side sender check is unnecessary here.
 export function retractStored(
   conversations: SvelteMap<string, Conversation>,

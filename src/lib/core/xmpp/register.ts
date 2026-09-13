@@ -15,7 +15,7 @@ import { NS } from './ns'
 
 const NS_FRAMING = 'urn:ietf:params:xml:ns:xmpp-framing'
 
-// 'unsupported' and 'timeout' are client-side; anything else is the stanza
+// 'unsupported' and 'timeout' are client-side. Anything else is the stanza
 // error condition the server sent (conflict, not-allowed, ...)
 export type RegisterReason = 'unsupported' | 'timeout' | 'closed' | (string & {})
 
@@ -37,7 +37,7 @@ function errorCondition(iq: Element): string {
 }
 
 // Register a new account on the server behind the given websocket
-// endpoint. Resolves once the server confirms; rejects with RegisterError
+// endpoint. Resolves once the server confirms. Rejects with RegisterError
 // carrying a machine-readable reason.
 export function registerAccount(service: string, jid: string, password: string): Promise<void> {
   const { local, domain } = parseJid(jid)
@@ -58,7 +58,7 @@ export function registerAccount(service: string, jid: string, password: string):
         }
         ws.close()
       } catch {
-        // the socket is already gone; the outcome stands
+        // the socket is already gone. The outcome stands
       }
       if (err) reject(err)
       else resolve()
@@ -79,7 +79,7 @@ export function registerAccount(service: string, jid: string, password: string):
     ws.onerror = () => finish(new RegisterError('closed'))
     ws.onclose = () => finish(new RegisterError('closed'))
     ws.onmessage = (event) => {
-      // servers are entitled to send the <open> reply unclosed; normalize
+      // servers are entitled to send the <open> reply unclosed. Normalize
       // it so the frame always parses as a standalone element
       let raw = String(event.data)
       if (/^<open\s[^>]*[^/]>$/.test(raw)) raw = `${raw.slice(0, -1)}/>`

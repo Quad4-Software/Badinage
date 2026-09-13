@@ -37,7 +37,7 @@ test('demo mode opens the room and shows its subject', async ({ page }) => {
 test('sidebar search filters conversations', async ({ page }) => {
   await enterDemo(page)
   await expect(page.getByRole('button', { name: /Aria/ }).first()).toBeVisible({ timeout: 10_000 })
-  // the sidebar search field opens the command palette; the palette
+  // the sidebar search field opens the command palette. The palette
   // combobox does the filtering
   await page.getByRole('button', { name: 'Search conversations and contacts' }).click()
   const palette = page.getByRole('dialog')
@@ -64,7 +64,7 @@ test('scrolling to top loads an older archive page', async ({ page }) => {
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
   const before = await page.locator('ol li').count()
-  // the pager button only renders near the top; the list opens pinned to
+  // the pager button only renders near the top. The list opens pinned to
   // the bottom, so scroll the scrollable ancestor to zero first
   await page.locator('ol').evaluate((el) => {
     let p = el.parentElement
@@ -96,7 +96,7 @@ test('demo settings show the encryption section with fingerprints', async ({ pag
   await enterDemo(page)
   await page.keyboard.press('Control+,')
   const dialog = page.getByRole('dialog')
-  // the side nav only exists on desktop; the section is always mounted
+  // the side nav only exists on desktop. The section is always mounted
   await expect(dialog.getByText('Your device fingerprint')).toBeVisible()
   await expect(dialog.getByLabel('Blindly trust new devices')).toBeVisible()
   // contacts publish real omemo devices in demo mode

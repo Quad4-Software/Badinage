@@ -70,7 +70,7 @@ export async function fetchOAuthMetadata(discoveryUrl: string): Promise<OAuthMet
 }
 
 // RFC 7591 dynamic registration. Returns null when the provider does not
-// offer a registration endpoint; the caller then falls back to the
+// offer a registration endpoint. The caller then falls back to the
 // configured default client id or fails.
 export async function registerOAuthClient(
   metadata: OAuthMetadata,
@@ -96,7 +96,7 @@ export async function registerOAuthClient(
 }
 
 // Scopes we ask for when the provider advertises them. openid/profile
-// satisfy OIDC providers (PocketID, Keycloak); xmpp is the scope prosody
+// satisfy OIDC providers (PocketID, Keycloak). Xmpp is the scope prosody
 // registers. Providers that publish no scopes_supported get the OIDC
 // default pair only.
 const WANTED_SCOPES = ['openid', 'profile', 'xmpp']

@@ -66,7 +66,7 @@ export interface EncryptInput {
 
 export interface DecryptResult {
   // Raw decrypted payload bytes. For omemo:2 this is the serialized SCE
-  // envelope; for legacy the message text.
+  // envelope. For legacy the message text.
   plaintext: Uint8Array | undefined
   empty: boolean
   sid: number
@@ -260,7 +260,7 @@ export class OmemoManager {
       transport = rebuilt.decrypt(inner)
       // A retransmission of the same key exchange keeps the established
       // session (the reference implementation calls this check
-      // builds_same_session); only a key exchange with different parameters
+      // builds_same_session). Only a key exchange with different parameters
       // replaces it.
       if (!sameKeyExchange(session.state.receivedKeyExchange ?? null, kex)) {
         session = rebuilt
@@ -293,7 +293,7 @@ export class OmemoManager {
   }
 
   private selectKey(parsed: ParsedEncrypted) {
-    // For omemo:2 keys are grouped per recipient bare JID; match both the
+    // For omemo:2 keys are grouped per recipient bare JID. Match both the
     // group JID (when present) and the rid. For legacy only the rid exists.
     return (
       parsed.keys.find(

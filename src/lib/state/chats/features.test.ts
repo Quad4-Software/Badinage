@@ -20,7 +20,7 @@ vi.mock('$lib/core/storage/idb', () => ({
 }))
 
 // The app wires store.ingest to the message event of whatever implements
-// ChatConnection; a bare Emitter covers that seam without strophe.
+// ChatConnection. A bare Emitter covers that seam without strophe.
 function fakeConnection(): ChatConnection {
   return {
     events: new Emitter<ConnectionEvents>(),

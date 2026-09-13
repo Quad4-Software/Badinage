@@ -20,11 +20,11 @@ export function parsePepEvent(
 }
 
 // One pubsub item element carrying a bookmark payload. The item id is the
-// bookmarked jid; the conference element may also carry a jid attribute
+// bookmarked jid. The conference element may also carry a jid attribute
 // in older payloads so both are accepted.
 // XEP-0492: the notify element under a bookmark extensions wrapper.
 // When several settings carry identity attributes we use the bare
-// fallback element; without one the first present setting wins.
+// fallback element. Without one the first present setting wins.
 function parseNotify(host: Element | null): {
   notify?: NotifySetting | undefined
   extensionsXml: string[]

@@ -42,7 +42,7 @@
   const tokens = $derived(query.toLowerCase().split(/\s+/).filter(Boolean))
 
   // after selecting a message hit the list needs a frame to mount the
-  // conversation; retry briefly in case async hydrate is still landing
+  // conversation. Retry briefly in case async hydrate is still landing
   function jumpToMessage(id: string) {
     let tries = 0
     const attempt = () => {
@@ -110,7 +110,7 @@
       run: close(() => app.selectPeer(c.jid))
     }))
 
-    // body search over loaded conversations; the hit body rides in
+    // body search over loaded conversations. The hit body rides in
     // keywords so the ranker can still verify every token matched
     const messages: PaletteItem[] =
       tokens.length > 0 && store
@@ -207,7 +207,7 @@
     ]
   })
 
-  // every token must hit the label or the extra text (jid, keywords);
+  // every token must hit the label or the extra text (jid, keywords).
   // label hits outrank extra hits
   function rank(item: PaletteItem): number {
     const label = item.label.toLowerCase()

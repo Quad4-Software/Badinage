@@ -8,7 +8,7 @@
     order: number
   }
 
-  // the dataset is a lazy chunk; cache the built list so reopening is instant
+  // the dataset is a lazy chunk. Cache the built list so reopening is instant
   let datasetPromise: Promise<EmojiItem[]> | null = null
 
   function loadDataset(): Promise<EmojiItem[]> {

@@ -67,7 +67,7 @@ export const OMEMO_MESSAGE_LAYOUT: Record<'n' | 'pn' | 'dhPub' | 'ciphertext', F
 }
 
 // OMEMOKeyExchange. The legacy profile keeps the PreKeyWhisperMessage
-// layout ek=2, ik=3, message=4, spk_id=6 (field 5 stays unused there);
+// layout ek=2, ik=3, message=4, spk_id=6 (field 5 stays unused there).
 // omemo:2 renumbers to spk_id=2, ik=3, ek=4, message=5. pk_id=1 in both.
 export const KEY_EXCHANGE_LAYOUT: Record<'pkId' | 'spkId' | 'ik' | 'ek' | 'message', FieldSpec> = {
   pkId: { kind: 'varint', omemo2: 1, legacy: 1 },

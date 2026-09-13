@@ -1,5 +1,5 @@
 // Named theme palettes. Each preset supplies the token surface for both
-// modes; secondary tokens default from the base tokens when a preset
+// modes. Secondary tokens default from the base tokens when a preset
 // does not pin them explicitly. presets.ts resolves one of these plus
 // the optional accent hue into concrete custom properties.
 

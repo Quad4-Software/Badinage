@@ -21,7 +21,7 @@
     onRetract?: ((message: ChatMessage) => void) | undefined
     // XEP-0425: shown only when our own room role allows moderation
     onModerate?: ((message: ChatMessage) => void) | undefined
-    // removes the message; only rendered for undecryptable tombstones
+    // removes the message. Only rendered for undecryptable tombstones
     onDismiss?: ((message: ChatMessage) => void) | undefined
   }
 

@@ -36,7 +36,7 @@ interface AvatarState {
   // session results per requested jid (bare contact jid, room jid,
   // room/nick occupant key, own jid)
   byJid: Map<string, AvatarEntry>
-  // jid -> sha1 hex advertised through vcard-temp:x:update in presence;
+  // jid -> sha1 hex advertised through vcard-temp:x:update in presence.
   // the empty string means the contact says there is no avatar
   hashes: Map<string, string>
   // wire fetch concurrency: extra requests queue behind the in-flight set
@@ -65,7 +65,7 @@ function jidHashKey(conn: XmppTransport, jid: string): string {
 
 // XEP-0153: presence carries the sha1 of the current photo bytes. A
 // changed hash invalidates the session entry so the next request
-// refetches; an empty photo element means the contact dropped the avatar.
+// refetches. An empty photo element means the contact dropped the avatar.
 export function noteAvatarHash(conn: XmppTransport, jid: string, hash: string | undefined): void {
   if (hash === undefined) return
   const state = stateFor(conn)
@@ -170,7 +170,7 @@ export function fetchAvatar(
   })
 }
 
-// Concurrency-capped wire fetch; everything beyond
+// Concurrency-capped wire fetch. Everything beyond
 // AVATAR_FETCH_CONCURRENCY waits in the queue.
 function fetchWire(
   conn: XmppTransport,

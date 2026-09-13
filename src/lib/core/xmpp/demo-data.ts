@@ -1,6 +1,6 @@
 // Fixture data and scripted traffic for demo mode: contacts, occupants,
 // seeded history, the canned reply pool and the one extra archive page
-// per peer. demo.ts keeps the fake transport itself; everything here is
+// per peer. demo.ts keeps the fake transport itself. Everything here is
 // data plus small emit helpers over it.
 
 import type { Emitter } from '$lib/core/events'
@@ -21,7 +21,7 @@ export const ROOM = 'lobby@conference.badinage.local'
 export const ROOM_SUBJECT = 'Badinage lobby: be nice'
 // the invite scheduled a few seconds in points at this room
 const INVITE_ROOM = 'lounge@conference.badinage.local'
-// base-aware icon url; a root-relative path 404s under a subpath deploy
+// base-aware icon url. A root-relative path 404s under a subpath deploy
 const ICON_URL = `${import.meta.env.BASE_URL}icons/icon-192.png`
 
 // delays for the scripted live traffic emitted by scheduleLiveEvents
@@ -524,7 +524,7 @@ export function scheduleLiveEvents(
     })
   }, DEMO_ROOM_INVITE_DELAY_MS)
   schedule(() => {
-    // esme thinks better of her message and retracts it; her stanza id
+    // esme thinks better of her message and retracts it. Her stanza id
     // names the target so the row becomes a tombstone
     events.emit('message', {
       from: 'esme@badinage.local',
@@ -574,7 +574,7 @@ export function emitArchivePage(
   }
 }
 
-// a canned peer reply; rooms answer as the aria occupant
+// a canned peer reply. Rooms answer as the aria occupant
 export function emitReply(
   events: DemoEmitter,
   jid: string,
@@ -680,7 +680,7 @@ export class DemoOmemoPeers {
     return doc.documentElement
   }
 
-  // only contacts publish fake devices; our own list stays honest so
+  // only contacts publish fake devices. Our own list stays honest so
   // publishOwn does not pick up a phantom self device
   get(
     node: string,

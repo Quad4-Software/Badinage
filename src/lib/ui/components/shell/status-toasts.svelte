@@ -5,7 +5,7 @@
   import { accounts } from '$lib/state/accounts.svelte'
 
   let lastStatus = $state(new Map<string, string>())
-  // object identity marks a fresh decline; null is ignored. A plain
+  // object identity marks a fresh decline. Null is ignored. A plain
   // record is enough, this bookkeeping never needs reactivity
   let lastDeclines: Record<string, object> = {}
 

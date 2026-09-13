@@ -22,7 +22,7 @@ export function avatarHint(hashes: SvelteMap<string, string>, jid: string): bool
 }
 
 // Lazily resolve an avatar into the avatars map. Without force the fetch
-// only runs when presence hinted at a photo; forced callers (open
+// only runs when presence hinted at a photo. Forced callers (open
 // conversation, own account, room) fetch regardless. In-flight and
 // failed lookups are deduped for the session by the transport layer and
 // the requested set.

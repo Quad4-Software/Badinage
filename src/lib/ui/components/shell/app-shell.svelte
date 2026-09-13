@@ -39,7 +39,7 @@
   const SIDEBAR_DEFAULT = 15
 
   // expandPane() only fires when paneSize === collapsedSize with strict
-  // equality; collapsedSize is a float derived from window width, so after
+  // equality. CollapsedSize is a float derived from window width, so after
   // a resize or restore the check fails and expand() silently no-ops.
   // isCollapsed() is tolerant, and resize() expands to any size, so it is
   // the fallback when expand() could not prove the pane was collapsed
@@ -57,7 +57,7 @@
 
   // XEP-0352 client state indication: every connected account hears about
   // tab visibility. Reading accounts.list keeps the effect live across
-  // logins so a freshly added account gets the current state at once; the
+  // logins so a freshly added account gets the current state at once. The
   // connection dedupes repeats.
   $effect(() => {
     void accounts.list.length

@@ -48,7 +48,7 @@
   import { MANAGED_VARS, themeVars } from '$lib/utils/themes/presets'
 
   // theme presets and the custom accent hue resolve to concrete custom
-  // properties on the root element; clearing the managed set first stops
+  // properties on the root element. Clearing the managed set first stops
   // stale preset tokens leaking into the default theme
   $effect(() => {
     const vars = themeVars(
@@ -88,7 +88,7 @@
     setLocale('en')
 
     // XEP-0493 callback: the authorization server redirected back here
-    // with ?code&state; finish the flow before any session restore so a
+    // with ?code&state. Finish the flow before any session restore so a
     // remembered password login cannot steal the slot
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
@@ -128,13 +128,13 @@
       window.history.replaceState(null, '', clean)
     }
     // a share_target POST parked its payload in IndexedDB before the
-    // app booted; the share dialog drains it
+    // app booted. The share dialog drains it
     void shareInbox().then((payload) => {
       if (payload) app.sharePayload = payload
     })
 
     // one-time asks (crash reporting opt-in and friends) run once the
-    // shell is up; e2e builds skip the queue so specs are not blocked
+    // shell is up. E2e builds skip the queue so specs are not blocked
     // and drive prompts through the window hook instead
     if (import.meta.env.VITE_E2E) {
       ;(window as unknown as Record<string, unknown>).__badinagePrompts = {
@@ -162,7 +162,7 @@
   })
 
   // Route a pending deep link once an account exists. 'message' resolves
-  // straight into the conversation with an optional prefilled draft;
+  // straight into the conversation with an optional prefilled draft.
   // 'join' and 'roster' open their dialogs, which consume and clear the
   // pending link themselves.
   $effect(() => {
@@ -199,7 +199,7 @@
   })
 
   // auto-away: flips connected 'online' accounts to 'away' after
-  // IDLE_AWAY_MS without input; the next activity restores them
+  // IDLE_AWAY_MS without input. The next activity restores them
   $effect(() => watchIdleAway())
 </script>
 

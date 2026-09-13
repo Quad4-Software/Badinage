@@ -21,7 +21,7 @@ export class TypingTracker {
       }
       return
     }
-    // dms track a single peer state; arm an expiry only for composing
+    // dms track a single peer state. Arm an expiry only for composing
     if (state === 'composing') {
       this.arm(conversation, '')
     } else {

@@ -15,7 +15,7 @@ import { xed25519Verify } from '../../crypto/xed25519'
 import { BUNDLE_TAGS } from './layout'
 
 // Legacy bundle keys ride on the wire as 33 byte serialized Curve25519
-// keys; omemo:2 publishes the raw 32 byte key.
+// keys. Omemo:2 publishes the raw 32 byte key.
 function encodeWireKey(namespace: Namespace, key: Uint8Array): Uint8Array {
   return namespace === 'legacy' ? encodeCurveKeyWire(key) : key
 }
@@ -33,7 +33,7 @@ export interface ParsedBundle {
   // Montgomery u coordinate of the identity key, used for DH.
   identityKeyCurve: Uint8Array
   // The Ed25519 form of the identity key. For omemo:2 this is the same as
-  // identityKeyWire; for legacy it is reconstructed from the Montgomery form
+  // identityKeyWire. For legacy it is reconstructed from the Montgomery form
   // and the sign bit smuggled into the signature.
   identityKeyEd: Uint8Array
   signedPreKeyId: number

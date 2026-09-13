@@ -75,7 +75,7 @@ import type {
 import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptions } from './types'
 
 // The public contract lives in types.ts and the parsed result shapes in
-// stanzas.ts; re-exported here so importers of this module keep working.
+// stanzas.ts. Re-exported here so importers of this module keep working.
 export type { Bookmark, DiscoInfo, DiscoItem, MamPageResult, UploadSlot } from './stanzas'
 export type { PepPublishOptions } from './features/pep/pep'
 export type {
@@ -96,7 +96,7 @@ export class XmppConnection implements ChatConnection {
   private readonly ping: PingManager
   private reconnectDelay = RECONNECT_DELAY_MS
   private manualDisconnect = false
-  // XEP-0352 desired and last-sent client state; null means the ui never
+  // XEP-0352 desired and last-sent client state. Null means the ui never
   // told us, so nothing is sent
   private csiActive: boolean | null = null
   private csiSent: boolean | null = null
@@ -104,7 +104,7 @@ export class XmppConnection implements ChatConnection {
   // know are fatal on strict stacks, so carbons and csi only go out when
   // the stream advertised them
   private streamFeatures = new Set<string>()
-  // queryids of in-flight MAM queries; the message handler only unwraps
+  // queryids of in-flight MAM queries. The message handler only unwraps
   // result wrappers echoing one of these or sent by our own bare jid
   private readonly mamQueries = new Set<string>()
   readonly vcard = createVcardApi(() => this.transport) // thunked: transport is post-ctor
@@ -115,7 +115,7 @@ export class XmppConnection implements ChatConnection {
     opts?: { oauth?: boolean | undefined }
   ) {
     // XEP-0198 stream management is negotiated by strophe itself when the
-    // option is set; a test-supplied connection keeps its own options.
+    // option is set. A test-supplied connection keeps its own options.
     // oauth logins restrict the mechanism list to OAUTHBEARER so a token
     // in the password slot cannot be misread as a scram credential on
     // servers that offer both
@@ -157,7 +157,7 @@ export class XmppConnection implements ChatConnection {
     onError?: (stanza: Element | null) => void
   ): void {
     if (!this.conn.connected) {
-      // queued iq work (omemo publish, disco) can race a teardown; report
+      // queued iq work (omemo publish, disco) can race a teardown. Report
       // it as a failed send instead of throwing through strophe's dead
       // transport
       const fail = onError ?? noop
@@ -363,7 +363,7 @@ export class XmppConnection implements ChatConnection {
 
   // ---- MAM, implemented in features/mam.ts ---------------------------------------
 
-  // Results arrive as 'message' events flagged with mam=true; onDone
+  // Results arrive as 'message' events flagged with mam=true. OnDone
   // fires when the iq result (fin) arrives.
   queryArchive(
     peerJid: string,

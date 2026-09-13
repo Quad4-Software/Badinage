@@ -2,7 +2,7 @@
 // under 300 lines and a folder at or under 10 direct files. Usage:
 // pnpm check:size
 // Files and folders already over the limit are grandfathered in the
-// allowlists below at their current size. They may shrink but not grow;
+// allowlists below at their current size. They may shrink but not grow.
 // delete an entry when a split brings it under the limit.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'

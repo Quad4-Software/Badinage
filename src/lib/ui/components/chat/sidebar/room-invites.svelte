@@ -18,7 +18,7 @@
 
   const account = $derived(accounts.active)
 
-  // the invite open in the dialog; null closes it
+  // the invite open in the dialog. Null closes it
   let current = $state<PendingInvite | null>(null)
   let declineReason = $state('')
 

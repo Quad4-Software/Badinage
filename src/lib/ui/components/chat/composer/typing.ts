@@ -20,7 +20,7 @@ export function createTyping(deps: TypingDeps): { notifyTyping: () => void; sent
 
   // In an encrypted conversation the state rides inside an SCE envelope
   // (sent as a bare notification, no fallback body) so typing metadata
-  // never leaks in the clear; peers without usable omemo:2 devices get
+  // never leaks in the clear. Peers without usable omemo:2 devices get
   // the plain cleartext state instead.
   function sendState(state: ChatState): void {
     const account = deps.account()

@@ -44,7 +44,7 @@ function stripReplyFallback(body: string): { rest: string; quote?: string | unde
 export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessage | null {
   const forwarded = unwrapForwarded(stanza, ctx)
   // a stanza carrying a carbon or result wrapper that fails the sender
-  // checks is a forgery attempt; nothing in it is trustworthy
+  // checks is a forgery attempt. Nothing in it is trustworthy
   if (forwarded === 'untrusted') return null
   const inner = forwarded?.inner ?? stanza
   const wireType = inner.getAttribute('type')
@@ -109,7 +109,7 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
   if (replace) message.replaceId = replace.getAttribute('id') ?? undefined
 
   // XEP-0424 retraction: a direct <retract id> child is the current
-  // form; older drafts wrapped message-retract:0 inside a fasten
+  // form. Older drafts wrapped message-retract:0 inside a fasten
   // apply-to whose own id names the target. A missing id still marks
   // the stanza as a retraction so its fallback body never renders.
   // XEP-0425 room moderation rides the same element but nests a
@@ -140,7 +140,7 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
     }
   }
   // XEP-0424/0425 tombstone in archive results: the retracted element in
-  // past tense means this stanza itself is already retracted content;
+  // past tense means this stanza itself is already retracted content.
   // reason and by come from the room's moderated marker when present
   const retractedEl =
     firstNsTag(inner, NS.MESSAGE_RETRACT, 'retracted') ??
@@ -184,7 +184,7 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
   if (occupantId) message.occupantId = occupantId
 
   // type='error' bounces: the stanza id echoes a message we sent. Surface
-  // the RFC 6120 condition so the store can mark that message failed;
+  // the RFC 6120 condition so the store can mark that message failed.
   // the stanza's echoed body must never render as a fresh incoming row
   if (wireType === 'error') {
     const errorEl = childElements(inner).find((e) => e.localName === 'error')
@@ -199,7 +199,7 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
     message.error = parsed
   }
 
-  // OMEMO payloads survive as raw xml for the service layer to decrypt;
+  // OMEMO payloads survive as raw xml for the service layer to decrypt.
   // the wire body is only a fallback for clients without encryption.
   const encrypted =
     firstNsTag(inner, NS.OMEMO, 'encrypted') ?? firstNsTag(inner, NS.OMEMO_LEGACY, 'encrypted')
@@ -218,7 +218,7 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
     if (stripped.quote !== undefined) message.replyTo.quote = stripped.quote
     message.body = stripped.rest
   }
-  // file transfers often carry no body at all; the oob url doubles as one
+  // file transfers often carry no body at all. The oob url doubles as one
   if (!message.body && message.attachments?.[0]?.url) {
     message.body = message.attachments[0].url
   }

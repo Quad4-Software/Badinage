@@ -20,7 +20,7 @@ export interface LiveMessage {
   encrypted: boolean
   body: string
   attachment?: Attachment | undefined
-  // XEP-0224: the stanza asked for attention; listeners decide how loud
+  // XEP-0224: the stanza asked for attention. Listeners decide how loud
   attention?: boolean | undefined
   // XEP-0372/0492: the incoming muc message mentioned us
   mentioned?: boolean | undefined
@@ -46,7 +46,7 @@ export function buildLiveEvent(
     body: message.body,
     attachment: message.attachments?.[0],
     attention: message.attention === true,
-    // only a stored row can carry a computed mention flag; a bodiless
+    // only a stored row can carry a computed mention flag. A bodiless
     // signal stanza (attention) leaves the previous row last and must
     // not inherit its mentionsMe
     mentioned: stored?.mentionsMe === true

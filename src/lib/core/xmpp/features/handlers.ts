@@ -50,14 +50,14 @@ export function handleMessage(
     events.emit('bookmarks', { updated, retracted: pep.retracted })
   }
   // XEP-0490: our own MDS node fans out when another resource advanced
-  // a displayed marker; each item carries peer, stanza-id and by
+  // a displayed marker. Each item carries peer, stanza-id and by
   if (ownPep && pep?.node === NS.MDS) {
     const items = pep.items
       .map((item) => parseMdsItem(item))
       .filter((entry): entry is MdsDisplayed => entry !== null)
     if (items.length > 0) events.emit('mds', items)
   }
-  // invites and declines ride in message stanzas too; emit them as
+  // invites and declines ride in message stanzas too. Emit them as
   // their own events whether or not the stanza also parses as a message
   const invite = parseRoomInvite(stanza)
   if (invite) events.emit('roomInvite', invite)
@@ -77,7 +77,7 @@ export function handlePresence(
   if (!parsed) return true
   if (parsed.kind === 'occupant') {
     // a fresh room stays locked until the owner accepts the instant-room
-    // defaults; answer 201 automatically so second joiners can get in
+    // defaults. Answer 201 automatically so second joiners can get in
     if (parsed.occupant.self && parsed.occupant.codes.includes(ROOM_CREATED_CODE)) {
       acceptInstantRoom(conn, parsed.occupant.room)
     }

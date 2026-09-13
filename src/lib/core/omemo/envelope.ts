@@ -5,7 +5,7 @@
 // applyEnvelopeContent maps parsed envelope nodes back onto the same
 // IncomingMessage fields that stanzas.ts fills for cleartext stanzas.
 //
-// These are pure functions over the omemo package's XmlElement model;
+// These are pure functions over the omemo package's XmlElement model.
 // namespace identity comes from the literal xmlns attribute.
 
 import { NS } from '$lib/core/xmpp/ns'
@@ -41,7 +41,7 @@ export function chatStateNode(state: ChatState): XmlElement {
   return el(state, { xmlns: NS.CHAT_STATES })
 }
 
-// XEP-0382 spoiler marker; the element text is the sender's hint, empty
+// XEP-0382 spoiler marker. The element text is the sender's hint, empty
 // for a hintless spoiler.
 export function spoilerNode(hint: string): XmlElement {
   return el('spoiler', { xmlns: NS.SPOILER }, [], hint)
@@ -54,7 +54,7 @@ export function ephemeralNode(timer: number): XmlElement {
   return el('ephemeral', { xmlns: NS.EPHEMERAL, timer: String(timer) })
 }
 
-// XEP-0080 location: coordinates go inside the envelope; the envelope
+// XEP-0080 location: coordinates go inside the envelope. The envelope
 // body still carries the geo uri fallback.
 export function geolocNode(geoloc: {
   lat: number
@@ -88,7 +88,7 @@ export function attachmentNodes(url: string, meta?: AttachmentMeta): XmlElement[
   return nodes
 }
 
-// Numeric leaf text inside file metadata; absent or non-numeric text is
+// Numeric leaf text inside file metadata. Absent or non-numeric text is
 // simply dropped rather than failing the whole envelope.
 function childInt(node: XmlElement, name: string): number | undefined {
   const raw = findChild(node, name)?.text
@@ -98,7 +98,7 @@ function childInt(node: XmlElement, name: string): number | undefined {
 }
 
 // Map the content nodes of a decrypted SCE envelope onto the message. The
-// wire-level parseMessage already ran on the cleartext stanza; envelope
+// wire-level parseMessage already ran on the cleartext stanza. Envelope
 // content wins because the cleartext nodes are fallback or absent.
 export function applyEnvelopeContent(message: IncomingMessage, content: XmlElement[]): void {
   for (const node of content) {

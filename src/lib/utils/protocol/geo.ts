@@ -18,7 +18,7 @@ export function geoUri(lat: number, lon: number): string {
 }
 
 // Does a message body look like a bare geo uri fallback? Senders put it
-// there for clients without XEP-0080 support; when the stanza also
+// there for clients without XEP-0080 support. When the stanza also
 // carries a parsed geoloc the raw uri adds nothing.
 export function isGeoUri(text: string): boolean {
   return /^geo:[+-]?\d+(\.\d+)?,[+-]?\d+(\.\d+)?([;,][^\s]*)?$/i.test(text.trim())

@@ -22,7 +22,7 @@ const ALLOWED_FILES = new Set<string>([
   // key layout, which requires reading the store it wraps
   'src/lib/core/xmpp/features/sm.test.ts',
   // injects malformed json into the pending-flow slot to prove the
-  // reader drops it; the public api cannot write malformed data
+  // reader drops it. The public api cannot write malformed data
   'src/lib/core/oauth/session.test.ts'
 ])
 

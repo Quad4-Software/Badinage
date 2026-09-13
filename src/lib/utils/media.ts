@@ -1,4 +1,4 @@
-// Decides how an attachment should render. The stanza's media type wins;
+// Decides how an attachment should render. The stanza's media type wins.
 // when the sender omitted it we guess from the url, covering plain
 // out-of-band links and data uris.
 

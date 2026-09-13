@@ -7,7 +7,7 @@ import type { DiscoInfo, DiscoItem } from '$lib/core/xmpp/stanzas'
 import type { Account } from '../accounts.svelte'
 import { ExploreStore, fallbackSearchForm } from './explore.svelte'
 
-// a connection whose disco surface is scripted per jid; everything else
+// a connection whose disco surface is scripted per jid. Everything else
 // is irrelevant to the explore store
 function fakeConnection(opts: {
   items?: DiscoItem[] | null

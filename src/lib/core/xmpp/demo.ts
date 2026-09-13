@@ -71,7 +71,7 @@ export class DemoConnection implements ChatConnection {
   // the demo blocklist lives in memory and echoes pushes like a real
   // server would so every connected "resource" stays in sync
   private blocklist = new Set<string>()
-  // in-memory PEP bookmark node, seeded with a couple of entries; built
+  // in-memory PEP bookmark node, seeded with a couple of entries. Built
   // eagerly so the connect-time fetch already sees them
   private bookmarks = new Map<string, Bookmark>(demoBookmarks().map((b) => [b.jid, b]))
   private readonly omemoPeers = new DemoOmemoPeers()
@@ -89,7 +89,7 @@ export class DemoConnection implements ChatConnection {
         // something to show in demo mode
         this.events.emit('latency', 24)
         // seed on the next macrotask so listeners bound in reaction to
-        // the connected status attach first; a real transport gets this
+        // the connected status attach first. A real transport gets this
         // ordering for free from network latency
         this.timers.push(setTimeout(() => this.seed(), 0))
       }, DEMO_CONNECT_DELAY_MS)
@@ -158,7 +158,7 @@ export class DemoConnection implements ChatConnection {
   }
 
   discoverUploadService(onDone: (serviceJid: string | null) => void): void {
-    // pretend a service exists; slot requests still fall back to data uris
+    // pretend a service exists. Slot requests still fall back to data uris
     onDone('upload.badinage.local')
   }
 
@@ -182,7 +182,7 @@ export class DemoConnection implements ChatConnection {
     onProgress?: (fraction: number) => void,
     signal?: AbortSignal
   ): Promise<void> {
-    // nothing is really uploaded; report completion anyway
+    // nothing is really uploaded. Report completion anyway
     void putUrl
     void file
     void headers
@@ -246,7 +246,7 @@ export class DemoConnection implements ChatConnection {
   }
 
   sendRetraction(to: string, targetId: string, type: 'chat' | 'groupchat' = 'chat'): void {
-    // the local store already tombstoned the message; nothing to echo
+    // the local store already tombstoned the message. Nothing to echo
     void to
     void targetId
     void type
@@ -265,7 +265,7 @@ export class DemoConnection implements ChatConnection {
   }
 
   setInvisible(enabled: boolean, onDone: (ok: boolean) => void): void {
-    // no privacy list behind demo mode; pretend the toggle always lands
+    // no privacy list behind demo mode. Pretend the toggle always lands
     void enabled
     onDone(true)
   }
@@ -409,7 +409,7 @@ export class DemoConnection implements ChatConnection {
     onDone: (result: MamPageResult) => void
   ): void {
     void opts.max
-    // calls without a before cursor are the initial pull; the seeded
+    // calls without a before cursor are the initial pull. The seeded
     // history stands in for it, so hand back a cursor that lets scroll-up
     // fetch one more page
     if (opts.before === undefined) {

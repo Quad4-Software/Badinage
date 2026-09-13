@@ -1,6 +1,6 @@
 // OmemoService: per-account facade that ties the OmemoManager pair (one per
 // supported namespace), PEP device and bundle discovery, and the trust
-// registry together. Trust decisions live in TrustRegistry; this file
+// registry together. Trust decisions live in TrustRegistry. This file
 // decides who gets keys and who can decrypt, never UI code.
 //
 // Both XEP-0384 profiles are served: urn:xmpp:omemo:2 is preferred for
@@ -83,7 +83,7 @@ export interface OmemoServiceOptions {
   connection: ChatConnection
   accountJid: string
   blindTrust?: boolean
-  // injectable for tests and demo mode; defaults to IndexedDB
+  // injectable for tests and demo mode. Defaults to IndexedDB
   omemoStore?: OmemoStore
   legacyStore?: OmemoStore
   metaStore?: KeyMetaStore
@@ -106,7 +106,7 @@ function namespaceOf(element: XmlElement): Namespace | undefined {
 }
 
 export class OmemoService {
-  // (sender, sid) pairs we already sent a key transport to this session;
+  // (sender, sid) pairs we already sent a key transport to this session.
   // XEP-0384 key recovery is one empty message per device, never a loop
   private readonly requestedKeys = new Set<string>()
   // senders whose device list we already re-fetched after traffic from an
@@ -242,7 +242,7 @@ export class OmemoService {
 
   // The PEP device list of a bare JID for one profile. Falls back to the
   // last list we persisted when the fetch fails. The omemo:2 payload root
-  // is <devices>, the legacy root is <list>; parseDeviceList takes both.
+  // is <devices>, the legacy root is <list>. ParseDeviceList takes both.
   private async devicesOfNs(ns: Namespace, jid: string): Promise<number[]> {
     const bare = bareJid(jid)
     const items = await this.pepItems(NAMESPACES[ns].devices, bare)
@@ -421,7 +421,7 @@ export class OmemoService {
   }
 
   // Encrypt a XEP-0444 reaction update. Returns null for peers without
-  // omemo:2 devices; callers fall back to a cleartext reactions stanza.
+  // omemo:2 devices. Callers fall back to a cleartext reactions stanza.
   async encryptReaction(jid: string, targetId: string, emojis: string[]): Promise<string | null> {
     return this.encryptEnvelope(jid, [reactionsNode(targetId, emojis)])
   }
@@ -521,12 +521,12 @@ export class OmemoService {
         return { status: 'empty', sid: result.sid, namespace: ns }
       }
       if (ns === 'legacy') {
-        // the legacy profile has no SCE envelope; the payload is the body
+        // the legacy profile has no SCE envelope. The payload is the body
         message.body = bytesToUtf8(result.plaintext)
         return { status: 'decrypted', sid: result.sid, namespace: ns }
       }
       const envelope = parseSceEnvelope(parseXml(bytesToUtf8(result.plaintext)))
-      // the wire body is fallback text for non-omemo clients; always
+      // the wire body is fallback text for non-omemo clients. Always
       // replace it with what the envelope actually carried
       message.body = bodyText(envelope) ?? ''
       applyEnvelopeContent(message, envelope.content)

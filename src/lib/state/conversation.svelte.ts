@@ -1,5 +1,5 @@
 // Conversation model: the message list, unread counter, chat states and
-// MUC room metadata for one peer. Pure data plus a reactive factory;
+// MUC room metadata for one peer. Pure data plus a reactive factory.
 // mutation lives in ChatStore (chats.svelte.ts).
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
@@ -27,18 +27,18 @@ export interface ChatMessage {
   delivered: boolean
   read: boolean
   nick?: string | undefined
-  // XEP-0421 stable sender id on groupchat messages; reaction sender
+  // XEP-0421 stable sender id on groupchat messages. Reaction sender
   // keys prefer it over the nick so renames do not split reactions
   occupantId?: string | undefined
   // XEP-0424/0425 tombstone: the message was retracted, optionally with
-  // a reason given by the moderator; body, attachments and reactions are
+  // a reason given by the moderator. Body, attachments and reactions are
   // cleared but the row stays so replies still anchor
   retracted?: boolean | undefined
   retractReason?: string | undefined
   // decryption failed or the stanza could not be shown as text
   undecryptable?: boolean | undefined
   // we sent the sender's device a key transport asking it to repair the
-  // session (XEP-0384 recovery); purely informational for the tombstone
+  // session (XEP-0384 recovery). Purely informational for the tombstone
   keyRequested?: boolean | undefined
   // decrypted, but the sending device is distrusted or changed keys
   untrustedDevice?: boolean | undefined
@@ -49,27 +49,27 @@ export interface ChatMessage {
   edited?: boolean
   // signing state placeholder: 'signed' once verification lands
   signed?: boolean
-  // XEP-0382: the body is a spoiler hidden behind a reveal control; the
+  // XEP-0382: the body is a spoiler hidden behind a reveal control. The
   // string is the sender's optional hint, empty for a hintless spoiler
   spoilerHint?: string | undefined
   // XEP-0393: the sender asked for the body to render unstyled
   unstyled?: boolean | undefined
   // local-only upload state for an outgoing attachment that is still in
-  // flight; never persists meaningfully across restarts
+  // flight. Never persists meaningfully across restarts
   pending?: boolean | undefined
   // 0..1 upload progress while pending
   uploadProgress?: number | undefined
   // file name shown on the pending upload row
   pendingName?: string | undefined
-  // XEP-0466: epoch ms when this message self-destructs; computed at
+  // XEP-0466: epoch ms when this message self-destructs. Computed at
   // ingest from the conversation's ephemeral timer
   expiresAt?: number | undefined
   // XEP-0080 location payload carried by the stanza
   geoloc?: Geoloc | undefined
   // XEP-0372/0492: this muc message names us via a mention reference or
-  // a bare nick hit; drives highlight and on-mention notifications
+  // a bare nick hit. Drives highlight and on-mention notifications
   mentionsMe?: boolean | undefined
-  // stanza type=error bounce: the server or peer refused delivery; holds
+  // stanza type=error bounce: the server or peer refused delivery. Holds
   // the RFC 6120 condition (service-unavailable, remote-server-timeout...)
   deliveryError?: string | undefined
 }
@@ -139,9 +139,9 @@ export interface Conversation {
   historyComplete?: boolean | undefined
   historyLoading?: boolean | undefined
   // XEP-0466: ephemeral timer in seconds negotiated for this
-  // conversation; 0/undefined means messages persist
+  // conversation. 0/undefined means messages persist
   ephemeralTimer?: number | undefined
-  // XEP-0492 notification setting for this conversation; undefined
+  // XEP-0492 notification setting for this conversation. Undefined
   // falls back to the default (always for dm, on-mention for muc)
   notify?: NotifySetting | undefined
   // XEP-0301: real-time text buffers per composing sender (bare jid for
@@ -149,9 +149,9 @@ export interface Conversation {
   // the last applied rtt sequence number, used to drop out-of-order edits.
   liveText: SvelteMap<string, { text: string; at: number; seq?: number | undefined }>
   // XEP-0224: timestamp of the last attention request that got through
-  // the rate limit; the header flashes while it is fresh
+  // the rate limit. The header flashes while it is fresh
   attentionAt?: number | undefined
-  // full jid of the peer resource we last heard from; feature probes
+  // full jid of the peer resource we last heard from. Feature probes
   // (disco for rtt etc.) target this, not the bare account
   peerFullJid?: string | undefined
 }

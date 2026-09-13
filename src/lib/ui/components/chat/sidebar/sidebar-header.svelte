@@ -8,7 +8,7 @@
   import AccountSwitcher from '../../shell/account-switcher.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
 
-  // bindable for chat-sidebar compat; the command palette replaced the
+  // bindable for chat-sidebar compat. The command palette replaced the
   // in-sidebar filter input so nothing reads this anymore
   // eslint-disable-next-line no-useless-assignment
   let { query: _query = $bindable('') }: { query?: string } = $props()

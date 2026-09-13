@@ -29,13 +29,13 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   const { account, peerJid, kind, conversation, ctx, text } = opts
   const type = kind === 'muc' ? 'groupchat' : 'chat'
   // conversation-level slash commands (/clear, /leave, /nick, /topic,
-  // /invite, /join) act on the room or store and never become a body;
+  // /invite, /join) act on the room or store and never become a body.
   // /me and /spoiler fall through to the normal send path
   const command = parseSlashCommand(text)
   if (command && runSlashCommand(opts, command)) return true
   // XEP-0382 slash command: "/spoiler [hint] text" hides text behind a
   // spoiler with the bracketed hint, "/spoiler text" is hintless. A
-  // plain "/me ..." stays literal on the wire; the render side splits it.
+  // plain "/me ..." stays literal on the wire. The render side splits it.
   const spoiler = parseSpoilerCommand(text)
   const sendText = spoiler?.body ?? text
 
@@ -46,7 +46,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
       const omemo = account.omemo ?? (await account.omemoService())
       if (omemo) {
         try {
-          // the correction rides inside the SCE envelope; the wire
+          // the correction rides inside the SCE envelope. The wire
           // stanza never carries a cleartext replace element
           const xml = await omemo.encryptBody(peerJid, sendText, {
             replaceId: ref,
@@ -95,7 +95,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   // conversation currently negotiates ride on both send paths
   const references = mentionRefs(conversation, kind, sendText)
   const ephemeral = conversation?.ephemeralTimer
-  // encrypt when the peer publishes omemo devices; falls back to
+  // encrypt when the peer publishes omemo devices. Falls back to
   // plaintext when there are none or every device is distrusted
   let encryptedXml: string | null = null
   if (type === 'chat') {
@@ -104,7 +104,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
     const omemo = account.omemo ?? (await account.omemoService())
     if (omemo) {
       try {
-        // null means the peer publishes no usable devices; a thrown
+        // null means the peer publishes no usable devices. A thrown
         // error is a real failure and must not downgrade to plaintext.
         // The reply reference and spoiler marker travel inside the
         // envelope with the body.

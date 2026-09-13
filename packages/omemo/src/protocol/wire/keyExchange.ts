@@ -52,7 +52,7 @@ export function decodeKeyExchangeWire(namespace: Namespace, data: Uint8Array): P
     proto = data.slice(1)
   }
   const fields = readFields(proto)
-  // Field numbering per profile lives in KEY_EXCHANGE_LAYOUT; the legacy
+  // Field numbering per profile lives in KEY_EXCHANGE_LAYOUT. The legacy
   // layout additionally wire-encodes ek as a 33 byte Curve25519 key.
   const f = fieldMap(KEY_EXCHANGE_LAYOUT, namespace)
   const pkIdRaw = getVarint(fields, f.pkId)

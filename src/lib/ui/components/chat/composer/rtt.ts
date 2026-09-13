@@ -1,6 +1,6 @@
 // XEP-0301 real-time text sending for the composer: while the peer
 // supports it and the conversation is not encrypted, diffs of the draft
-// go out at a fixed cadence. Extracted for the size gate; nothing here
+// go out at a fixed cadence. Extracted for the size gate. Nothing here
 // is rendered, so plain lets suffice.
 
 import { RTT_INTERVAL_MS } from '$lib/constants'
@@ -27,7 +27,7 @@ export function createRtt(deps: RttDeps): {
   let rttPrev = ''
   let rttSeq = 0
   let rttTimer: ReturnType<typeof setTimeout> | undefined
-  // unknown until the first probe; 'pending' while the disco#info is out
+  // unknown until the first probe. 'pending' while the disco#info is out
   let support: 'unknown' | 'pending' | 'yes' | 'no' = 'unknown'
 
   function maybeSend(): void {
@@ -36,7 +36,7 @@ export function createRtt(deps: RttDeps): {
     if (!settings.current.sendRealTimeText) return
     if (deps.conversation()?.encrypted === true) return
     if (support === 'unknown') {
-      // probe the resource we actually heard from; disco on a bare jid
+      // probe the resource we actually heard from. Disco on a bare jid
       // answers with the server's account identity, not the client, so
       // without a known full jid rtt stays off
       const target = deps.conversation()?.peerFullJid
@@ -82,7 +82,7 @@ export function createRtt(deps: RttDeps): {
     rttSeq = 0
   }
 
-  // switching peers or unmounting ends any live session politely; the
+  // switching peers or unmounting ends any live session politely. The
   // caller passes the peer the session was on since the bound peer prop
   // may already point at the new conversation
   function dispose(peer: string): void {

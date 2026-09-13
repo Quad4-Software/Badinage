@@ -1,7 +1,7 @@
 // Stanza signal application for ChatStore: receipts, markers, retractions,
 // chat states, attention, rtt buffers, ephemeral timers and the muc
 // self-echo merge. Free functions over the store's internals so
-// chats.svelte.ts stays under the size gate; behavior is identical.
+// chats.svelte.ts stays under the size gate. Behavior is identical.
 
 import type { SvelteMap } from 'svelte/reactivity'
 
@@ -82,7 +82,7 @@ export function applyRetractionSignal(
     const target = message.retractId === '' ? undefined : findMessage(peer, message.retractId)
     if (target) {
       // business rules: only the original author may retract. In a dm
-      // that means the same side of the conversation; in a muc the
+      // that means the same side of the conversation. In a muc the
       // same nick, which stands in for the full jid in non-anonymous
       // rooms (occupant-id verification is not implemented).
       const sameSender =
@@ -151,14 +151,14 @@ export function applyContentSignals(
   saveMeta: (conversation: Conversation) => void
 ): void {
   if (message.chatState !== undefined && !outgoing) {
-    // muc typers are tracked per nick in the typing tracker; peerState
+    // muc typers are tracked per nick in the typing tracker. PeerState
     // is the dm signal
     if (message.type !== 'groupchat') conversation.peerState = message.chatState
     typing.note(conversation, sender, message.chatState)
   }
   // XEP-0224: an attention stanza is a pure signal - flag the
   // conversation timestamp and let the ui decide how loud to be. The
-  // stanza may also carry a body, so fall through to normal handling;
+  // stanza may also carry a body, so fall through to normal handling.
   // the live notification fires in ingest only when no row was appended
   // so a body-carrying buzz never notifies twice.
   if (message.attention && !outgoing) conversation.attentionAt = Date.now()
@@ -188,7 +188,7 @@ export function applyContentSignals(
       }
     }
   }
-  // XEP-0466: a peer-sent timer negotiates the conversation mode;
+  // XEP-0466: a peer-sent timer negotiates the conversation mode.
   // timer 0 disables it
   if (message.ephemeralTimer !== undefined && !outgoing) {
     conversation.ephemeralTimer = message.ephemeralTimer > 0 ? message.ephemeralTimer : undefined
@@ -230,7 +230,7 @@ export function mergeSelfEcho(conversation: Conversation, message: IncomingMessa
 }
 
 // XEP-0372/0492: does an incoming muc message name us? Explicit
-// mention references win; a bare nick mention still counts because
+// mention references win. A bare nick mention still counts because
 // many senders type @nick without producing references.
 export function mentionsSelf(
   conversation: Conversation,

@@ -11,11 +11,11 @@ import { NS } from '../ns'
 // Context the live pipeline passes so unwrapping can authenticate the
 // wrapper. Parsing standalone (tests, tooling) stays permissive.
 export interface ParseContext {
-  // our own bare jid; a MAM result from it is trusted without a queryid
+  // our own bare jid. A MAM result from it is trusted without a queryid
   // match because s2s senders cannot claim our domain and c2s stamping
   // keeps same-server users from claiming our localpart either
   ownBareJid?: string | undefined
-  // queryids of MAM queries currently in flight; XEP-0313 requires the
+  // queryids of MAM queries currently in flight. XEP-0313 requires the
   // server to echo the queryid on every result
   mamQueryIds?: ReadonlySet<string> | undefined
 }
@@ -58,7 +58,7 @@ export function unwrapForwarded(stanza: Element, ctx?: ParseContext): UnwrapResu
   const forwarded = firstNsTag(result, NS.FORWARD, 'forwarded')
   const inner = forwarded ? firstTag(forwarded, 'message') : null
   if (!inner || !forwarded) return 'untrusted'
-  // a forged <result> can smuggle a fabricated archive row; trust it
+  // a forged <result> can smuggle a fabricated archive row. Trust it
   // only when its queryid answers an in-flight query (rooms) or the
   // sender is our own account (personal archive, Converse's "ignore
   // MAM chat messages not sent from yourself" fix)

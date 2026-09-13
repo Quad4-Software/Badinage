@@ -28,7 +28,7 @@ export function fileToAvatar(file: File): Promise<string | null> {
         return
       }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      // png keeps transparency; fall back to jpeg when it still busts
+      // png keeps transparency. Fall back to jpeg when it still busts
       // the byte budget (photos with no alpha)
       const png = canvas.toDataURL('image/png')
       resolve(fitsLimit(png) ? png : canvas.toDataURL('image/jpeg', 0.85))

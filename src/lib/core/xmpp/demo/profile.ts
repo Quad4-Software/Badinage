@@ -9,7 +9,7 @@ import { ROOM } from '../demo-data'
 import type { Vcard } from '../stanzas'
 import type { VcardApi } from '../types'
 
-// small svg tile rendered to a data uri; the contacts below keep their
+// small svg tile rendered to a data uri. The contacts below keep their
 // colors stable across reloads because the hue is fixed
 function svgAvatar(initials: string, hue: number): string {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='hsl(${hue} 55% 45%)'/><text x='32' y='42' font-family='sans-serif' font-size='24' fill='#fff' text-anchor='middle'>${initials}</text></svg>`

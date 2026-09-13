@@ -63,7 +63,7 @@
       return
     }
     // attention gets its sound even when the notification itself is
-    // gated away (focused conversation); that is the point of a buzz
+    // gated away (focused conversation). That is the point of a buzz
     if (event.attention && settings.current.allowAttention && settings.current.sounds) {
       playBeep()
     }

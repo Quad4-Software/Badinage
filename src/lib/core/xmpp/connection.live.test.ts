@@ -124,7 +124,7 @@ describe('XmppConnection over a live fake xmpp server', () => {
 
     const authfail = nextStatus(xmpp, 'authfail')
     const gone = nextStatus(xmpp, 'disconnected')
-    // the server closes the socket after the failure; disconnecting here
+    // the server closes the socket after the failure. Disconnecting here
     // keeps the later 'disconnected' from scheduling a reconnect
     xmpp.events.on('status', (s) => {
       if (s === 'authfail') xmpp?.disconnect()

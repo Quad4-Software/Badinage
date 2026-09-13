@@ -9,7 +9,7 @@ import type { Account } from '../accounts.svelte'
 export function block(account: Account, jid: string): void {
   const bare = bareJid(jid)
   if (!bare) return
-  // optimistic add; the server push confirms it for other resources
+  // optimistic add. The server push confirms it for other resources
   account.blocked.add(bare)
   account.connection.blockJids([bare])
 }

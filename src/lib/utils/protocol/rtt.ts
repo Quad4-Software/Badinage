@@ -8,7 +8,7 @@ export type RttEvent = 'new' | 'reset' | 'edit' | 'init' | 'cancel'
 // t: insert text at p (default: append). e: erase n code points ending
 // at p (default: end of buffer). d: forward-delete n code points
 // starting at p (default: at end, which is a no-op). w: a pause of n
-// milliseconds, only meaningful when key press timing is reproduced;
+// milliseconds, only meaningful when key press timing is reproduced.
 // we parse but never emit it.
 export type RttOp =
   | { type: 't'; p?: number | undefined; text: string }

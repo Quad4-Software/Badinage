@@ -88,7 +88,7 @@ describe('parseBackup', () => {
     )
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    // ctrl is normalized to mod; unknown actions and junk combos drop
+    // ctrl is normalized to mod. Unknown actions and junk combos drop
     expect(result.backup.settings.keybindings).toEqual({ 'app.settings': 'mod+,' })
   })
 

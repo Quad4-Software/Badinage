@@ -17,7 +17,7 @@ const MDS_PUBLISH_OPTIONS: PepPublishOptions = {
   accessModel: 'whitelist'
 }
 
-// displayed element wrapping the stanza-id; by echoes back the entity
+// displayed element wrapping the stanza-id. By echoes back the entity
 // that assigned the id (the room for muc, the sender's server for dm)
 function mdsPayload(stanzaId: string, by?: string): string {
   const byAttr = by ? ` by="${escapeXml(by)}"` : ''
@@ -28,7 +28,7 @@ function mdsPayload(stanzaId: string, by?: string): string {
   )
 }
 
-// publish (or overwrite) the displayed marker for one peer; the item id
+// publish (or overwrite) the displayed marker for one peer. The item id
 // is the peer's bare jid so each conversation gets one slot
 export function publishDisplayed(
   conn: XmppTransport,

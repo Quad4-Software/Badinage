@@ -36,7 +36,7 @@ export function firstTagText(el: Element, local: string): string | null {
   return firstTag(el, local)?.textContent ?? null
 }
 
-// direct children that are elements, skipping text and comment nodes;
+// direct children that are elements, skipping text and comment nodes.
 // needed where descendant search would overmatch, e.g. the condition
 // child of a stanza error or value children vs option children of a
 // data form field
@@ -50,7 +50,7 @@ export function childElements(el: Element): Element[] {
 }
 
 // escape a string for use as xml text content or a double-quoted
-// attribute value; used when serializing payloads to raw xml strings
+// attribute value. Used when serializing payloads to raw xml strings
 export function escapeXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -59,7 +59,7 @@ export function escapeXml(value: string): string {
     .replaceAll('"', '&quot;')
 }
 
-// DOM Elements serialize via outerHTML; under xmldom toString does the
+// DOM Elements serialize via outerHTML. Under xmldom toString does the
 // same job. The OMEMO parser consumes the serialized form.
 export function serializeElement(el: Element): string {
   const outer = (el as { outerHTML?: string }).outerHTML

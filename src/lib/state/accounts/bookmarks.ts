@@ -1,7 +1,7 @@
 // XEP-0402 bookmark handling for Account: the optimistic map updates,
 // the refetch-on-failure refetch, the notify-override sync and the
 // autojoin pass. Free functions so accounts.svelte.ts stays under the
-// size gate; the Account methods delegate here.
+// size gate. The Account methods delegate here.
 
 import type { Bookmark } from '$lib/core/xmpp/stanzas'
 import { bareJid, parseJid } from '$lib/utils/jid'
@@ -34,7 +34,7 @@ export function removeBookmark(account: Account, autoJoined: Set<string>, jid: s
 
 // XEP-0492: sync a notification override onto the bookmark carrying
 // the conversation, preserving any extensions we did not author. Only
-// bookmarked chats sync; unbookmarked dms keep a local-only setting.
+// bookmarked chats sync. Unbookmarked dms keep a local-only setting.
 export function setBookmarkNotify(
   account: Account,
   autoJoined: Set<string>,

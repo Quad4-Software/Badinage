@@ -1,6 +1,6 @@
 // Demo-mode MUC behavior: canned room events that mimic what a real
 // server would emit. Free functions so demo.ts stays under the size
-// gate; each takes the event emitter and the demo account jid.
+// gate. Each takes the event emitter and the demo account jid.
 
 import type { Emitter } from '$lib/core/events'
 
@@ -112,7 +112,7 @@ export function demoBanOccupant(
   jid: string,
   reason?: string
 ): void {
-  // the ban iq names a jid; the room then drops the matching occupant
+  // the ban iq names a jid. The room then drops the matching occupant
   const nick = jid.split('@')[0] ?? jid
   events.emit('occupant', {
     room,

@@ -37,7 +37,7 @@ describe('parseMessage extensions', () => {
       </message>`)
     )
     expect(m?.retractId).toBe('m1')
-    // the fallback body is parsed but must never render; ingest swallows it
+    // the fallback body is parsed but must never render. Ingest swallows it
     expect(m?.body).toBe('/me retracted a message')
   })
 

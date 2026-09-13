@@ -15,7 +15,7 @@ interface BackoffRecord {
 
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
-// node tests have no sessionStorage; an in-memory map keeps the same
+// node tests have no sessionStorage. An in-memory map keeps the same
 // semantics within the process
 const memory = new Map<string, string>()
 const memoryStore: Store = {
@@ -54,7 +54,7 @@ export function recordLoginFailure(jid: string, now = Date.now()): number {
   return until
 }
 
-// Milliseconds the jid must still wait before the next attempt; 0 when
+// Milliseconds the jid must still wait before the next attempt. 0 when
 // there is nothing to wait for.
 export function loginBackoffRemaining(jid: string, now = Date.now()): number {
   const record = read(jid)

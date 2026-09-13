@@ -9,11 +9,11 @@ import { bareJid, jidDomain } from '$lib/utils/jid'
 
 import type { Account } from '../accounts.svelte'
 
-// a generous service could return hundreds of rooms; the result list is
+// a generous service could return hundreds of rooms. The result list is
 // capped so the dialog stays responsive
 const RESULT_CAP = 50
 
-// FORM_TYPE marking a XEP-0433 search-params form; the synthetic
+// FORM_TYPE marking a XEP-0433 search-params form. The synthetic
 // fallback stamps it so the service sees a well-formed submission
 const SEARCH_PARAMS_FORM_TYPE = 'urn:xmpp:channel-search:0:search-params'
 
@@ -38,17 +38,17 @@ export function fallbackSearchForm(): DataForm {
 }
 
 export class ExploreStore {
-  // the dialog binds this flag; it lives here rather than app.svelte.ts
+  // the dialog binds this flag. It lives here rather than app.svelte.ts
   // so the explore vertical stays self-contained
   open = $state(false)
   // room address picked from the results. The join-room dialog reads
-  // and clears this slot on open to prefill its room field; that wiring
+  // and clears this slot on open to prefill its room field. That wiring
   // lives in the join flow, this is only the handoff.
   joinPrefill = $state<{ room: string } | null>(null)
 
   // service jid, bound to the dialog's service input
   service = $state('')
-  // the fetched (or synthetic fallback) search form; fields beyond the
+  // the fetched (or synthetic fallback) search form. Fields beyond the
   // hidden FORM_TYPE and q are rendered by the dialog as generic inputs
   form = $state<DataForm | null>(null)
   results = $state<ChannelSearchItem[]>([])
@@ -57,7 +57,7 @@ export class ExploreStore {
   // tells an answered-with-nothing search apart from never-searched
   searched = $state(false)
 
-  // resolved search service per account bare jid for the session; a
+  // resolved search service per account bare jid for the session. A
   // null entry caches a miss so reopening skips the disco walk.
   // bookkeeping only, nothing renders off it
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
@@ -66,10 +66,10 @@ export class ExploreStore {
   // flight, so a reopen does not fan out a second disco walk
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
   private pending = new Map<string, ((service: string | null) => void)[]>()
-  // service the current form was fetched for; an edited service input
+  // service the current form was fetched for. An edited service input
   // triggers a refetch before the search goes out
   private formService = ''
-  // captured on discovery; fetchForm and search reach the transport
+  // captured on discovery. FetchForm and search reach the transport
   // through it instead of re-resolving the active account
   private connection: ChatConnection | null = null
   // monotonic id guarding against a slower earlier search overwriting
@@ -84,7 +84,7 @@ export class ExploreStore {
     )
   }
 
-  // clears per-open state; the resolved-service cache survives
+  // clears per-open state. The resolved-service cache survives
   reset(): void {
     this.service = ''
     this.form = null
@@ -175,7 +175,7 @@ export class ExploreStore {
       }
       q.values = [query]
       connection.channelSearch(service, form, (items) => {
-        // a newer search already went out; its answer wins
+        // a newer search already went out. Its answer wins
         if (seq !== this.searchSeq) return
         this.loading = false
         this.searched = true

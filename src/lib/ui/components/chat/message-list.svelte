@@ -23,7 +23,7 @@
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((message: ChatMessage, emoji: string) => void) | undefined
     // maps a reaction sender key (bare jid, nick, or occupant id) to a
-    // display name; identity when absent
+    // display name. Identity when absent
     senderLabel?: ((sender: string) => string) | undefined
     onRetract?: ((message: ChatMessage) => void) | undefined
     onCancelUpload?: ((message: ChatMessage) => void) | undefined
@@ -59,7 +59,7 @@
   let viewport = $state<HTMLDivElement | null>(null)
   let nearTop = $state(true)
   let pinned = $state(true)
-  // scrollHeight captured when an older page is requested; while set the
+  // scrollHeight captured when an older page is requested. While set the
   // viewport is re-anchored by the prepended height as rows land so the
   // reading position does not move
   let anchorHeight: number | null = null
@@ -68,7 +68,7 @@
   const canLoadOlder = $derived(accounts.active?.status === 'connected')
 
   // in a muc, our reaction sender entry is our XEP-0421 occupant id when
-  // the room assigns one, else our nick; in a dm it is our bare jid
+  // the room assigns one, else our nick. In a dm it is our bare jid
   const self = $derived(
     conversation.kind === 'muc'
       ? (conversation.ourOccupantId ?? conversation.ourNick ?? selfJid)
@@ -137,7 +137,7 @@
     pinned = true
     nearTop = true
     anchorHeight = null
-    // land on the newest message once the peer's rows mount; the
+    // land on the newest message once the peer's rows mount. The
     // pinned resize observer covers media growing in afterwards
     requestAnimationFrame(() => scrollToLatest())
   })
@@ -163,7 +163,7 @@
     if (!conversation.historyLoading) anchorHeight = null
   })
 
-  // images and other async content grow the list after the initial scroll;
+  // images and other async content grow the list after the initial scroll.
   // stay pinned to the bottom whenever we were already there
   $effect(() => {
     const el = viewport
@@ -176,7 +176,7 @@
     const observer = new ResizeObserver(() => {
       if (pinned) el.scrollTop = el.scrollHeight
     })
-    // the viewport itself shrinks when the on-screen keyboard opens;
+    // the viewport itself shrinks when the on-screen keyboard opens.
     // observing it keeps the pinned tail in view
     observer.observe(el)
     for (const child of el.children) observer.observe(child)

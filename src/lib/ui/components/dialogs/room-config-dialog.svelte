@@ -24,7 +24,7 @@
   let form = $state<DataForm | null>(null)
   let loading = $state(false)
   let failed = $state(false)
-  // jid-multi and text-multi edit a joined blob; the lines are split
+  // jid-multi and text-multi edit a joined blob. The lines are split
   // back into values at submit time so trailing newlines stay editable
   let multiText = $state<Record<string, string>>({})
 

@@ -93,7 +93,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
 }
 
 // base64 decode tolerating the whitespace and stray characters that show
-// up in vcard-temp BINVAL payloads; returns null on malformed input
+// up in vcard-temp BINVAL payloads. Returns null on malformed input
 export function base64ToBytes(b64: string): Uint8Array | null {
   const clean = b64.replace(/[^A-Za-z0-9+/=]/g, '')
   if (clean.length % 4 !== 0) return null

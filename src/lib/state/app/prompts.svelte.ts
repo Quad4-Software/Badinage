@@ -1,11 +1,11 @@
 // One-time ask prompts. Each registered prompt has an id, an audience
 // (new installs, existing installs, or everyone) and a version so a
 // materially changed ask can re-prompt users who answered an earlier
-// one. Answered prompts persist in settings.seenPrompts; a prompt
+// one. Answered prompts persist in settings.seenPrompts. A prompt
 // resolves once and the queue moves to the next eligible one.
 //
 // The e2e build disables the automatic queue so specs are not blocked
-// by a modal; App.svelte exposes a window hook instead so prompt
+// by a modal. App.svelte exposes a window hook instead so prompt
 // behavior stays testable end to end.
 
 import { globalKey } from '$lib/core/storage/keys'
@@ -24,11 +24,11 @@ export interface PromptDef {
 }
 
 // captured at module load, before anything writes settings this
-// session; a persisted blob means the install ran a build before
+// session. A persisted blob means the install ran a build before
 const returningUser = hasPersisted(globalKey('settings'))
 
 // legacy installs persisted crashReporting under the old default-on
-// build, before the consent ask existed; that value is not consent so
+// build, before the consent ask existed. That value is not consent so
 // it folds back to off and the one-time prompt decides
 if (settings.current.crashReporting && (settings.current.seenPrompts['crash-reporting'] ?? 0) < 1) {
   settings.set('crashReporting', false)
@@ -53,18 +53,18 @@ export function promptEligible(
   return def.when?.() ?? true
 }
 
-// surfaces the first eligible prompt; call once the shell is up
+// surfaces the first eligible prompt. Call once the shell is up
 export function queuePrompts(): void {
   pending =
     PROMPTS.find((def) => promptEligible(def, settings.current.seenPrompts, returningUser)) ?? null
 }
 
-// force-shows a prompt regardless of eligibility; used by the e2e hook
+// force-shows a prompt regardless of eligibility. Used by the e2e hook
 export function showPrompt(id: string): void {
   pending = PROMPTS.find((def) => def.id === id) ?? null
 }
 
-// records the answer and applies it; every prompt teaches resolve what
+// records the answer and applies it. Every prompt teaches resolve what
 // its choice means
 export function resolvePrompt(accepted: boolean): void {
   const def = pending

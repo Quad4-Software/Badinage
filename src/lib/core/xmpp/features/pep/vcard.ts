@@ -14,10 +14,10 @@ import { parseVcard, type Vcard } from '../../stanzas'
 import type { VcardApi } from '../../types'
 import type { XmppTransport } from '../transport'
 
-// children of vCard that a publish replaces; everything else is kept
+// children of vCard that a publish replaces. Everything else is kept
 const VCARD_MANAGED = ['FN', 'NICKNAME', 'DESC', 'PHOTO']
 
-// a data:image/... uri back into the TYPE/BINVAL pair the stanza needs;
+// a data:image/... uri back into the TYPE/BINVAL pair the stanza needs.
 // non-image payloads never reach the wire
 function photoParts(photoUri: string): { type: string; binval: string } | null {
   const match = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i.exec(photoUri)

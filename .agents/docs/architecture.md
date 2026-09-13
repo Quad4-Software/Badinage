@@ -6,8 +6,8 @@
     packages/omemo -> standalone crypto package, no app imports
 
 Dependencies point inward only and eslint enforces them: core/ may not
-import svelte, ui/, or state/; state/ may not touch DOM or storage globals
-directly; ui/ may not import core/ except for types. core/ still uses
+import svelte, ui/, or state/. state/ may not touch DOM or storage globals
+directly. ui/ may not import core/ except for types. core/ still uses
 DOMParser and XMLHttpRequest in places (pep.ts, discovery.ts, upload.ts),
 so a SharedWorker move needs those injected first.
 
@@ -49,7 +49,7 @@ The ChatConnection interface and event types live in core/xmpp/types.ts.
 Feature implementations are free functions over an XmppTransport context
 in core/xmpp/features/ (messaging, presence, roster, mam, upload, pep,
 blocking, muc, handlers). All wire parsing lives in core/xmpp/stanzas.ts
-so transports and tests share one schema; shared Element traversal helpers
+so transports and tests share one schema. Shared Element traversal helpers
 are in utils/xml.ts. core/xmpp/demo.ts implements the same ChatConnection
 interface with fake data for demo mode and screenshots, fixtures in
 demo-data.ts.

@@ -33,7 +33,7 @@ const PRECACHE = `${PRECACHE_PREFIX}${checksum(
   manifest.map((entry) => `${entry.url}@${entry.revision ?? ''}`).join('\n')
 )}`
 
-// manifest urls are relative to the registration scope; resolved to
+// manifest urls are relative to the registration scope. Resolved to
 // absolute urls so request.url can be looked up directly
 const precached = new Set(manifest.map((entry) => new URL(entry.url, self.registration.scope).href))
 const indexUrl = new URL('index.html', self.registration.scope).href

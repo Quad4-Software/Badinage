@@ -10,7 +10,7 @@
   (docker/dev/compose.yaml), waits for the http port on 5280, seeds
   e2e-alice and e2e-bob with prosodyctl register, and runs the suite
   with E2E_PROSODY=1 so the server-backed specs in e2e/server.test.ts
-  execute; the container is torn down with compose down -v in an
+  execute. The container is torn down with compose down -v in an
   always() step. Locally: docker compose -f docker/dev/compose.yaml
   up -d prosody, register the two users the same way, then
   E2E_PROSODY=1 pnpm test:e2e.

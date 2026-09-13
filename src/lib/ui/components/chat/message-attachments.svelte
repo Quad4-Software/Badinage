@@ -21,7 +21,7 @@
 <div class="flex flex-col gap-1">
   {#each attachments as attachment (attachment.url)}
     {#if isAesGcmUrl(attachment.url)}
-      <!-- XEP-0454: the key rides in the fragment; decrypt to a blob url.
+      <!-- XEP-0454: the key rides in the fragment. Decrypt to a blob url.
            safeUrl would reject the scheme anyway, so handle it first. -->
       <AesGcmAttachment {attachment} onViewImage={(src, alt) => (lightbox = { src, alt })} />
     {:else}

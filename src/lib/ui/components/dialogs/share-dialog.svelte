@@ -28,7 +28,7 @@
   )
   const rosterNames = $derived(new Map((account?.roster ?? []).map((c) => [c.jid, c.name])))
 
-  // share sheets commonly repeat the title inside the text; dedupe so
+  // share sheets commonly repeat the title inside the text. Dedupe so
   // the draft is not doubled up
   const sharedText = $derived(
     [

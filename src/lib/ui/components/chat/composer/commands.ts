@@ -1,6 +1,6 @@
 // Conversation-level slash commands (converse-style): /clear, /leave,
 // /nick, /topic, /invite, /join run against the store or room and never
-// reach the wire. Unknown commands get an error toast and are not sent;
+// reach the wire. Unknown commands get an error toast and are not sent.
 // the message-level commands pass through so send.ts can emit a body.
 
 import { get } from 'svelte/store'
@@ -12,7 +12,7 @@ import type { SlashCommand } from '$lib/utils/message-commands'
 
 import type { SendOpts } from './send'
 
-// message-level commands produce a body; send.ts owns them
+// message-level commands produce a body. Send.ts owns them
 const PASSTHROUGH = new Set(['me', 'spoiler'])
 
 const ROOM_ONLY = new Set(['leave', 'nick', 'topic', 'invite'])

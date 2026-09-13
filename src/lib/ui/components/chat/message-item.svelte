@@ -26,7 +26,7 @@
     showNick?: boolean
     showAvatar?: boolean
     avatarName?: string
-    // address the sender avatar is resolved under; force fetches even
+    // address the sender avatar is resolved under. Force fetches even
     // without a presence photo hash hint (dm peers)
     avatarJid?: string
     avatarForce?: boolean
@@ -43,7 +43,7 @@
     // XEP-0425: shown only when our own room role allows moderation
     canModerate?: boolean
     onModerate?: ((message: ChatMessage) => void) | undefined
-    // removes the message; only rendered for undecryptable tombstones
+    // removes the message. Only rendered for undecryptable tombstones
     onDismiss?: ((message: ChatMessage) => void) | undefined
     // press-and-hold or right click on the bubble, for the touch sheet
     onLongPress?: ((message: ChatMessage) => void) | undefined
@@ -72,7 +72,7 @@
 
   let spoilerRevealed = $state(false)
 
-  // senders put the oob url in the body as a fallback; when the body is
+  // senders put the oob url in the body as a fallback. When the body is
   // exactly that url the attachment block already renders it. Same for
   // the geo uri fallback that accompanies a geoloc element.
   const bodyIsAttachmentUrl = $derived(
@@ -257,7 +257,7 @@
                 </span>
               </div>
             {:else if message.geoloc}
-              <!-- XEP-0080: a location card; the tile preview is
+              <!-- XEP-0080: a location card. The tile preview is
                    opt-in because it fetches from a tile server -->
               <a
                 href={osmUrl(message.geoloc.lat, message.geoloc.lon)}
@@ -270,7 +270,7 @@
               >
                 {#if geoTileUrl && geoTile}
                   <span class="relative block h-28 w-52 overflow-hidden">
-                    <!-- tile is 256px; offset it so the pin lands at the
+                    <!-- tile is 256px. Offset it so the pin lands at the
                          center of the 208x112 window -->
                     <img
                       src={geoTileUrl}

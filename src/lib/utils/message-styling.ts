@@ -1,22 +1,22 @@
 // XEP-0393 message styling: a pure tokenizer turning a message body into
 // a typed block/span tree. Rendering lives in message-body.svelte which
-// maps these tokens to real elements; nothing here ever produces HTML.
+// maps these tokens to real elements. Nothing here ever produces HTML.
 //
 // Rules implemented from XEP-0393 section 6:
 // - blocks are parsed before spans: a line starting with ``` opens a
 //   preformatted block that runs to a line containing only ``` or the end
-//   of the input; consecutive lines starting with > form a quotation
+//   of the input. Consecutive lines starting with > form a quotation
 //   whose stripped contents are parsed recursively as child blocks
-// - a plain block is a single line; spans never escape their line
+// - a plain block is a single line. Spans never escape their line
 // - span directives are * (strong), _ (emphasis), ~ (strike) and `
 //   (preformatted span). The opener must sit at the start of its parent
 //   block, after whitespace, or after a different directive char, and
 //   must not be followed by whitespace. The closer must not be preceded
 //   by whitespace and there must be text between the directives.
-// - matching is lazy: the first same-char candidate closes the span; if
+// - matching is lazy: the first same-char candidate closes the span. If
 //   that pair is invalid neither char is a directive and scanning moves
 //   on, so "* plain *strong*" styles only the second pair
-// - a preformatted span contains plain text only; other styled spans
+// - a preformatted span contains plain text only. Other styled spans
 //   recursively contain child spans
 // - characters that fail these rules stay literal text
 
@@ -42,7 +42,7 @@ const SPAN_DIRECTIVES = new Map<string, 'strong' | 'emphasis' | 'strike' | 'code
 const PRE_FENCE = '```'
 
 // White_Space property or general category Z, per the XEP glossary. The
-// JS \s class covers White_Space plus U+FEFF; \p{Z} adds the separators.
+// JS \s class covers White_Space plus U+FEFF. \p{Z} adds the separators.
 function isSpace(codePoint: number | undefined): boolean {
   if (codePoint === undefined) return false
   return /[\s\p{Z}]/u.test(String.fromCodePoint(codePoint))
@@ -69,7 +69,7 @@ function isOpener(text: string, at: number): boolean {
 
 // The closer is the first same-char occurrence after the opener. The pair
 // is valid only when there is text between the directives and the closer
-// is not preceded by whitespace; otherwise the opener is not a directive
+// is not preceded by whitespace. Otherwise the opener is not a directive
 // at all (lazy matching, neither char counts).
 function findClose(text: string, openAt: number): number {
   const char = text[openAt] as string

@@ -5,16 +5,16 @@ description: XMPP protocol layer conventions for this repo. Use when adding stan
 
 ## Where things live
 
-- core/xmpp/connection.ts wraps Strophe.Connection and emits typed events;
+- core/xmpp/connection.ts wraps Strophe.Connection and emits typed events.
   it is a thin shell delegating to feature functions
 - core/xmpp/types.ts holds ChatConnection, ConnectionEvents and friends
 - core/xmpp/features/ has the per-XEP plumbing (messaging, presence,
   roster, mam, upload, pep, blocking, muc, handlers), free functions over
   an XmppTransport context
 - core/xmpp/stanzas.ts parses Elements into typed events (pure, unit
-  tested); Element traversal helpers live in utils/xml.ts
+  tested). Element traversal helpers live in utils/xml.ts
 - core/xmpp/demo.ts is the fake transport behind demo mode, implementing
-  the same ChatConnection; fixtures live in demo-data.ts
+  the same ChatConnection. Fixtures live in demo-data.ts
 - core/xmpp/ns.ts holds every XML namespace as a constant in NS plus
   HOST_META_REL for discovery link relations
 - core/xmpp/discovery.ts resolves websocket and BOSH endpoints

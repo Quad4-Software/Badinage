@@ -111,7 +111,7 @@ export function inviteToRoom(
   sendMediatedInvite(conn, room, to, opts?.reason)
 }
 
-// XEP-0045: declining an invite is always mediated; even a direct
+// XEP-0045: declining an invite is always mediated. Even a direct
 // XEP-0249 invite is declined by telling the room.
 export function sendRoomDecline(
   conn: XmppTransport,
@@ -149,7 +149,7 @@ export function banOccupant(conn: XmppTransport, room: string, jid: string, reas
 }
 
 // XEP-0425: ask the room to retract the message carrying stanzaId. The
-// current protocol version sends a bare moderate element inside an iq;
+// current protocol version sends a bare moderate element inside an iq.
 // the fasten apply-to wrapper from earlier drafts was dropped.
 export function moderateMessage(
   conn: XmppTransport,
@@ -182,7 +182,7 @@ export function pingOccupant(
     }),
     () => onDone(true),
     (stanza) => {
-      // a timeout means the stream is unhealthy; an error naming a
+      // a timeout means the stream is unhealthy. An error naming a
       // missing occupant means we were dropped from the room
       if (!stanza) {
         onDone(false)

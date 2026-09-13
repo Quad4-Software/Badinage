@@ -1,7 +1,7 @@
 <script lang="ts">
   // XEP-0393 message styling renderer: maps the token tree from
   // utils/message-styling to real elements. Nothing here builds HTML
-  // strings; text always goes through svelte interpolation.
+  // strings. Text always goes through svelte interpolation.
   import { tokenizeStyling, type BlockToken, type SpanToken } from '$lib/utils/message-styling'
 
   let { body, unstyled = false }: { body: string; unstyled?: boolean | undefined } = $props()

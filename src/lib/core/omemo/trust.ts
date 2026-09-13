@@ -9,7 +9,7 @@ import { Emitter } from '$lib/core/events'
 // undecided: seen but never acted on. blind: trusted automatically on
 // first use because the blind-trust setting was on. trusted: the user
 // verified the fingerprint out of band. distrusted: the user flagged the
-// device; it is excluded from encryption.
+// device. It is excluded from encryption.
 export type TrustLevel = 'undecided' | 'blind' | 'trusted' | 'distrusted'
 
 export interface TrustRecord {

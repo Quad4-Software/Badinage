@@ -18,7 +18,7 @@
   interface Props {
     open?: boolean
     title: string
-    // plain-text body; render children instead when the description needs
+    // plain-text body. Render children instead when the description needs
     // markup (e.g. a fingerprint code block)
     description?: string
     confirmLabel: string

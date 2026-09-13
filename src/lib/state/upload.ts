@@ -4,7 +4,7 @@
 // encrypted conversation the file is AES-256-GCM encrypted first and the
 // aesgcm: url (key in the fragment, never sent to the server) travels
 // inside the SCE envelope per XEP-0454. A granted slot shows a pending
-// message row with progress and a cancel button; the data-uri path is
+// message row with progress and a cancel button. The data-uri path is
 // instant and never needs one.
 
 import { INLINE_ATTACHMENT_LIMIT } from '$lib/constants'
@@ -20,7 +20,7 @@ import { app } from './app.svelte'
 const pendingUploads = new Map<string, AbortController>()
 
 // Abort the upload behind a pending message row. The rejection unwinds
-// through uploadAndSend which removes the row; a no-op for unknown ids.
+// through uploadAndSend which removes the row. A no-op for unknown ids.
 export function cancelUpload(messageId: string): void {
   pendingUploads.get(messageId)?.abort()
 }
@@ -78,7 +78,7 @@ function uploadAndSend(
         )
         url = slot.getUrl
       } catch (error) {
-        // abort and failure both leave no pending UI; only a real
+        // abort and failure both leave no pending UI. Only a real
         // failure reports, a cancel is silent
         store.removeMessage(peerJid, pendingId)
         if (!isAbort(error)) onError()

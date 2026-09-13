@@ -1,7 +1,7 @@
 // Conversation actions for the chat view: bookmark, leave, nick change,
 // invite, moderation, notify override, ephemeral timer, attention buzz,
 // reaction sets and retraction. One factory so chat-view.svelte stays
-// under the size gate; behavior is identical.
+// under the size gate. Behavior is identical.
 
 import { get } from 'svelte/store'
 
@@ -46,7 +46,7 @@ export function createChatActions(deps: ChatActionDeps) {
     const account = deps.account()
     const conversation = deps.conversation()
     if (!target || !account || !conversation) return
-    // dm retractions reference the stanza id attribute; muc retractions
+    // dm retractions reference the stanza id attribute. Muc retractions
     // the room stanza-id, which lands in message.id after the echo merge
     const ref = deps.isRoom() ? target.id : (target.wireId ?? target.id)
     account.connection.sendRetraction(
@@ -150,7 +150,7 @@ export function createChatActions(deps: ChatActionDeps) {
     store.setEphemeral(conversation.peerJid, seconds)
     // announce the new timer immediately so the peer negotiates it
     // without waiting for the next typed message. In an encrypted dm
-    // the announce rides inside an SCE envelope; a cleartext ephemeral
+    // the announce rides inside an SCE envelope. A cleartext ephemeral
     // element would leak that the conversation self-destructs.
     if (!deps.isRoom() && conversation.encrypted === true) {
       const conn = account.connection
@@ -170,7 +170,7 @@ export function createChatActions(deps: ChatActionDeps) {
     )
   }
 
-  // XEP-0224: nudge the peer; receivers rate-limit so this is a
+  // XEP-0224: nudge the peer. Receivers rate-limit so this is a
   // low-volume signal. We also cap our own sends per conversation.
   function buzz(): void {
     const account = deps.account()
@@ -185,7 +185,7 @@ export function createChatActions(deps: ChatActionDeps) {
 
   // XEP-0444 reactions. In an encrypted dm the reaction set rides inside
   // an SCE envelope as a bare notification so the emoji and its target id
-  // never leak in the clear; anything else uses the plain stanza.
+  // never leak in the clear. Anything else uses the plain stanza.
   function sendReactionSet(target: string, ref: string, emojis: string[]): void {
     const account = deps.account()
     const conversation = deps.conversation()

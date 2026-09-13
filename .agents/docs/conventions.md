@@ -8,7 +8,7 @@
   public surface. Import through the index, not deep paths.
 - Barrel files only inside one feature boundary. No global barrel.
 - A file over 300 lines or a folder over 10 direct files needs a split or
-  a subfolder. `pnpm check:size` enforces both in CI; existing offenders
+  a subfolder. `pnpm check:size` enforces both in CI. Existing offenders
   sit in a shrinking allowlist in scripts/check-size.mjs.
 - Test fixtures and harnesses that must not ship in src/ live in test/ at
   the repo root (test/fake-xmpp-server.ts, test/stub-connection.ts,
@@ -17,7 +17,7 @@
   the owning feature folder. No magic strings for namespaces, storage keys,
   timing, or sizes.
 - Dead files, deps and exports get removed, not kept. `pnpm knip` reports
-  them; keep the run clean.
+  them. Keep the run clean.
 
 ## TypeScript
 

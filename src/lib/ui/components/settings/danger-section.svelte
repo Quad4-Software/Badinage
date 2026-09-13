@@ -33,7 +33,7 @@
   })
 
   async function wipeData() {
-    // every badinage-namespaced key plus all IndexedDB stores; ui/ must
+    // every badinage-namespaced key plus all IndexedDB stores. ui/ must
     // not touch storage globals directly
     await wipeAllData()
     location.reload()

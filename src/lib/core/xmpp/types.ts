@@ -1,6 +1,6 @@
 // The public contract of the XMPP transport layer: the ChatConnection
 // interface the state layer programs against plus the option and event
-// types it references. XmppConnection in connection.ts implements it;
+// types it references. XmppConnection in connection.ts implements it.
 // DemoConnection in demo.ts fakes it. connection.ts re-exports all of
 // this so existing importers keep working.
 
@@ -33,7 +33,7 @@ import type {
 } from './stanzas'
 
 // XEP-0054 own vcard. fetch resolves null when the server has no card or
-// refuses the query; set merges the managed fields over the stored card
+// refuses the query. Set merges the managed fields over the stored card
 // and, when a photo is included, stamps the XEP-0153 hash so presence
 // broadcasts advertise it.
 export interface VcardApi {
@@ -59,14 +59,14 @@ export interface SendMessageOptions {
   replyTo?: ReplyRef | undefined
   // XEP-0308: id of the stanza this message corrects
   replaceId?: string | undefined
-  // XEP-0382: mark the body as a spoiler; the string is the optional
+  // XEP-0382: mark the body as a spoiler. The string is the optional
   // hint shown before reveal, empty for a hintless spoiler
   spoilerHint?: string | undefined
   // XEP-0466: ephemeral timer in seconds attached to this message
   ephemeral?: number | undefined
-  // XEP-0372 body-range references (mentions); positions are code points
+  // XEP-0372 body-range references (mentions). Positions are code points
   references?: MessageReference[] | undefined
-  // XEP-0080 location payload; a geo: uri body fallback is added by the
+  // XEP-0080 location payload. A geo: uri body fallback is added by the
   // sender, so callers only pass coordinates
   geoloc?: Geoloc | undefined
 }
@@ -99,7 +99,7 @@ export type ConnectionEvents = {
   roomInvite: MucInvite
   // a mediated decline relayed by the room
   roomDecline: MucDecline
-  // presence type=error with the stanza error details; MUC join
+  // presence type=error with the stanza error details. MUC join
   // failures (401/403/404/407/409) arrive this way
   presenceError: PresenceError
   // XEP-0402 PEP notification: another of our resources published or
@@ -112,7 +112,7 @@ export type ConnectionEvents = {
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
-// real transport; DemoConnection in demo.ts is the fake one used by demo mode.
+// real transport. DemoConnection in demo.ts is the fake one used by demo mode.
 export interface ChatConnection {
   readonly events: Emitter<ConnectionEvents>
   readonly connected: boolean
@@ -134,7 +134,7 @@ export interface ChatConnection {
     meta?: AttachmentMeta
   ): string
   // Optional on the interface because demo mode has no upload service to
-  // discover; requestUploadSlot covers the whole flow.
+  // discover. RequestUploadSlot covers the whole flow.
   discoverUploadService?(onDone: (serviceJid: string | null) => void): void
   requestUploadSlot(
     name: string,
@@ -177,7 +177,7 @@ export interface ChatConnection {
     onDone?: (ok: boolean) => void
   ): void
   // OMEMO: send a pre-encrypted message stanza. encryptedXml is the
-  // serialized <encrypted> element produced by the omemo service; replies
+  // serialized <encrypted> element produced by the omemo service. Replies
   // and corrections travel inside its SCE envelope, never in the clear.
   sendEncryptedMessage(to: string, encryptedXml: string): string
   // OMEMO: send a bare encrypted payload with no fallback body - used for
@@ -188,7 +188,7 @@ export interface ChatConnection {
   setRoomSubject(room: string, subject: string): void
   // in-room nick change via the unavailable-plus-join presence dance
   changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void
-  // XEP-0249 direct invite plus XEP-0045 mediated invite; sending both
+  // XEP-0249 direct invite plus XEP-0045 mediated invite. Sending both
   // covers open rooms and members-only rooms without disco probing.
   // password is carried on the direct invite so protected rooms stay
   // joinable from the invite alone.
@@ -199,16 +199,16 @@ export interface ChatConnection {
   ): void
   // XEP-0045 decline, mediated through the room
   declineRoomInvite(room: string, to: string, reason?: string): void
-  // XEP-0045 kick and ban; ban needs the occupant's real jid
+  // XEP-0045 kick and ban. Ban needs the occupant's real jid
   kickOccupant(room: string, nick: string, reason?: string): void
   banOccupant(room: string, jid: string, reason?: string): void
   // XEP-0425: retract the room message carrying this stanza-id
   moderateMessage(room: string, stanzaId: string, reason?: string): void
-  // XEP-0045 owner configuration via a XEP-0004 form; fetch resolves
+  // XEP-0045 owner configuration via a XEP-0004 form. Fetch resolves
   // null when the room refuses (not an owner) or errors
   fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void
   submitRoomConfig(room: string, form: DataForm): void
-  // XEP-0199 self-ping to our own occupant jid; alive=false means the
+  // XEP-0199 self-ping to our own occupant jid. Alive=false means the
   // room dropped us or the stream timed out
   pingOccupant(room: string, nick: string, onDone: (alive: boolean) => void): void
   queryArchive(
@@ -218,7 +218,7 @@ export interface ChatConnection {
   ): void
   enableCarbons(): void
   // XEP-0352: tell the server whether the ui is in the foreground. Only
-  // sent while connected; transports may dedupe repeat calls.
+  // sent while connected. Transports may dedupe repeat calls.
   setClientActive(active: boolean): void
   // XEP-0198: whether stream management was negotiated on this session
   streamManagementEnabled(): boolean
@@ -229,12 +229,12 @@ export interface ChatConnection {
   // does not assign them) for a muc message.
   sendRetraction(to: string, targetId: string, type?: 'chat' | 'groupchat'): void
   // XEP-0030 service discovery. discoInfo resolves null on error or
-  // timeout; a node of the form base#ver is served from the entity-caps
+  // timeout. A node of the form base#ver is served from the entity-caps
   // cache when the verification string was already resolved before.
   discoInfo(jid: string, node: string | undefined, onDone: (info: DiscoInfo | null) => void): void
   discoItems(jid: string, onDone: (items: DiscoItem[] | null) => void): void
   // XEP-0402 bookmarks on our own PEP node. fetch resolves null when the
-  // server lacks PEP; add republishes and remove retracts one item.
+  // server lacks PEP. Add republishes and remove retracts one item.
   fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void
   addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void
   removeBookmark(jid: string, onDone?: (ok: boolean) => void): void
@@ -242,13 +242,13 @@ export interface ChatConnection {
   // signal and receivers rate-limit it.
   sendAttention(to: string, type?: 'chat' | 'groupchat'): void
   // XEP-0301: send one real-time text update. seq increments per edit of
-  // the same composed message; event and ops carry the delta.
+  // the same composed message. Event and ops carry the delta.
   sendRtt(to: string, seq: number, event: RttEvent, ops: RttOp[]): void
   // XEP-0186: toggle invisibility through a privacy list that denies
   // outbound presence. onDone reports whether the server accepted it.
   setInvisible(enabled: boolean, onDone: (ok: boolean) => void): void
   // XEP-0490: publish the displayed marker for a conversation on our
-  // private MDS node; by echoes the stanza-id assigner when known
+  // private MDS node. By echoes the stanza-id assigner when known
   publishDisplayed(
     peer: string,
     stanzaId: string,

@@ -20,7 +20,7 @@ describe('tileFor', () => {
 
   it('puts the origin on the shared tile corner on zoom 1', () => {
     // lon 0 lat 0 is the center of the whole grid, which at z1 is the
-    // corner shared by all four tiles; the containing tile owns it at 0,0
+    // corner shared by all four tiles. The containing tile owns it at 0,0
     expect(tileFor(0, 0, 1)).toEqual({ x: 1, y: 1, pinX: 0, pinY: 0 })
   })
 

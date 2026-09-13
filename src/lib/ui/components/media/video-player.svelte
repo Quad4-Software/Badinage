@@ -68,7 +68,7 @@
   onmouseenter={() => (hovering = true)}
   onmouseleave={() => (hovering = false)}
 >
-  <!-- chat attachments carry no caption tracks; there is nothing to point a track at -->
+  <!-- chat attachments carry no caption tracks. There is nothing to point a track at -->
   <!-- svelte-ignore a11y_media_has_caption -->
   <video
     bind:this={video}

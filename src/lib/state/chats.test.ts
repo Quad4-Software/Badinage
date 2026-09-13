@@ -21,7 +21,7 @@ vi.mock('$lib/core/storage/idb', () => ({
 }))
 
 // The app wires store.ingest to the message event of whatever implements
-// ChatConnection; a bare Emitter covers that seam without strophe.
+// ChatConnection. A bare Emitter covers that seam without strophe.
 function fakeConnection(): ChatConnection {
   return {
     events: new Emitter<ConnectionEvents>(),
@@ -92,7 +92,7 @@ describe('ChatStore ingest', () => {
   })
 
   it('deduplicates a live message against its MAM copy', () => {
-    // live delivery carries origin-id but no stanza-id; the archived copy
+    // live delivery carries origin-id but no stanza-id. The archived copy
     // adds the archive stanza-id. The two copies must land once.
     connection.events.emit('message', incoming({ id: 'w1', originId: 'o1' }))
     connection.events.emit(

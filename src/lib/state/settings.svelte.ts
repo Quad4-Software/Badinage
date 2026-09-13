@@ -40,11 +40,11 @@ export const DEFAULT_KEYBINDINGS: Record<KeybindingAction, string> = {
 
 // per-account display and alert preferences, keyed by bare jid
 interface AccountMeta {
-  // pinned accent hue for the account badge; unset picks from the jid
+  // pinned accent hue for the account badge. Unset picks from the jid
   hue?: number | undefined
-  // per-account desktop notifications; unset follows the global toggle
+  // per-account desktop notifications. Unset follows the global toggle
   notify?: boolean | undefined
-  // XEP-0186: the account is in invisible mode; reapplied on connect
+  // XEP-0186: the account is in invisible mode. Reapplied on connect
   invisible?: boolean | undefined
 }
 
@@ -60,13 +60,13 @@ interface Settings {
   // omemo: trust newly seen device fingerprints automatically (BTBV)
   omemoBlindTrust: boolean
   // opt-in crash reporting to the bundled or deployment-configured
-  // sentry-compatible endpoint; off until the user explicitly enables it
+  // sentry-compatible endpoint. Off until the user explicitly enables it
   crashReporting: boolean
-  // oklch hue for the accent color; null keeps the theme default
+  // oklch hue for the accent color. Null keeps the theme default
   accentHue: number | null
   // ui density, applied as data-density on the root element
   density: Density
-  // preferred account ordering for the switcher; jids not listed keep
+  // preferred account ordering for the switcher. Jids not listed keep
   // their arrival order at the end
   accountOrder: string[]
   accountMeta: Record<string, AccountMeta>
@@ -75,7 +75,7 @@ interface Settings {
   sendRealTimeText: boolean
   // XEP-0224: allow contacts to nudge us with an attention request
   allowAttention: boolean
-  // XEP-0080: fetch map tiles for shared locations; off keeps the
+  // XEP-0080: fetch map tiles for shared locations. Off keeps the
   // location card link-only so nothing off-origin is requested
   mapPreviews: boolean
   // register the web+xmpp protocol handler at runtime (the manifest
@@ -84,11 +84,11 @@ interface Settings {
   // flip presence to away after IDLE_AWAY_MS without input, and back on
   // the next keystroke or pointer event
   autoAway: boolean
-  // named palette preset; 'default' keeps the stylesheet tokens
+  // named palette preset. 'default' keeps the stylesheet tokens
   theme: string
-  // settings section ids the user collapsed; persists across sessions
+  // settings section ids the user collapsed. Persists across sessions
   collapsedSections: string[]
-  // one-time prompt id -> the version last answered; bumping a prompt's
+  // one-time prompt id -> the version last answered. Bumping a prompt's
   // version re-asks users who answered an earlier one
   seenPrompts: Record<string, number>
 }
@@ -193,7 +193,7 @@ class SettingsStore {
     return buildBackup({ ...this.current }, mode)
   }
 
-  // applies a validated backup file; returns the parse result so the
+  // applies a validated backup file. Returns the parse result so the
   // caller can toast success, partial imports, or failure
   importBackup(text: string): ParseResult {
     const defaults: Record<string, unknown> = { ...DEFAULT_SETTINGS }

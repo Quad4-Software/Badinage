@@ -35,7 +35,7 @@
     fetchAesGcm(attachment.url)
       .then((blob) => {
         if (cancelled) return
-        // the decrypted blob carries no type; re-tag it so browsers know
+        // the decrypted blob carries no type. Re-tag it so browsers know
         // how to render or save it
         const typed = attachment.mediaType ? new Blob([blob], { type: attachment.mediaType }) : blob
         objectUrl = URL.createObjectURL(typed)

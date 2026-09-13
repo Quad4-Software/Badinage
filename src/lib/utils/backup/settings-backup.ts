@@ -1,7 +1,7 @@
 // Settings backup: serialize the persisted blob to a portable JSON file
 // and validate an imported file back into a safe settings patch. Both
 // sides are pure so the edge cases (junk json, wrong types, unknown
-// keys, hostile values) are unit tested; the store injects its defaults
+// keys, hostile values) are unit tested. The store injects its defaults
 // and keybinding action list so this module stays leaf-level.
 
 import { comboToString, parseCombo } from '../keymap'
@@ -15,7 +15,7 @@ const MODES = new Set(['light', 'dark', 'system'])
 const META_KEYS = new Set(['hue', 'notify', 'invisible'])
 
 interface ParsedBackup {
-  // only keys that passed validation land here; dropped counts the
+  // only keys that passed validation land here. Dropped counts the
   // entries that failed so callers can warn about partial imports
   settings: Record<string, unknown>
   dropped: number
@@ -90,7 +90,7 @@ function validNumberMap(value: unknown): Record<string, unknown> {
   return out
 }
 
-// validates one settings key against the shape of the defaults blob;
+// validates one settings key against the shape of the defaults blob.
 // returns undefined when the value is unusable so the caller drops it
 function validValue(
   key: string,
@@ -123,7 +123,7 @@ function validValue(
 }
 
 // accepts the wrapped { kind, settings } envelope and a bare settings
-// object alike; anything else is rejected. Unknown keys are ignored,
+// object alike. Anything else is rejected. Unknown keys are ignored,
 // invalid values are dropped, and an import that yields nothing is an
 // error rather than a silent no-op.
 export function parseBackup(

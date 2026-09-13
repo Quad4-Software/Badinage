@@ -1,6 +1,6 @@
 // Resolves a named palette plus the optional custom accent hue into the
 // custom properties App.svelte applies to the root element. Pure and
-// unit tested; the palettes themselves live in palettes.ts.
+// unit tested. The palettes themselves live in palettes.ts.
 
 import {
   DEFAULT_THEME,
@@ -11,7 +11,7 @@ import {
   type ThemePreset
 } from './palettes'
 
-// every custom property the theme system manages on the root element;
+// every custom property the theme system manages on the root element.
 // applying a theme clears all of them first so stale values never leak
 export const MANAGED_VARS: Record<keyof Resolved, string> = {
   background: '--background',
@@ -49,7 +49,7 @@ export function resolveTheme(id: unknown): ThemePreset | null {
   return THEMES.find((t) => t.id === id) ?? null
 }
 
-// a custom accent hue overrides the preset's primary family; the
+// a custom accent hue overrides the preset's primary family. The
 // lightness steps mirror the former data-accent rules so custom hues
 // keep working on top of any preset
 function accentVars(mode: ThemeMode, hue: number): Record<string, string> {

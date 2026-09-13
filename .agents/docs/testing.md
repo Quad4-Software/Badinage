@@ -10,13 +10,13 @@ observe the thing you changed.
 
 `*.test.ts` colocated with the code. For pure logic: parsers, stores,
 utils, eligibility rules. State modules (`*.svelte.ts`) run under node
-because runed tolerates SSR; they cannot touch DOM APIs anyway.
+because runed tolerates SSR. They cannot touch DOM APIs anyway.
 
 ### Property tests (fast-check)
 
 `*.prop.test.ts` plus generators in `test/stanza-gen/`. For anything that
 parses or serializes untrusted input: stanzas, JIDs, message styling.
-A unit test asserts an example; a property test asserts the shape of
+A unit test asserts an example. A property test asserts the shape of
 every input.
 
 ### Source-scan audits
@@ -74,5 +74,5 @@ The e2e build compiles with two env flags:
   same contract applies to many subjects.
 - Prefer adding a case to an existing matrix (dialogs, measurement
   widths) over writing a parallel spec.
-- Keep fixtures inside the spec or in `test/`; do not grow e2e helper
+- Keep fixtures inside the spec or in `test/`. Do not grow e2e helper
   files beyond genuinely shared entry points like `enterDemo`.

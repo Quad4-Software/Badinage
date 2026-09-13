@@ -13,7 +13,7 @@ export const IDB_VERSION = 1
 export const DEFAULT_RESOURCE = 'badinage'
 
 // crash reports ship to this sentry-compatible endpoint unless the
-// deployment overrides VITE_SENTRY_DSN at build time; setting the env to
+// deployment overrides VITE_SENTRY_DSN at build time. Setting the env to
 // 'off' disables reporting entirely for that build
 export const DEFAULT_TELEMETRY_DSN = 'https://a33cf09841e94ba38d1efea79bf620f5@bugs.quad4.io/3'
 
@@ -61,7 +61,7 @@ export const REGISTER_TIMEOUT_MS = 15_000
 // "+N more" tail
 export const REACTION_TOOLTIP_CAP = 8
 
-// XEP-0115 caps node uri; the final public domain is still undecided so
+// XEP-0115 caps node uri. The final public domain is still undecided so
 // this stays a stable placeholder until branding settles
 export const CAPS_NODE = 'https://badinage.app/caps'
 
@@ -74,7 +74,7 @@ export const DISCO_NEGATIVE_TTL_MS = 60_000
 // decoded vcard-temp avatar payloads larger than this are dropped
 export const AVATAR_MAX_BYTES = 256 * 1024
 
-// vcard avatar fetches run at most this many in parallel; the rest queue
+// vcard avatar fetches run at most this many in parallel. The rest queue
 export const AVATAR_FETCH_CONCURRENCY = 4
 
 // a vcard query to an unresponsive jid gives up after this long
@@ -93,7 +93,7 @@ export const NOTIFICATION_SNIPPET_CHARS = 120
 // at most this many message-body hits listed in the command palette
 export const SEARCH_MESSAGE_HITS = 10
 
-// oklch hues offered for per-account badge colors; also the pool the
+// oklch hues offered for per-account badge colors. Also the pool the
 // jid-hash auto color picks from
 export const ACCOUNT_HUES = [25, 95, 145, 180, 210, 264, 300, 340] as const
 
@@ -153,7 +153,7 @@ export const GEOLOC_TILE_ZOOM = 15
 export const GEOLOC_TILE_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
 // auto-away: no keyboard or pointer input for this long flips every
-// connected, non-invisible account currently 'online' to 'away'; the
+// connected, non-invisible account currently 'online' to 'away'. The
 // check runs on this interval
 export const IDLE_AWAY_MS = 10 * 60 * 1000
 export const IDLE_CHECK_MS = 30_000

@@ -1,5 +1,5 @@
 // Live <head> updates for the SPA. index.html carries the static
-// defaults that crawlers and link unfurls read at fetch time; these
+// defaults that crawlers and link unfurls read at fetch time. These
 // helpers keep the same tags in sync while the app runs - the unread
 // count in the tab title today, per-view titles if routing ever lands.
 

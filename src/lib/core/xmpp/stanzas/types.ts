@@ -49,7 +49,7 @@ export interface IncomingMessage {
   // the stanza's own id attribute - receipts and chat markers reference this
   id?: string | undefined
   stanzaId?: string | undefined
-  // the entity that assigned stanzaId; XEP-0490 echoes it back verbatim
+  // the entity that assigned stanzaId. XEP-0490 echoes it back verbatim
   stanzaBy?: string | undefined
   originId?: string | undefined
   delay?: number | undefined
@@ -74,10 +74,10 @@ export interface IncomingMessage {
   // XEP-0424: this stanza asks receivers to retract the message whose id
   // it names (the stanza id attribute in a dm, the room stanza-id in a
   // muc). An empty string means a retract element that carried no usable
-  // id; the fallback body must still never render. The older draft form
+  // id. The fallback body must still never render. The older draft form
   // wrapped message-retract:0 in a fasten apply-to and is also accepted.
   retractId?: string | undefined
-  // XEP-0382: the body is a spoiler; the element text is an optional
+  // XEP-0382: the body is a spoiler. The element text is an optional
   // hint. An empty string means a spoiler without a hint.
   spoilerHint?: string | undefined
   // XEP-0393: the sender asked receivers to render the body unstyled.
@@ -90,7 +90,7 @@ export interface IncomingMessage {
   // serialized <encrypted> element, handed to the OMEMO service for
   // async decryption before ingest
   encryptedXml?: string | undefined
-  // decryption was attempted and failed; the body must not be trusted
+  // decryption was attempted and failed. The body must not be trusted
   undecryptable?: boolean | undefined
   // decrypted, but the sending device is distrusted or changed keys
   untrustedDevice?: boolean | undefined
@@ -103,19 +103,19 @@ export interface IncomingMessage {
   // XEP-0424/0425 tombstone: this stanza is itself the archived form of
   // an already retracted message
   retracted?: { reason?: string | undefined; by?: string | undefined } | undefined
-  // XEP-0224: the sender requests attention; the stanza may carry no body
+  // XEP-0224: the sender requests attention. The stanza may carry no body
   attention?: boolean | undefined
   // XEP-0301 real-time text edits for the message the peer is composing
   rtt?: RttStanza | undefined
-  // XEP-0372 body ranges and linked entities; mentions are one type
+  // XEP-0372 body ranges and linked entities. Mentions are one type
   references?: MessageReference[] | undefined
-  // XEP-0466: seconds after which the message should self-destruct; a
+  // XEP-0466: seconds after which the message should self-destruct. A
   // timer of 0 disables ephemeral mode for the conversation
   ephemeralTimer?: number | undefined
   // XEP-0080 location shared by the sender
   geoloc?: Geoloc | undefined
   // stanza type=error: a bounce referencing our sent message id. The
-  // store marks that message failed; the stanza never becomes a row, so
+  // store marks that message failed. The stanza never becomes a row, so
   // a forged error cannot inject a body
   error?: { condition?: string | undefined; text?: string | undefined } | undefined
 }
@@ -127,7 +127,7 @@ export interface PresenceUpdate {
   type?: string | undefined
   // XEP-0115 entity capabilities advertised in the c element
   caps?: CapsRef | undefined
-  // XEP-0153 vcard-temp:x:update photo hash; the empty string means the
+  // XEP-0153 vcard-temp:x:update photo hash. The empty string means the
   // contact explicitly advertises no avatar, undefined means no update
   // element was present and the cached avatar stays untouched
   avatarHash?: string | undefined
@@ -153,7 +153,7 @@ export interface MucOccupant {
   avatarHash?: string | undefined
 }
 
-// Presence type=error carrying an RFC 6120 stanza error; on the room
+// Presence type=error carrying an RFC 6120 stanza error. On the room
 // join path this is how 401/403/404/407/409 failures arrive.
 export interface PresenceError {
   from: string
@@ -255,7 +255,7 @@ export interface DiscoItem {
 export type NotifySetting = 'always' | 'on-mention' | 'never'
 
 // XEP-0054 vcard-temp profile. Only the fields the profile editor
-// manages are parsed; photoUri is the PHOTO element as a data uri,
+// manages are parsed. PhotoUri is the PHOTO element as a data uri,
 // absent when the card carries no image photo.
 export interface Vcard {
   fn: string

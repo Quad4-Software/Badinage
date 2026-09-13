@@ -7,7 +7,7 @@
     // avatar key: bare contact or room jid, room/nick occupant key, or
     // our own jid
     jid: string
-    // which account resolves the avatar; defaults to the active one. The
+    // which account resolves the avatar. Defaults to the active one. The
     // account switcher passes each listed account explicitly.
     account?: Account | undefined
     // fetch even without a presence-advertised photo hash. Hint-gated

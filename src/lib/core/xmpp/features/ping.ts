@@ -1,5 +1,5 @@
 // XEP-0199 ping keepalive and latency measurement. A bare iq get with a
-// ping element to the server domain; the result or error ends the round
+// ping element to the server domain. The result or error ends the round
 // trip. PingManager owns the cadence: it pings only after PING_INTERVAL_MS
 // of inbound silence, since pings during active traffic are wasteful, and
 // it never runs while disconnected.
@@ -44,7 +44,7 @@ export function pingServer(
 
 // Periodic keepalive driven off inbound silence. The connection calls
 // noteInbound from its stanza-in hook and start/stop around the
-// connected session; timers never outlive the connection that owns them.
+// connected session. Timers never outlive the connection that owns them.
 export class PingManager {
   private timer: ReturnType<typeof setInterval> | null = null
   private lastInbound = 0

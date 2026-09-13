@@ -25,11 +25,11 @@ OMEMO or not. Self-hosting and tight CSP are the mitigations we control.
   checkbox sets AccountOptions.untrusted. It writes no session blob (the
   flag wins over remember), never persists conversations to IndexedDB,
   and gives OMEMO in-memory key and trust stores. Avatars and uploads
-  were already memory-only; nothing account-scoped survives logout.
+  were already memory-only. Nothing account-scoped survives logout.
 - Removing an account deletes every record namespaced to its JID across
   all IndexedDB stores (deleteAccountData in state/storage.ts).
 - paneforge persists pane layouts under its own paneforge: prefix in
-  localStorage; the ids are constants (PANE_AUTOSAVE_IDS) so the
+  localStorage. The ids are constants (PANE_AUTOSAVE_IDS) so the
   wipe-all-data flow removes them alongside the badinage: keys. The
   values are layout floats only, no account data.
 
@@ -57,7 +57,7 @@ Keep it that way. Do not add configDependencies.
 - style-src keeps unsafe-inline: the production bundle was audited and
   still needs it. Svelte compiles style={} bindings to style attributes,
   and paneforge injects a <style> element for the drag cursor during
-  resizes. Dropping it breaks those; revisit if the libs change.
+  resizes. Dropping it breaks those. Revisit if the libs change.
   script-src has no unsafe-inline and the build emits no inline scripts.
 - media-src allows data: because the upload fallback inlines small
   attachments as data URIs.
@@ -73,7 +73,7 @@ Keep it that way. Do not add configDependencies.
 - Prefer wss:// endpoints, fall back to BOSH https://.
 - SCRAM-SHA-256 minimum for password auth where the server offers it.
 - LDAP-backed hosts (prosody mod_auth_ldap2 and friends) only offer SASL
-  PLAIN; strophe picks it automatically when it is all the server
+  PLAIN. Strophe picks it automatically when it is all the server
   advertises. PLAIN means the password reaches the server in cleartext
   inside TLS, so it must never run over ws:// or http:// transports.
 - OAuth/OIDC login follows XEP-0493: the client probes OAUTHBEARER with

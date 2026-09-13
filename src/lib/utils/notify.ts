@@ -1,6 +1,6 @@
 // Notification gating rules, kept pure so they are unit-testable without
 // the DOM. The ui layer feeds in settings, browser permission state and
-// focus info; this module only decides.
+// focus info. This module only decides.
 
 import { NOTIFICATION_SNIPPET_CHARS } from '$lib/constants'
 
@@ -19,7 +19,7 @@ export function isLiveIncoming(
 
 // XEP-0492 notification modes a conversation can carry. 'never' mutes,
 // 'on-mention' requires the message to name us, 'always' is the dm
-// default; muc conversations default to 'on-mention' when unset.
+// default. Muc conversations default to 'on-mention' when unset.
 export type ChatNotifyMode = 'always' | 'on-mention' | 'never'
 
 export interface NotifyGateInput {
@@ -70,7 +70,7 @@ export function coalesced(lastAt: number | undefined, now: number, windowMs: num
   return lastAt === undefined || now - lastAt >= windowMs
 }
 
-// One-line preview for a notification body; collapses whitespace so the
+// One-line preview for a notification body. Collapses whitespace so the
 // OS never renders raw newlines and trims to a bounded length.
 export function snippet(body: string, max = NOTIFICATION_SNIPPET_CHARS): string {
   const clean = body.replace(/\s+/g, ' ').trim()

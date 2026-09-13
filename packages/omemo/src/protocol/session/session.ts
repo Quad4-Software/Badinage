@@ -1,5 +1,5 @@
 // The Double Ratchet session per XEP-0384. Both profiles share the same
-// ratchet structure; they differ in KDF info strings, MAC size, wire encoding
+// ratchet structure. They differ in KDF info strings, MAC size, wire encoding
 // of header keys and associated-data ordering, all handled by WireProfile.
 // Serialization lives in sessionData.ts.
 

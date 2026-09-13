@@ -16,7 +16,7 @@ test('contextmenu or long-press opens the message action sheet', async ({ page }
   const bubble = page.locator('ol').getByText('hello mobile')
   await expect(bubble).toBeVisible()
 
-  // right click stands in for the touch hold; both take the same path
+  // right click stands in for the touch hold. Both take the same path
   await bubble.dispatchEvent('contextmenu')
   const sheet = page.getByRole('dialog')
   await expect(sheet).toBeVisible()

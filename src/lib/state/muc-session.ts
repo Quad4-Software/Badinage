@@ -1,7 +1,7 @@
 // Room session watchdog, one per account: XEP-0199 self-pings while
 // joined so ghost occupants get noticed, and bounded auto-rejoin after
 // a kick (status 307) or a stream drop. Bans (301) and join errors
-// never auto-retry; the conversation flags and the ui banner carry the
+// never auto-retry. The conversation flags and the ui banner carry the
 // user-facing side.
 
 import { MUC_SELF_PING_MS, ROOM_REJOIN_DELAY_MS, ROOM_REJOIN_MAX_ATTEMPTS } from '$lib/constants'
@@ -103,7 +103,7 @@ export class RoomSessions {
     return session
   }
 
-  // On (re)connect every still-joined room gets a fresh join; the MAM
+  // On (re)connect every still-joined room gets a fresh join. The MAM
   // cursor stays where it was because store.mamDone is session scoped.
   private rejoinAll(): void {
     for (const conversation of this.store.conversations.values()) {
@@ -121,7 +121,7 @@ export class RoomSessions {
       session.ping = undefined
       session.rejoin = undefined
     }
-    // the roster is stale while offline; clear it so no ghost occupants
+    // the roster is stale while offline. Clear it so no ghost occupants
     // render, but keep joined set so reconnect rejoins
     for (const conversation of this.store.conversations.values()) {
       if (conversation.kind === 'muc') {

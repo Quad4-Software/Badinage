@@ -16,7 +16,7 @@ import { appendSubmitForm } from './dataforms'
 import type { XmppTransport } from './transport'
 
 // iq get with an empty search element returns the service's search
-// form; null when the jid does not run the protocol or errors.
+// form. Null when the jid does not run the protocol or errors.
 export function channelSearchForm(
   conn: XmppTransport,
   service: string,
@@ -32,7 +32,7 @@ export function channelSearchForm(
 }
 
 // Submit the form (type=submit fields with values filled in) and parse
-// the result items. Only fields with at least one value are submitted;
+// the result items. Only fields with at least one value are submitted.
 // the service fills defaults for the rest.
 export function channelSearch(
   conn: XmppTransport,

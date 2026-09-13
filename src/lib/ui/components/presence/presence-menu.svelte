@@ -40,7 +40,7 @@
   </DropdownMenu.Item>
 {/each}
 <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
-<!-- XEP-0186: not a presence show value; a privacy list that denies
+<!-- XEP-0186: not a presence show value. A privacy list that denies
      outbound presence. Kept visually distinct from the show states -->
 <DropdownMenu.Item
   class={itemClass}
@@ -60,7 +60,7 @@
     aria-label={$LL.statusMessage()}
     class="h-8 text-sm"
     onkeydown={(event) => {
-      // menu typeahead would steal letters; keep typing local
+      // menu typeahead would steal letters. Keep typing local
       event.stopPropagation()
       if (event.key === 'Enter') {
         event.preventDefault()

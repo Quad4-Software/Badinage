@@ -51,7 +51,7 @@ export function makeStub() {
   const drive = (status: number) => {
     if (!statusCb) throw new Error('connect callback was not captured')
     // strophe sets conn.connected before the CONNECTED callback and
-    // stashes the stream:features element on conn.features; the stub
+    // stashes the stream:features element on conn.features. The stub
     // mirrors both so feature-gated sends behave like the wire
     conn.connected = status === Strophe.Status.CONNECTED || status === Strophe.Status.ATTACHED
     if (conn.connected && !conn.features) {

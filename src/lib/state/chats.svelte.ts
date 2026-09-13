@@ -66,13 +66,13 @@ export class ChatStore {
   // peers whose MAM archive we already pulled this session
   mamDone = new SvelteSet<string>()
   private loaded: Record<string, true> = {}
-  // recent stanza/origin ids per peer for dedup; internal bookkeeping,
+  // recent stanza/origin ids per peer for dedup. Internal bookkeeping,
   // no reactivity needed
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
   private seen = new Map<string, Set<string>>()
   private persistence: ConversationPersistence
   private typing = new TypingTracker()
-  // fired once per live incoming message appended; set by the app store,
+  // fired once per live incoming message appended. Set by the app store,
   // consumed by the ui layer for notifications and aria-live announces
   onLive: ((peer: string, message: IncomingMessage, stored?: ChatMessage) => void) | undefined
 
@@ -90,7 +90,7 @@ export class ChatStore {
 
   private readonly sweep: ReturnType<typeof setInterval>
 
-  // called when the account is released; flush() already ran at that
+  // called when the account is released. Flush() already ran at that
   // point so the interval can simply stop
   dispose(): void {
     clearInterval(this.sweep)
@@ -121,7 +121,7 @@ export class ChatStore {
     if (conversation) conversation.unread = 0
   }
 
-  // persist any debounced writes; called on disconnect and account removal
+  // persist any debounced writes. Called on disconnect and account removal
   flush(): Promise<void> {
     return this.persistence.flush()
   }
@@ -237,7 +237,7 @@ export class ChatStore {
       (p, id) => this.markDelivered(p, id),
       (p, r) => this.findMessage(p, r)
     )
-    // XEP-0424 retraction and archive-tombstone handling; a consumed
+    // XEP-0424 retraction and archive-tombstone handling. A consumed
     // stanza produces no row
     if (
       applyRetractionSignal(
@@ -274,7 +274,7 @@ export class ChatStore {
       // target unknown: fall through and show it as a normal message
     }
     if (message.encrypted && conversation.kind === 'dm') conversation.encrypted = true
-    // tombstones carry no body; store them so the placeholder renders
+    // tombstones carry no body. Store them so the placeholder renders
     if (
       !message.body &&
       !message.attachments?.length &&
@@ -342,7 +342,7 @@ export class ChatStore {
     const timer = message.ephemeralTimer ?? conversation.ephemeralTimer
     if (timer !== undefined && timer > 0) stored.expiresAt = stored.timestamp + timer * 1000
     const appended = this.push(peer, stored, activePeer === peer, seenIds)
-    // dedup drops return false; only a truly appended live incoming
+    // dedup drops return false. Only a truly appended live incoming
     // stanza notifies, so mam pages, delayed deliveries and our own
     // carbons never reach listeners
     if (appended && isLiveIncoming(message, outgoing)) {
@@ -508,7 +508,7 @@ export class ChatStore {
     const conversation = this.open(room, 'muc')
     const renamed = occupant.codes.includes(SELF_RENAMED_CODE)
     // offline stanzas without a 110 still leave our nick in the from
-    // resource; online presence gets no such fallback, or a stranger
+    // resource. Online presence gets no such fallback, or a stranger
     // taking our nick after a kick would mark us joined
     const self =
       occupant.self || (occupant.presence === 'offline' && occupant.nick === conversation.ourNick)
@@ -522,7 +522,7 @@ export class ChatStore {
     if (occupant.presence === 'offline') {
       if (renamed && occupant.newNick) {
         // the departing half of a nick change already names the new
-        // nick; adopt it so pending sends use it immediately
+        // nick. Adopt it so pending sends use it immediately
         conversation.ourNick = occupant.newNick
         conversation.ourNicks.add(occupant.newNick)
         return

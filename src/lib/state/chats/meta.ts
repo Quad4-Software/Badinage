@@ -14,7 +14,7 @@ import type { ChatMessage, Conversation } from '../conversation.svelte'
 const DEDUP_CAP = 500
 
 // Drop expired ephemeral messages and stale rtt buffers. Runs on the
-// sweep interval; the unread counter is recomputed so badges stay
+// sweep interval. The unread counter is recomputed so badges stay
 // truthful after a purge.
 export function sweepExpired(
   conversations: SvelteMap<string, Conversation>,
@@ -91,7 +91,7 @@ export function isDuplicate(seen: Map<string, Set<string>>, peer: string, ids: s
   if (ids.some((id) => set.has(id))) return true
   for (const id of ids) set.add(id)
   if (set.size > DEDUP_CAP) {
-    // drop the oldest entries; Set iterates in insertion order
+    // drop the oldest entries. Set iterates in insertion order
     for (const old of set) {
       if (set.size <= DEDUP_CAP) break
       set.delete(old)

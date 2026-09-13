@@ -14,7 +14,7 @@
 
   type ErrorKind = 'password' | 'banned' | 'missing' | 'nick' | 'other'
 
-  // RFC 6120 numeric codes are legacy but still common; fall back to
+  // RFC 6120 numeric codes are legacy but still common. Fall back to
   // the stanza error condition when the code is absent
   function classify(error: JoinError): ErrorKind {
     const condition = error.condition ?? ''

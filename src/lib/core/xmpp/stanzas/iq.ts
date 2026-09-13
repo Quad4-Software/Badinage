@@ -32,7 +32,7 @@ export function parseJidItems(el: Element): string[] {
 
 // XEP-0191 push: the server tells every resource which jids entered or
 // left the blocklist. A field stays undefined when the push carried no
-// matching element; an item-less unblock means the list was cleared.
+// matching element. An item-less unblock means the list was cleared.
 export function parseBlockPush(stanza: Element): {
   blocked?: string[] | undefined
   unblocked?: string[] | undefined
@@ -134,10 +134,10 @@ export function parseVcardPhoto(stanza: Element): string | undefined {
 }
 
 // XEP-0054: the own-vcard fields the profile editor manages. Unknown
-// elements (BDAY, ADR and friends) are not modeled; the set path
+// elements (BDAY, ADR and friends) are not modeled. The set path
 // preserves them by cloning the fetched card instead of rebuilding it.
 export function parseVcard(stanza: Element): Vcard {
-  // ns-aware first so a prefixed <v:vCard> still parses; the tag fallback
+  // ns-aware first so a prefixed <v:vCard> still parses. The tag fallback
   // covers servers that send the card without a namespace declaration
   const vcard = firstNsTag(stanza, NS.VCARD_TEMP, 'vCard') ?? firstTag(stanza, 'vCard')
   const field = (local: string) =>
@@ -169,7 +169,7 @@ export function parseMamFin(stanza: Element): MamPageResult {
   }
 }
 
-// direct children in a namespace; descendant search would overmatch
+// direct children in a namespace. Descendant search would overmatch
 // nested structures like data form option values
 function childNsTags(el: Element, ns: string, local: string): Element[] {
   return childElements(el).filter((e) => e.localName === local && e.namespaceURI === ns)
@@ -177,7 +177,7 @@ function childNsTags(el: Element, ns: string, local: string): Element[] {
 
 // XEP-0249 direct invites and XEP-0045 mediated invites share one
 // parsed shape. Direct invites come from the inviter with a
-// jabber:x:conference x element naming the room; mediated invites come
+// jabber:x:conference x element naming the room. Mediated invites come
 // from the room itself with a muc#user invite element naming the
 // inviter.
 export function parseRoomInvite(stanza: Element): MucInvite | null {

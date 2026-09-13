@@ -6,7 +6,7 @@ import { settings } from '$lib/state/settings.svelte'
 import App from './App.svelte'
 import './app.css'
 
-// apply the persisted opt-in before the app mounts; enabling lazily
+// apply the persisted opt-in before the app mounts. Enabling lazily
 // initializes the SDK, disabling leaves it inert with no listeners
 setTelemetryEnabled(settings.current.crashReporting)
 

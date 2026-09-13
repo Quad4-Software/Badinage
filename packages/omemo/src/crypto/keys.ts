@@ -47,7 +47,7 @@ export function x25519SharedSecret(privateKey: Uint8Array, publicKey: Uint8Array
   try {
     shared = x25519.getSharedSecret(privateKey, publicKey)
   } catch {
-    // noble rejects low order points with a bare Error; normalize it
+    // noble rejects low order points with a bare Error. Normalize it
     throw new ProtocolError('invalid Curve25519 public key')
   }
   if (bytesEqual(shared, new Uint8Array(CURVE_KEY_SIZE))) {

@@ -43,7 +43,7 @@ export function sendChatMessage(
   // a correction is already acked by the round trip it replies to
   if (!opts?.replaceId) stanza.c('request', { xmlns: NS.RECEIPTS }).up()
   // XEP-0466: announce the conversation's ephemeral timer so both sides
-  // agree on when messages self-destruct; timer 0 turns the mode off and
+  // agree on when messages self-destruct. Timer 0 turns the mode off and
   // must go out on the wire too
   if (opts?.ephemeral !== undefined) {
     stanza.c('ephemeral', { xmlns: NS.EPHEMERAL, timer: String(opts.ephemeral) }).up()
@@ -83,7 +83,7 @@ export function sendAttention(
 }
 
 // XEP-0301: one real-time text update for the message being composed.
-// The stanza carries no body; receivers rebuild the buffer from ops.
+// The stanza carries no body. Receivers rebuild the buffer from ops.
 export function sendRtt(
   conn: XmppTransport,
   to: string,

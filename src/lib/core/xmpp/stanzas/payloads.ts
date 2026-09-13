@@ -48,7 +48,7 @@ export function parseAttachments(inner: Element): Attachment[] {
 // server cleared the whole blocklist.
 
 // XEP-0301: the rtt element carries an event plus a run of action
-// elements. Unknown events are ignored per spec; a missing event means
+// elements. Unknown events are ignored per spec. A missing event means
 // 'edit'. Action elements keep their p/n positions in code points.
 export function parseRtt(rtt: Element): RttStanza | null {
   const events: RttEvent[] = ['new', 'reset', 'edit', 'init', 'cancel']

@@ -52,7 +52,7 @@ describe('parseAesGcmUrl', () => {
   })
 
   it('rejects non-https download urls', () => {
-    // aesgcm://host normalizes to https:; an explicit http port is fine,
+    // aesgcm://host normalizes to https:. An explicit http port is fine,
     // a bogus host is not
     expect(
       parseAesGcmUrl(`aesgcm:///#${'aa'.repeat(AESGCM_IV_BYTES + AESGCM_KEY_BYTES)}`)

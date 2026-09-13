@@ -53,7 +53,7 @@ export function decodeRecord<T>(text: string): T {
 
 // Load the wrap key stored under the given kv key, generating a fresh
 // non-extractable AES-256-GCM key when none exists. Returns undefined
-// when WebCrypto subtle is unavailable; callers decide whether
+// when WebCrypto subtle is unavailable. Callers decide whether
 // plaintext storage is acceptable or the record must be dropped.
 // Callers pass a fully scoped key (scopedKey(jid, ...)) so every
 // account gets its own key.

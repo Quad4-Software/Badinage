@@ -19,7 +19,7 @@ export interface SessionOptions {
   // remember so a shared device never keeps a session behind.
   untrusted?: boolean | undefined
   // the password slot carries an oauth access token and sasl is pinned to
-  // OAUTHBEARER; set by the XEP-0493 flow
+  // OAUTHBEARER. Set by the XEP-0493 flow
   oauth?: boolean | undefined
 }
 
@@ -47,14 +47,14 @@ export function clearSession(jid: string): void {
   sessionStorage.removeItem(scopedKey(jid, 'session'))
 }
 
-// true when a namespaced key already holds a persisted value; used to
+// true when a namespaced key already holds a persisted value. Used to
 // tell a returning install from a first run before any writes happen
 export function hasPersisted(key: string): boolean {
   return typeof localStorage !== 'undefined' && localStorage.getItem(key) !== null
 }
 
 // Drop every badinage-namespaced key from both storage areas. Used by
-// the wipe-all-data flow; collects keys first so removals do not disturb
+// the wipe-all-data flow. Collects keys first so removals do not disturb
 // the index-based iteration.
 export function clearScopedStorage(): void {
   for (const storage of [sessionStorage, localStorage]) {

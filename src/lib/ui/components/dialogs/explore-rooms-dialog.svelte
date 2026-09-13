@@ -65,7 +65,7 @@
     explore.search(service, query.trim())
   }
 
-  // hand the picked room to the join-room dialog through joinPrefill;
+  // hand the picked room to the join-room dialog through joinPrefill.
   // that dialog prefills its room field from the slot and clears it
   function join(item: ChannelSearchItem) {
     explore.joinPrefill = { room: item.address }

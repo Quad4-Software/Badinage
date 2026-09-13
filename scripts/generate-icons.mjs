@@ -201,7 +201,7 @@ class Canvas {
 }
 
 // Draws the mark at (x, y) in a size x size box. The tile always fills the
-// box; glyphScale < 1 shrinks the bubble+heart inside it, used to keep the
+// box. GlyphScale < 1 shrinks the bubble+heart inside it, used to keep the
 // maskable icon glyph inside the safe zone.
 function drawMark(canvas, x, y, size, glyphScale = 1) {
   canvas.rect(x, y, size, size, TILE)

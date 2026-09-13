@@ -69,7 +69,7 @@
     return app.registerComposerFocus(peerJid, () => inputEl?.focus())
   })
 
-  // switching peers or unmounting ends any live rtt session politely;
+  // switching peers or unmounting ends any live rtt session politely.
   // peer is captured so the cancel goes to the peer the session was on
   $effect(() => {
     const peer = peerJid
@@ -162,7 +162,7 @@
     if (!sent) return
     body = ''
     app.setComposer(peerJid, {})
-    // the message is out; any in-flight rtt session ends with a cancel
+    // the message is out. Any in-flight rtt session ends with a cancel
     rtt.reset()
     mentionQuery = null
   }
@@ -255,7 +255,7 @@
       aria-hidden="true"
       tabindex={-1}
     />
-    <!-- mobile: one button opens the attach sheet; desktop keeps the
+    <!-- mobile: one button opens the attach sheet. Desktop keeps the
          separate row buttons -->
     <Button
       variant="ghost"

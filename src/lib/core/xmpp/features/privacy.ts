@@ -1,7 +1,7 @@
 // XEP-0186 invisibility through a privacy list (XEP-0016): a named list
 // that denies outbound presence, set active while invisible and cleared
 // to go visible again. The alternative, sending presence
-// type='invisible', was removed from RFC 6121; privacy lists are what
+// type='invisible', was removed from RFC 6121. Privacy lists are what
 // servers actually implement.
 //
 // Caveat the caller must surface: presence-out also carries MUC joins,

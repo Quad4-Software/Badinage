@@ -32,7 +32,7 @@
 
   let viewport = $state<HTMLDivElement | null>(null)
   // scrollspy: the nav highlights whichever section sits under the top
-  // edge; synced into the mobile select as its value
+  // edge. Synced into the mobile select as its value
   let activeId = $state('appearance')
 
   const navItems = $derived([
@@ -53,7 +53,7 @@
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // pick the last section whose top passed the viewport's top edge;
+  // pick the last section whose top passed the viewport's top edge.
   // raf-throttled so fast scrolls stay cheap
   $effect(() => {
     const el = viewport

@@ -45,7 +45,7 @@ describe('base64 helpers', () => {
 
   it('returns null on malformed input', () => {
     expect(base64ToBytes('aGk')).toBeNull()
-    // stray characters are stripped by design; only a bad length fails
+    // stray characters are stripped by design. Only a bad length fails
     expect(base64ToBytes('aGk=')).toEqual(new Uint8Array([104, 105]))
   })
 

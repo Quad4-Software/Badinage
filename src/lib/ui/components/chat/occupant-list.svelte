@@ -16,7 +16,7 @@
   let { conversation }: { conversation: Conversation } = $props()
 
   let query = $state('')
-  // moderation dialog state; the target is captured when the menu item
+  // moderation dialog state. The target is captured when the menu item
   // fires because the row can unmount before the confirm runs
   let kickTarget = $state<RoomOccupant | null>(null)
   let kickReason = $state('')
@@ -27,7 +27,7 @@
   // our own occupant record decides which moderation controls exist
   const selfOccupant = $derived([...conversation.occupants.values()].find((o) => o.self))
 
-  // XEP-0045: moderators kick participants and visitors; admins and
+  // XEP-0045: moderators kick participants and visitors. Admins and
   // owners ban by real jid, which only non-anonymous rooms disclose
   const canKick = (occupant: RoomOccupant) =>
     selfOccupant?.role === 'moderator' && !occupant.self && occupant.role !== 'moderator'

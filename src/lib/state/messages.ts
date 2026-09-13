@@ -1,6 +1,6 @@
 // Message-level mutations shared by stanza ingest and ui actions:
 // reactions (XEP-0444) and corrections (XEP-0308). These operate on an
-// already-located ChatMessage; ChatStore owns the lookup.
+// already-located ChatMessage. ChatStore owns the lookup.
 
 import type { ChatMessage } from './conversation.svelte'
 
@@ -25,7 +25,7 @@ export function applyReactions(target: ChatMessage, sender: string, emojis: stri
   }
 }
 
-// A correction keeps the message's original position; the timestamp is
+// A correction keeps the message's original position. The timestamp is
 // only used for ordering on the wire and is dropped here. spoilerHint
 // carries the correction stanza's XEP-0382 state: undefined clears it.
 export function applyCorrection(

@@ -37,7 +37,7 @@ export function xed25519Sign(privateKey: Uint8Array, message: Uint8Array): Uint8
     throw new ProtocolError('invalid Curve25519 secret length')
   const clamped = clampCurve25519Secret(privateKey)
   const a = bytesToBigIntLE(clamped)
-  // Point multiplication with a mod L yields the same point; noble requires
+  // Point multiplication with a mod L yields the same point. Noble requires
   // the reduced form.
   const aReduced = a % L
   const A = ed25519.Point.BASE.multiply(aReduced).toBytes()

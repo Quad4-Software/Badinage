@@ -39,7 +39,7 @@ export interface AesGcmLink {
   iv: Uint8Array
 }
 
-// Strict parse of an aesgcm: url; null for anything malformed.
+// Strict parse of an aesgcm: url. Null for anything malformed.
 export function parseAesGcmUrl(url: string): AesGcmLink | null {
   const trimmed = url.trim()
   if (!isAesGcmUrl(trimmed)) return null

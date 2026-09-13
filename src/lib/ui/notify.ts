@@ -9,7 +9,7 @@ export function notifyPermission(): NotifyPermission {
   return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
 }
 
-// Ask once when still undecided; returns the resulting permission.
+// Ask once when still undecided. Returns the resulting permission.
 // Denied or dismissed requests resolve quietly, never throwing into ui.
 export async function requestNotifyPermission(): Promise<NotifyPermission> {
   const current = notifyPermission()
@@ -71,6 +71,6 @@ export function showNotification(
     }
   } catch {
     // constructing a Notification can throw on platforms that only
-    // support service-worker notifications; fail silent
+    // support service-worker notifications. Fail silent
   }
 }

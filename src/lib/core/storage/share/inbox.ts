@@ -1,7 +1,7 @@
 // One-shot inbox for PWA share_target payloads: the service worker
 // drops the parsed multipart form here and the app drains it once it
 // is up. Plain IndexedDB under the shared kv store so both contexts
-// can reach it; entries self-expire on read so a stale share never
+// can reach it. Entries self-expire on read so a stale share never
 // pops up in a later session.
 import { SHARE_INBOX_KEY } from '$lib/constants'
 

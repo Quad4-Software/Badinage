@@ -2,10 +2,10 @@
 // prekey rotation. The omemo package deliberately never deletes consumed
 // prekeys (XEP-0384 recommends keeping them until message catch-up
 // completes) and exposes no consumption hooks, so the app tracks how many
-// prekeys the last published bundle carried; if the stored count ever
+// prekeys the last published bundle carried. If the stored count ever
 // drops below the profile minimum - for example because a future package
 // version or a manual wipe removes them - the bundle is topped back up
-// and republished. Signed prekeys rotate on an age interval; old signed
+// and republished. Signed prekeys rotate on an age interval. Old signed
 // prekeys stay in the store so delayed key exchanges still resolve.
 
 import { OMEMO_SPK_ROTATE_MS } from '$lib/constants'
@@ -28,7 +28,7 @@ export interface KeyMeta {
 }
 
 // Small persistence contract so rotation state survives reloads. The
-// IndexedDB store implements it; tests get the in-memory variant.
+// IndexedDB store implements it. Tests get the in-memory variant.
 export interface KeyMetaStore {
   getMeta(key: string): Promise<KeyMeta | undefined>
   putMeta(key: string, meta: KeyMeta): Promise<void>
@@ -56,7 +56,7 @@ function minPreKeys(namespace: Namespace): number {
 }
 
 // Inspect stored key material and fix whatever is low or stale. Safe to
-// run on every reconnect; the caller republishes the bundle afterwards.
+// run on every reconnect. The caller republishes the bundle afterwards.
 export async function maintainKeys(opts: {
   store: OmemoStore
   manager: OmemoManager

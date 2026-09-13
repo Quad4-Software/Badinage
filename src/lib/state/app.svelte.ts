@@ -20,7 +20,7 @@ class AppStore {
   activePeer = $state<string | null>(null)
   // optional second chat pane (paneforge split view)
   splitPeer = $state<string | null>(null)
-  // desktop pane collapse state; the rail content is driven off the
+  // desktop pane collapse state. The rail content is driven off the
   // pane's data-pane-state attribute, this mirrors it for other widgets
   sidebarCollapsed = $state(false)
   settingsOpen = $state(false)
@@ -31,14 +31,14 @@ class AppStore {
   paletteOpen = $state(false)
   // deep-link target consumed by the settings dialog on open
   pendingSettingsSection = $state<string | null>(null)
-  // an xmpp: uri handed to us by the protocol handler or a pasted link;
+  // an xmpp: uri handed to us by the protocol handler or a pasted link.
   // the shell resolves it into a dialog or draft
   pendingLink = $state<DeepLink | null>(null)
   // a share_target payload dropped by the service worker, consumed by
   // the share dialog
   sharePayload = $state<SharePayload | null>(null)
   // drafts, reply/edit context and focus callbacks live in the composer
-  // store; the methods below delegate, keyed per account:peer
+  // store. The methods below delegate, keyed per account:peer
   private composer = new ComposerStore()
 
   private handlers = new Map<string, () => void>()
@@ -62,7 +62,7 @@ class AppStore {
   }
 
   // ui listeners for live incoming traffic (desktop notifications,
-  // aria-live announcements); returns an unsubscribe
+  // aria-live announcements). Returns an unsubscribe
   private liveListeners = new Set<(event: LiveMessage) => void>()
 
   onLiveMessage(fn: (event: LiveMessage) => void): () => void {
@@ -182,7 +182,7 @@ class AppStore {
     // the open conversation always gets its avatar: deduped and cached
     // by the transport layer so repeat selects cost nothing
     account.ensureAvatar(conversation.peerJid, true)
-    // pull server history once per session per conversation; dedup by
+    // pull server history once per session per conversation. Dedup by
     // stanza-id keeps it from doubling messages we already cached. The
     // first page has no cursor yet so loadOlder fetches the latest page
     // and records the fin cursor for scroll-up paging.

@@ -1,5 +1,5 @@
 // XEP-0313 message archive queries. Result messages arrive as ordinary
-// message events flagged mam=true; the iq result (fin) carries the rsm
+// message events flagged mam=true. The iq result (fin) carries the rsm
 // cursor for the page just returned.
 
 import { $iq } from 'strophe.js'
@@ -11,10 +11,10 @@ import type { XmppTransport } from './transport'
 const DEFAULT_PAGE_SIZE = 50
 
 // Fetches one archive page. For DMs the archive is ours filtered by
-// 'with'; for rooms the iq is addressed to the room and the 'with'
+// 'with'. For rooms the iq is addressed to the room and the 'with'
 // field is omitted. The queryid is registered in the caller-owned set
 // for the whole flight so the incoming stanza pipeline can authenticate
-// the result wrappers that echo it; it leaves the set on either
+// the result wrappers that echo it. It leaves the set on either
 // outcome.
 export function queryArchive(
   conn: XmppTransport,

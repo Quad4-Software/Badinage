@@ -20,7 +20,7 @@ export interface MessageHit {
 
 // characters of context kept on each side of the first token hit
 const SNIPPET_RADIUS = 40
-// below this the body scan is off; single letters hit far too much
+// below this the body scan is off. Single letters hit far too much
 export const MIN_SEARCH_CHARS = 2
 
 function tokens(query: string): string[] {

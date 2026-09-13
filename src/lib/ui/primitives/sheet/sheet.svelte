@@ -5,7 +5,7 @@
   import { cn } from '$lib/utils/cn'
 
   // bottom sheet: a dialog anchored to the bottom edge for touch
-  // ergonomics. The grabber is decorative; escape and scrim taps close.
+  // ergonomics. The grabber is decorative. Escape and scrim taps close.
   let {
     open = $bindable(false),
     title,

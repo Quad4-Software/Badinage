@@ -1,6 +1,6 @@
 // Clipboard writes that report the outcome. A silent failure leaves the
 // user believing text is on the clipboard when it is not, so failures
-// toast; success stays quiet for callers that already show feedback.
+// toast. Success stays quiet for callers that already show feedback.
 
 import { get } from 'svelte/store'
 

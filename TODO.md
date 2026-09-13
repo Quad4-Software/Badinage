@@ -183,7 +183,7 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 ## UX and platform
 
 - [x] web+xmpp protocol handler + XEP-0147 URI actions (message, join,
-      roster); message drafts land in the composer, send stays manual
+      roster). Message drafts land in the composer, send stays manual
 - [x] PWA share_target: text/links/files into a conversation picker,
       POST via service worker inbox
 - [x] Badging API unread count on the installed icon

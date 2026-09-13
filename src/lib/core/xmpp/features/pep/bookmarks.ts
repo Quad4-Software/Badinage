@@ -1,5 +1,5 @@
 // XEP-0402 PEP native bookmarks: one pubsub item per bookmark on the
-// urn:xmpp:bookmarks:1 node. Conferences follow the spec payload;
+// urn:xmpp:bookmarks:1 node. Conferences follow the spec payload.
 // contacts serialize as a contact element, a client-local extension
 // since the spec only defines conference items.
 
@@ -13,7 +13,7 @@ import { pepGet, pepPublish, type PepPublishOptions } from './pep'
 import type { XmppTransport } from '../transport'
 
 // XEP-0402 section 3.3: publish-options must keep the node persistent
-// and private; whitelist keeps bookmarks invisible to contacts
+// and private. Whitelist keeps bookmarks invisible to contacts
 const BOOKMARK_PUBLISH_OPTIONS: PepPublishOptions = {
   persistItems: true,
   maxItems: 'max',
@@ -46,7 +46,7 @@ export function fetchBookmarks(
   })
 }
 
-// publish or overwrite one bookmark; the item id is the bookmarked jid
+// publish or overwrite one bookmark. The item id is the bookmarked jid
 export function publishBookmark(
   conn: XmppTransport,
   bookmark: Bookmark,
@@ -62,7 +62,7 @@ export function publishBookmark(
   )
 }
 
-// retract by item id; notify=true tells the server to inform our other
+// retract by item id. Notify=true tells the server to inform our other
 // online resources so they refresh too
 export function retractBookmark(
   conn: XmppTransport,

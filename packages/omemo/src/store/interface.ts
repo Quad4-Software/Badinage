@@ -1,5 +1,5 @@
 // Async storage contract for OMEMO key material. Callers are expected to back
-// this with IndexedDB or another persistent store; keys passed to it should
+// this with IndexedDB or another persistent store. Keys passed to it should
 // already be wrapped if at-rest encryption is required (see AGENTS.md: OMEMO
 // key material is encrypted at rest). All methods are async so persistence
 // layers fit naturally.

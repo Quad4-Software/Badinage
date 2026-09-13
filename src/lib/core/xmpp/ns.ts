@@ -63,7 +63,7 @@ export const NS = {
   MESSAGE_MODERATE: 'urn:xmpp:message-moderate:1',
   // XEP-0424 message retraction, shared with XEP-0425 tombstones. The
   // current spec retracts via a direct <retract> child in
-  // urn:xmpp:message-retract:1; older drafts wrapped a
+  // urn:xmpp:message-retract:1. Older drafts wrapped a
   // urn:xmpp:message-retract:0 element in a fasten apply-to, which we
   // still accept on the receive side for interop.
   MESSAGE_RETRACT: 'urn:xmpp:message-retract:1',
