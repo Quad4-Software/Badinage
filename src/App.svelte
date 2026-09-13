@@ -109,11 +109,6 @@
         void accounts.add(options)
       }
     }
-    // demo deployments (github pages) drop visitors straight into demo mode
-    if (import.meta.env.VITE_DEMO === '1' && accounts.list.length === 0) {
-      void accounts.add({ jid: 'demo@badinage.local', password: 'demo', demo: true })
-    }
-
     // XEP-0147 deep links: the web+xmpp protocol handler (manifest or
     // registerProtocolHandler) lands on ?uri=, the in-app form uses
     // #/xmpp/<encoded-uri>. Either way the parsed action waits in

@@ -9,8 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// deploys under a subpath (github pages project sites) set VITE_BASE;
-// a demo-only deployment sets VITE_DEMO=1 to land straight in demo mode
+// deploys under a subpath (github pages project sites) set VITE_BASE
 const base = process.env.VITE_BASE ?? '/'
 
 export default defineConfig({

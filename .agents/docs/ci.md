@@ -31,9 +31,10 @@
   (Fulcio + Rekor via id-token) and attaches a build provenance attestation
   with actions/attest-build-provenance.
 - scorecard.yml: OpenSSF Scorecard weekly, uploads SARIF to code scanning.
-- pages.yml: builds and deploys the demo to GitHub Pages on master. The
-  build sets VITE_BASE to the repo subpath and VITE_DEMO=1 so the site
-  lands in demo mode. The demo account is fake. Demo data only.
+- pages.yml: builds and deploys the demo site to GitHub Pages on master.
+  The build sets VITE_BASE to the repo subpath. Visitors land on the auth
+  page like any other deployment and enter the fake demo account through
+  the Try the demo button. Demo data only.
 
 ## Rules
 

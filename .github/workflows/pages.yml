@@ -33,12 +33,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # project pages serve under /<repo>/ and the demo build drops
-      # visitors straight into demo mode with fake data
+      # project pages serve under /<repo>/
       - run: pnpm build
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_DEMO: '1'
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
