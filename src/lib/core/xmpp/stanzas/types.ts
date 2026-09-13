@@ -254,6 +254,16 @@ export interface DiscoItem {
 // fallback drives our behavior.
 export type NotifySetting = 'always' | 'on-mention' | 'never'
 
+// XEP-0054 vcard-temp profile. Only the fields the profile editor
+// manages are parsed; photoUri is the PHOTO element as a data uri,
+// absent when the card carries no image photo.
+export interface Vcard {
+  fn: string
+  nickname: string
+  desc: string
+  photoUri?: string | undefined
+}
+
 export interface Bookmark {
   jid: string
   kind: 'conference' | 'contact'

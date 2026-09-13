@@ -2,6 +2,7 @@
 // never hand-roll them and every failure path stays silent. Nothing here
 // loads off-origin: the beep is synthesized.
 
+import { APP_ICON_192 } from '$lib/constants'
 import type { NotifyPermission } from '$lib/utils/notify'
 
 export function notifyPermission(): NotifyPermission {
@@ -62,7 +63,7 @@ export function showNotification(
     const notification = new Notification(title, {
       body,
       tag,
-      icon: `${import.meta.env.BASE_URL}icons/icon-192.png`
+      icon: APP_ICON_192
     })
     notification.onclick = () => {
       window.focus()

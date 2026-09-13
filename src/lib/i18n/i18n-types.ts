@@ -879,6 +879,54 @@ type RootTranslation = {
 	 */
 	statusMessageHint: string
 	/**
+	 * D​i​s​c​o​n​n​e​c​t
+	 */
+	disconnect: string
+	/**
+	 * R​e​c​o​n​n​e​c​t
+	 */
+	reconnect: string
+	/**
+	 * E​d​i​t​ ​p​r​o​f​i​l​e
+	 */
+	editProfile: string
+	/**
+	 * F​u​l​l​ ​n​a​m​e
+	 */
+	fullName: string
+	/**
+	 * A​b​o​u​t
+	 */
+	about: string
+	/**
+	 * A​v​a​t​a​r
+	 */
+	avatar: string
+	/**
+	 * C​h​a​n​g​e​ ​a​v​a​t​a​r
+	 */
+	changeAvatar: string
+	/**
+	 * R​e​m​o​v​e​ ​a​v​a​t​a​r
+	 */
+	removeAvatar: string
+	/**
+	 * P​u​b​l​i​s​h
+	 */
+	publish: string
+	/**
+	 * P​r​o​f​i​l​e​ ​p​u​b​l​i​s​h​e​d
+	 */
+	profilePublished: string
+	/**
+	 * T​h​e​ ​s​e​r​v​e​r​ ​r​e​f​u​s​e​d​ ​t​h​e​ ​p​r​o​f​i​l​e​ ​u​p​d​a​t​e
+	 */
+	profilePublishFailed: string
+	/**
+	 * C​o​u​l​d​ ​n​o​t​ ​r​e​a​d​ ​t​h​a​t​ ​i​m​a​g​e
+	 */
+	avatarReadFailed: string
+	/**
 	 * C​h​a​t​ ​o​p​t​i​o​n​s
 	 */
 	chatOptions: string
@@ -2340,6 +2388,54 @@ export type TranslationFunctions = {
 	 * Press Enter to apply
 	 */
 	statusMessageHint: () => LocalizedString
+	/**
+	 * Disconnect
+	 */
+	disconnect: () => LocalizedString
+	/**
+	 * Reconnect
+	 */
+	reconnect: () => LocalizedString
+	/**
+	 * Edit profile
+	 */
+	editProfile: () => LocalizedString
+	/**
+	 * Full name
+	 */
+	fullName: () => LocalizedString
+	/**
+	 * About
+	 */
+	about: () => LocalizedString
+	/**
+	 * Avatar
+	 */
+	avatar: () => LocalizedString
+	/**
+	 * Change avatar
+	 */
+	changeAvatar: () => LocalizedString
+	/**
+	 * Remove avatar
+	 */
+	removeAvatar: () => LocalizedString
+	/**
+	 * Publish
+	 */
+	publish: () => LocalizedString
+	/**
+	 * Profile published
+	 */
+	profilePublished: () => LocalizedString
+	/**
+	 * The server refused the profile update
+	 */
+	profilePublishFailed: () => LocalizedString
+	/**
+	 * Could not read that image
+	 */
+	avatarReadFailed: () => LocalizedString
 	/**
 	 * Chat options
 	 */

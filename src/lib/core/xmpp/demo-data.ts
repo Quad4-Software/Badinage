@@ -21,6 +21,8 @@ export const ROOM = 'lobby@conference.badinage.local'
 export const ROOM_SUBJECT = 'Badinage lobby: be nice'
 // the invite scheduled a few seconds in points at this room
 const INVITE_ROOM = 'lounge@conference.badinage.local'
+// base-aware icon url; a root-relative path 404s under a subpath deploy
+const ICON_URL = `${import.meta.env.BASE_URL}icons/icon-192.png`
 
 // delays for the scripted live traffic emitted by scheduleLiveEvents
 const DEMO_LIVE_MESSAGE_DELAY_MS = 2500
@@ -180,9 +182,7 @@ const DM_HISTORY: Record<string, DmHistoryEntry[]> = {
       body: 'the logo export',
       agoMin: 4,
       stanzaId: 'd-hist-cleo-5',
-      attachments: [
-        { url: '/icons/icon-192.png', mediaType: 'image/png', name: 'logo.png', size: 7264 }
-      ]
+      attachments: [{ url: ICON_URL, mediaType: 'image/png', name: 'logo.png', size: 7264 }]
     }
   ],
   'dmitri@badinage.local': [
@@ -238,9 +238,7 @@ const ROOM_HISTORY: {
     body: 'rough mockup for the profile pane',
     agoMin: 20,
     stanzaId: 'room-6',
-    attachments: [
-      { url: '/icons/icon-192.png', mediaType: 'image/png', name: 'mockup.png', size: 7264 }
-    ]
+    attachments: [{ url: ICON_URL, mediaType: 'image/png', name: 'mockup.png', size: 7264 }]
   },
   { nick: 'wren', body: 'badinage demo mode looks cute btw', agoMin: 6, stanzaId: 'room-7' }
 ]
@@ -334,7 +332,7 @@ export function roomOccupants(room: string, selfNick: string, selfJid = ''): Muc
       self: false,
       codes: [] as string[],
       jid: `${o.nick}@badinage.local`,
-      occupantId: `occ-${o.nick}`
+      occupantId: `occ-${o.nick}`, avatarHash: `${o.nick}@badinage.local`
     }))
   ]
 }
@@ -412,10 +410,12 @@ export function demoRoomConfig(): DataForm {
 
 export function emitContactPresence(events: DemoEmitter): void {
   for (const contact of CONTACTS) {
+    // a stable per-contact hash keeps the demo avatar fetch path running
     events.emit('presence', {
       from: contact.jid,
       show: contact.presence,
-      status: contact.status
+      status: contact.status,
+      avatarHash: contact.jid
     })
   }
 }

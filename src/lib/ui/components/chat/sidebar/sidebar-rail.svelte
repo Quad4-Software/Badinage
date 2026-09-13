@@ -5,6 +5,8 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
+  import { bareJid } from '$lib/utils/jid'
+  import { presenceLabel } from '$lib/ui/presence'
   import { Button } from '$lib/ui/primitives/button'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
@@ -123,26 +125,37 @@
           title={contact.jid}
           onclick={() => open(contact.jid)}
         >
-          <span class="relative block">
-            <PeerAvatar
-              jid={contact.jid}
-              fallback={name.slice(0, 2)}
-              class={cn('size-9', app.activePeer === contact.jid && 'ring-primary ring-2')}
-            />
-            <PresenceDot
-              presence={contact.presence}
-              class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
-            />
-          </span>
+          <PeerAvatar
+            jid={contact.jid}
+            fallback={name.slice(0, 2)}
+            class={cn('size-9', app.activePeer === contact.jid && 'ring-primary ring-2')}
+          />
         </button>
       {/each}
     </nav>
   </ScrollArea>
 
-  <PresenceDot
-    presence={account?.status === 'connected' ? account.presence : 'offline'}
-    class="size-3"
-  />
+  {#if account}
+    {@const shown = account.status === 'connected' ? account.presence : 'offline'}
+    <button
+      class="relative rounded-full"
+      onclick={() => (app.profileOpen = true)}
+      aria-label={`${account.jid}: ${account.invisible ? $LL.invisible() : presenceLabel(shown)}`}
+      title={$LL.editProfile()}
+    >
+      <PeerAvatar
+        jid={bareJid(account.jid)}
+        fallback={account.jid.slice(0, 2)}
+        {account}
+        force
+        class="size-9"
+      />
+      <PresenceDot
+        presence={account.invisible ? 'offline' : shown}
+        class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
+      />
+    </button>
+  {/if}
   <Button
     variant="ghost"
     size="icon"

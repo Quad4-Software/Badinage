@@ -20,11 +20,19 @@ function withCaps(pres: StanzaBuilder): StanzaBuilder {
   })
 }
 
+// XEP-0153: once a vcard publish stamped a photo hash, presence carries
+// it so contacts and room occupants learn about the avatar without a
+// vcard query
+function withAvatarHash(conn: XmppTransport, pres: StanzaBuilder): StanzaBuilder {
+  if (conn.avatarHash === undefined) return pres
+  return pres.c('x', { xmlns: NS.VCARD_UPDATE }).c('photo').t(conn.avatarHash).up().up()
+}
+
 export function sendPresence(conn: XmppTransport, show?: string, status?: string): void {
   const pres = $pres()
   if (show) pres.c('show').t(show).up()
   if (status) pres.c('status').t(status).up()
-  conn.send(withCaps(pres))
+  conn.send(withCaps(withAvatarHash(conn, pres)))
 }
 
 // XEP-0115 section 8.3: directed presence should carry caps too, but
@@ -38,6 +46,6 @@ export function sendDirectedPresence(
 ): void {
   let pres = type ? $pres({ to, type }) : $pres({ to })
   if (status) pres.c('status').t(status).up()
-  if (!type || type === 'unavailable') pres = withCaps(pres)
+  if (!type || type === 'unavailable') pres = withCaps(withAvatarHash(conn, pres))
   conn.send(pres)
 }

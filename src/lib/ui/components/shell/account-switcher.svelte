@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DropdownMenu } from 'bits-ui'
-  import { Check, ChevronsUpDown, LogOut, Settings, UserPlus } from '@lucide/svelte'
+  import { Check, ChevronsUpDown, LogOut, Settings, UserPen, UserPlus } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
@@ -14,13 +14,15 @@
   import PeerAvatar from '../chat/peer-avatar.svelte'
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
+  import PresenceMenu from '../presence/presence-menu.svelte'
 
   const active = $derived(accounts.active)
+  let menuOpen = $state(false)
   let confirmRemove = $state<string | null>(null)
 </script>
 
 <div class="flex items-center gap-2">
-  <DropdownMenu.Root>
+  <DropdownMenu.Root bind:open={menuOpen}>
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="w-full justify-between">
@@ -34,17 +36,15 @@
                   force
                   class="size-5"
                 />
-                <span
-                  class="border-background absolute -right-0.5 -bottom-0.5 size-2 rounded-full border"
-                  style={`background: oklch(0.65 0.17 ${effectiveHue(settings.metaFor(active.jid), active.jid)})`}
-                  aria-hidden="true"
-                ></span>
+                <PresenceDot
+                  presence={active.status === 'connected' ? active.presence : 'offline'}
+                  class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
+                />
               </span>
-              <PresenceDot presence={active.status === 'connected' ? 'online' : 'offline'} />
             {/if}
             <span class="truncate">{active?.jid ?? ''}</span>
           </span>
-          <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
+          <ChevronsUpDown class="me-1 size-4 shrink-0 opacity-50" />
         </Button>
       {/snippet}
     </DropdownMenu.Trigger>
@@ -76,7 +76,6 @@
                 aria-hidden="true"
               ></span>
             </span>
-            <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
             <span class="min-w-0 flex-1 truncate">{account.jid}</span>
             {#if account.latency !== null}
               <span class="text-muted-foreground shrink-0 text-xs">
@@ -105,12 +104,21 @@
         </DropdownMenu.Item>
         {#if active}
           <DropdownMenu.Item
+            class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+            onSelect={() => (app.profileOpen = true)}
+          >
+            <UserPen class="size-4" />
+            {$LL.editProfile()}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
             class="text-destructive data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
             onSelect={() => (confirmRemove = active.jid)}
           >
             <LogOut class="size-4" />
             {$LL.removeAccount()}
           </DropdownMenu.Item>
+          <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
+          <PresenceMenu account={active} close={() => (menuOpen = false)} />
         {/if}
       </DropdownMenu.Content>
     </DropdownMenu.Portal>

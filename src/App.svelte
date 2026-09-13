@@ -15,6 +15,7 @@
   import AddContactDialog from '$lib/ui/components/dialogs/add-contact-dialog.svelte'
   import ExploreRoomsDialog from '$lib/ui/components/dialogs/explore-rooms-dialog.svelte'
   import JoinRoomDialog from '$lib/ui/components/dialogs/join-room-dialog.svelte'
+  import ProfileDialog from '$lib/ui/components/dialogs/profile-dialog.svelte'
   import ShareDialog from '$lib/ui/components/dialogs/share-dialog.svelte'
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
@@ -174,6 +175,7 @@
   {/if}
   <SettingsDialog />
   <JoinRoomDialog />
+  <ProfileDialog />
   <AddContactDialog />
   <ExploreRoomsDialog />
   {#if app.sharePayload}

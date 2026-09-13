@@ -9,16 +9,12 @@ import { $iq, Strophe } from 'strophe.js'
 import { RECONNECT_DELAY_MAX_MS, RECONNECT_DELAY_MS } from '$lib/constants'
 import { Emitter } from '$lib/core/events'
 
-import { fetchAvatar } from './features/pep/avatars'
+import { createVcardApi, fetchAvatar } from './features/pep/avatars'
 import { blockJids, fetchBlocklist, unblockJids } from './features/blocking'
 import { fetchBookmarks, publishBookmark, retractBookmark } from './features/pep/bookmarks'
 import { sendClientState } from './features/csi'
 import { discoInfo, discoItems } from './features/disco'
-import {
-  makeTransport,
-  noteStreamFeatures,
-  registerStanzaHandlers
-} from './connection-handlers'
+import { makeTransport, noteStreamFeatures, registerStanzaHandlers } from './connection-handlers'
 import { queryArchive } from './features/mam'
 import {
   sendAttachment,
@@ -111,6 +107,7 @@ export class XmppConnection implements ChatConnection {
   // queryids of in-flight MAM queries; the message handler only unwraps
   // result wrappers echoing one of these or sent by our own bare jid
   private readonly mamQueries = new Set<string>()
+  readonly vcard = createVcardApi(() => this.transport) // thunked: transport is post-ctor
 
   constructor(
     private readonly service: string,
@@ -272,7 +269,7 @@ export class XmppConnection implements ChatConnection {
     sendEncryptedNotification(this.transport, to, encryptedXml)
   }
 
-  // ---- presence / avatars, implemented in features/presence.ts ----------------
+  // ---- presence / avatars / vcard, in features/presence.ts and features/pep/ ---
 
   sendPresence(show?: string, status?: string): void {
     sendPresence(this.transport, show, status)

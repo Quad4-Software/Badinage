@@ -16,6 +16,10 @@ export interface XmppTransport {
   send(stanza: StanzaBuilder): void
   uniqueId(prefix: string): string
   readonly jid: string
+  // XEP-0153 photo hash stamped by the vcard publish path; presence
+  // broadcasts carry it in the x update element once it is known. The
+  // empty string means we explicitly published no avatar.
+  avatarHash?: string
 }
 
 export function noop(): void {

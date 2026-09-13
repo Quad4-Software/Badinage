@@ -6,7 +6,6 @@
   import { Button } from '$lib/ui/primitives/button'
 
   import AccountSwitcher from '../../shell/account-switcher.svelte'
-  import PresencePicker from '../../presence/presence-picker.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
 
   // bindable for chat-sidebar compat; the command palette replaced the
@@ -39,12 +38,8 @@
   </div>
 </div>
 
-<div class="px-3 pb-1">
-  <AccountSwitcher />
-</div>
-
 <div class="px-3 pb-3">
-  <PresencePicker />
+  <AccountSwitcher />
 </div>
 
 <div class="px-3 pb-2">

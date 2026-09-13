@@ -17,7 +17,8 @@ import type {
   MucDecline,
   MucInvite,
   RosterItem,
-  UploadSlot
+  UploadSlot,
+  Vcard
 } from './types'
 
 export function parseJidItems(el: Element): string[] {
@@ -130,6 +131,27 @@ export function parseVcardPhoto(stanza: Element): string | undefined {
   const binval = photo ? firstTagText(photo, 'BINVAL') : null
   if (!type?.startsWith('image/') || !binval) return undefined
   return `data:${type};base64,${binval.trim()}`
+}
+
+// XEP-0054: the own-vcard fields the profile editor manages. Unknown
+// elements (BDAY, ADR and friends) are not modeled; the set path
+// preserves them by cloning the fetched card instead of rebuilding it.
+export function parseVcard(stanza: Element): Vcard {
+  // ns-aware first so a prefixed <v:vCard> still parses; the tag fallback
+  // covers servers that send the card without a namespace declaration
+  const vcard = firstNsTag(stanza, NS.VCARD_TEMP, 'vCard') ?? firstTag(stanza, 'vCard')
+  const field = (local: string) =>
+    (
+      (vcard ? firstNsTag(vcard, NS.VCARD_TEMP, local)?.textContent : null) ??
+      (vcard ? firstTagText(vcard, local) : null) ??
+      ''
+    ).trim()
+  return {
+    fn: field('FN'),
+    nickname: field('NICKNAME'),
+    desc: field('DESC'),
+    photoUri: parseVcardPhoto(stanza)
+  }
 }
 
 // A pubsub event notification (XEP-0163) on a message stanza: the node

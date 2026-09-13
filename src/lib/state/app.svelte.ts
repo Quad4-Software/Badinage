@@ -25,6 +25,7 @@ class AppStore {
   sidebarCollapsed = $state(false)
   settingsOpen = $state(false)
   loginOpen = $state(false)
+  profileOpen = $state(false)
   joinRoomOpen = $state(false)
   addContactOpen = $state(false)
   paletteOpen = $state(false)

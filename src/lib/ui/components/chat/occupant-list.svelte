@@ -11,7 +11,6 @@
   import { presenceLabel } from '$lib/ui/presence'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
-  import PresenceDot from '../presence/presence-dot.svelte'
   import PeerAvatar from './peer-avatar.svelte'
 
   let { conversation }: { conversation: Conversation } = $props()
@@ -102,17 +101,11 @@
         </li>
         {#each group.members as occupant (occupant.nick)}
           <li class="group hover:bg-accent flex items-center gap-2.5 rounded-md px-2 py-1.5">
-            <span class="relative shrink-0">
-              <PeerAvatar
-                jid={`${conversation.peerJid}/${occupant.nick}`}
-                fallback={occupant.nick.slice(0, 2)}
-                class="size-7 text-[0.65rem]"
-              />
-              <PresenceDot
-                presence={occupant.presence}
-                class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
-              />
-            </span>
+            <PeerAvatar
+              jid={`${conversation.peerJid}/${occupant.nick}`}
+              fallback={occupant.nick.slice(0, 2)}
+              class="size-7 shrink-0 text-[0.65rem]"
+            />
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-1.5">
                 <span

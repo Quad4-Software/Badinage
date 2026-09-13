@@ -43,6 +43,7 @@ import {
   demoModerateMessage,
   demoSetRoomSubject
 } from './demo-muc'
+import { DemoProfiles } from './demo/profile'
 import { DISCO_FEATURES, DISCO_IDENTITY } from './features/caps'
 import type { ChannelSearchItem, ChatState, DataForm, MarkerType } from './stanzas'
 
@@ -74,6 +75,8 @@ export class DemoConnection implements ChatConnection {
   // eagerly so the connect-time fetch already sees them
   private bookmarks = new Map<string, Bookmark>(demoBookmarks().map((b) => [b.jid, b]))
   private readonly omemoPeers = new DemoOmemoPeers()
+  private readonly profiles = new DemoProfiles()
+  readonly vcard = this.profiles.vcard
 
   connect(jid: string, _password: string): void {
     this.jid = jid
@@ -262,8 +265,9 @@ export class DemoConnection implements ChatConnection {
   }
 
   setInvisible(enabled: boolean, onDone: (ok: boolean) => void): void {
+    // no privacy list behind demo mode; pretend the toggle always lands
     void enabled
-    onDone(false)
+    onDone(true)
   }
 
   publishDisplayed(
@@ -311,8 +315,7 @@ export class DemoConnection implements ChatConnection {
   }
 
   fetchAvatar(jid: string, onDone: (dataUri: string | undefined) => void): void {
-    // the lobby room gets the app mark as its avatar
-    onDone(jid === ROOM ? '/icons/icon-192.png' : undefined)
+    onDone(this.profiles.avatar(jid, this.jid))
   }
 
   fetchRoster(): void {

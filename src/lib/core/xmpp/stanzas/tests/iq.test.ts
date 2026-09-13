@@ -11,6 +11,7 @@ import {
   parseMamFin,
   parseRosterItems,
   parseUploadSlot,
+  parseVcard,
   parseVcardPhoto
 } from '..'
 
@@ -201,6 +202,27 @@ describe('parseVcardPhoto', () => {
       )
       expect(uri).toBeUndefined()
     }
+  })
+})
+
+describe('parseVcard', () => {
+  it('parses the managed fields and the photo', () => {
+    const card = `<iq type="result"><vCard xmlns="vcard-temp"><FN>Alice A</FN><NICKNAME>ali</NICKNAME><DESC>hi there</DESC><PHOTO><TYPE>image/png</TYPE><BINVAL>aGk=</BINVAL></PHOTO></vCard></iq>`
+    expect(parseVcard(xml(card))).toMatchObject({
+      fn: 'Alice A',
+      nickname: 'ali',
+      desc: 'hi there',
+      photoUri: 'data:image/png;base64,aGk='
+    })
+  })
+
+  it('returns empty fields when the stanza carries no card', () => {
+    expect(parseVcard(xml(`<iq type="result"/>`))).toEqual({
+      fn: '',
+      nickname: '',
+      desc: '',
+      photoUri: undefined
+    })
   })
 })
 

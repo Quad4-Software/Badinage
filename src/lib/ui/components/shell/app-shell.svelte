@@ -36,7 +36,7 @@
   // width has to be converted to keep the collapsed pane exactly rail-wide
   const railSize = $derived(windowWidth > 0 ? Math.min(8, (RAIL_WIDTH_PX / windowWidth) * 100) : 0)
 
-  const SIDEBAR_DEFAULT = 20
+  const SIDEBAR_DEFAULT = 15
 
   // expandPane() only fires when paneSize === collapsedSize with strict
   // equality; collapsedSize is a float derived from window width, so after

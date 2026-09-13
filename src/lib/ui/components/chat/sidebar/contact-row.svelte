@@ -3,7 +3,6 @@
   import type { RosterContact } from '$lib/state/accounts.svelte'
   import { presenceLabel } from '$lib/ui/presence'
 
-  import PresenceDot from '../../presence/presence-dot.svelte'
   import PeerAvatar from '../peer-avatar.svelte'
 
   interface Props {
@@ -23,13 +22,7 @@
   title={contact.jid}
   onclick={onSelect}
 >
-  <span class="relative shrink-0">
-    <PeerAvatar jid={contact.jid} fallback={initials} />
-    <PresenceDot
-      presence={contact.presence}
-      class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
-    />
-  </span>
+  <PeerAvatar jid={contact.jid} fallback={initials} />
   <span class="min-w-0 flex-1">
     <span class="density-text-sm block truncate">
       {name}

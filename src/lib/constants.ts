@@ -152,3 +152,7 @@ export const GEOLOC_TILE_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.
 // check runs on this interval
 export const IDLE_AWAY_MS = 10 * 60 * 1000
 export const IDLE_CHECK_MS = 30_000
+
+// app icon url: root-relative paths 404 when the static build is served
+// under a subpath, so every icon reference goes through BASE_URL
+export const APP_ICON_192 = `${import.meta.env.BASE_URL}icons/icon-192.png`

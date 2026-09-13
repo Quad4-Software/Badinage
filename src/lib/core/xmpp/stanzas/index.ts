@@ -12,6 +12,7 @@ export {
   parseRoomDecline,
   parseRoomInvite,
   parseUploadSlot,
+  parseVcard,
   parseVcardPhoto,
   hasDiscoFeature
 } from './iq'
@@ -47,5 +48,6 @@ export type {
   PresenceError,
   PresenceUpdate,
   RosterItem,
-  UploadSlot
+  UploadSlot,
+  Vcard
 } from './types'

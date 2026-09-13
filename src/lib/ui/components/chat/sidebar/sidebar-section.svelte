@@ -26,7 +26,9 @@
     {#if expanded}<ChevronDown class="size-3.5" />{:else}<ChevronRight class="size-3.5" />{/if}
     {title}
   </button>
-  {@render action?.()}
+  <div class="flex items-center gap-0.5">
+    {@render action?.()}
+  </div>
 </div>
 {#if expanded}
   {@render children?.()}

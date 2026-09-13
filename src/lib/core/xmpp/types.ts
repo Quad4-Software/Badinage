@@ -28,8 +28,18 @@ import type {
   PresenceError,
   PresenceUpdate,
   RosterItem,
-  UploadSlot
+  UploadSlot,
+  Vcard
 } from './stanzas'
+
+// XEP-0054 own vcard. fetch resolves null when the server has no card or
+// refuses the query; set merges the managed fields over the stored card
+// and, when a photo is included, stamps the XEP-0153 hash so presence
+// broadcasts advertise it.
+export interface VcardApi {
+  fetch(onDone: (vcard: Vcard | null) => void): void
+  set(vcard: Vcard, onDone: (ok: boolean) => void): void
+}
 
 export type ConnectionStatus =
   'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'authfail' | 'error'
@@ -145,6 +155,8 @@ export interface ChatConnection {
   sendPresence(show?: string, status?: string): void
   sendDirectedPresence(to: string, type?: string, status?: string): void
   fetchAvatar(jid: string, onDone: (dataUri: string | undefined) => void): void
+  // XEP-0054: our own vcard - fetch for the profile editor, set to publish
+  readonly vcard: VcardApi
   fetchRoster(): void
   rosterSet(jid: string, name: string, groups?: string[]): void
   rosterRemove(jid: string): void

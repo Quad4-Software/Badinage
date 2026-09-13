@@ -20,6 +20,8 @@ import { NS } from '../../ns'
 import { parseVcardPhoto } from '../../stanzas'
 import type { XmppTransport } from '../transport'
 
+export { createVcardApi } from './vcard'
+
 // the cache is only reachable when indexedDB exists (unit tests run
 // without it and simply skip persistence)
 const hasIdb = typeof indexedDB !== 'undefined'
