@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { coalesced, isLiveIncoming, shouldNotify, snippet } from './notify'
+import { chatNotifyMode, coalesced, isLiveIncoming, shouldNotify, snippet } from './notify'
 
 describe('isLiveIncoming', () => {
   it('accepts a plain live incoming stanza', () => {
@@ -24,7 +24,10 @@ describe('shouldNotify', () => {
     accountEnabled: true,
     permission: 'granted' as const,
     hidden: true,
-    conversationActive: false
+    conversationActive: false,
+    chatMode: 'always' as const,
+    mentioned: false,
+    attention: false
   }
 
   it('fires when the tab is hidden', () => {
@@ -48,6 +51,35 @@ describe('shouldNotify', () => {
     for (const permission of ['denied', 'default', 'unsupported'] as const) {
       expect(shouldNotify({ ...base, permission })).toBe(false)
     }
+  })
+
+  it('never mode silences even mentions and attention', () => {
+    expect(shouldNotify({ ...base, chatMode: 'never', mentioned: true })).toBe(false)
+    expect(shouldNotify({ ...base, chatMode: 'never', attention: true })).toBe(false)
+  })
+
+  it('on-mention requires a mention unless the sender buzzed', () => {
+    expect(shouldNotify({ ...base, chatMode: 'on-mention' })).toBe(false)
+    expect(shouldNotify({ ...base, chatMode: 'on-mention', mentioned: true })).toBe(true)
+    expect(shouldNotify({ ...base, chatMode: 'on-mention', attention: true })).toBe(true)
+  })
+
+  it('attention bypasses the active-conversation gate', () => {
+    expect(
+      shouldNotify({ ...base, hidden: false, conversationActive: true, attention: true })
+    ).toBe(true)
+  })
+})
+
+describe('chatNotifyMode', () => {
+  it('honours the explicit override', () => {
+    expect(chatNotifyMode('never', 'dm')).toBe('never')
+    expect(chatNotifyMode('always', 'muc')).toBe('always')
+  })
+
+  it('defaults dm to always and muc to on-mention', () => {
+    expect(chatNotifyMode(undefined, 'dm')).toBe('always')
+    expect(chatNotifyMode(undefined, 'muc')).toBe('on-mention')
   })
 })
 

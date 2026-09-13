@@ -127,6 +127,12 @@ export function sha1Hex(data: Uint8Array): string {
   return bytesToHex(sha1(data))
 }
 
+// raw digest for callers that need bytes rather than hex, like the
+// XEP-0392 color angle which reads the first two digest bytes
+export function sha1Digest(data: Uint8Array): Uint8Array {
+  return sha1(data)
+}
+
 function sha1Base64(data: Uint8Array): string {
   return bytesToBase64(sha1(data))
 }
