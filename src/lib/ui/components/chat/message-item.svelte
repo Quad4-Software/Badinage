@@ -18,6 +18,7 @@
   import MessageBody from './message-body.svelte'
   import MessageMeta from './message-meta.svelte'
   import MessageItemActions from './message-item/actions.svelte'
+  import { longPress } from '$lib/ui/long-press'
 
   interface Props {
     message: ChatMessage
@@ -44,6 +45,8 @@
     onModerate?: ((message: ChatMessage) => void) | undefined
     // removes the message; only rendered for undecryptable tombstones
     onDismiss?: ((message: ChatMessage) => void) | undefined
+    // press-and-hold or right click on the bubble, for the touch sheet
+    onLongPress?: ((message: ChatMessage) => void) | undefined
   }
 
   let {
@@ -63,7 +66,8 @@
     onCancelUpload,
     canModerate = false,
     onModerate,
-    onDismiss
+    onDismiss,
+    onLongPress
   }: Props = $props()
 
   let spoilerRevealed = $state(false)
@@ -150,10 +154,15 @@
       </span>
     {/if}
 
-    <div class="relative max-w-full">
+    <div
+      class="relative max-w-full"
+      {@attach longPress(() => {
+        if (!message.retracted && !message.pending) onLongPress?.(message)
+      })}
+    >
       <div
         class={cn(
-          'density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
+          'msg-bubble density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
           message.outgoing
             ? 'bg-primary text-primary-foreground rounded-br-sm'
             : 'bg-muted rounded-bl-sm',
@@ -339,7 +348,7 @@
                   {...props}
                   type="button"
                   class={cn(
-                    'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
+                    'flex items-center gap-1 rounded-full px-2 py-1 text-xs',
                     mine
                       ? 'bg-primary/15 text-primary ring-primary/40 ring-1 ring-inset'
                       : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -358,7 +367,7 @@
         {#if !message.retracted && !message.pending}
           <button
             type="button"
-            class="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            class="msg-hover-only text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             aria-label={$LL.react()}
             onclick={() => openPicker('bottom')}
           >

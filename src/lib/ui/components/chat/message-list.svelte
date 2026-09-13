@@ -31,6 +31,8 @@
     onModerate?: ((message: ChatMessage) => void) | undefined
     // dismisses a message outright - only offered on undecryptable tombstones
     onDismiss?: ((message: ChatMessage) => void) | undefined
+    // press-and-hold or right click on a bubble, for the touch sheet
+    onLongPress?: ((message: ChatMessage) => void) | undefined
   }
 
   let {
@@ -45,7 +47,8 @@
     onCancelUpload,
     canModerate = false,
     onModerate,
-    onDismiss
+    onDismiss,
+    onLongPress
   }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
@@ -155,6 +158,9 @@
     const observer = new ResizeObserver(() => {
       if (pinned) el.scrollTop = el.scrollHeight
     })
+    // the viewport itself shrinks when the on-screen keyboard opens;
+    // observing it keeps the pinned tail in view
+    observer.observe(el)
     for (const child of el.children) observer.observe(child)
     return () => {
       el.removeEventListener('scroll', onScroll)
@@ -202,6 +208,7 @@
           {canModerate}
           onModerate={onModerate ? () => onModerate(message) : undefined}
           {onDismiss}
+          {onLongPress}
         />
       </li>
     {/each}

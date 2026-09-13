@@ -23,6 +23,8 @@
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { presenceLabel } from '$lib/ui/presence'
 
+  import { Sheet } from '$lib/ui/primitives/sheet'
+
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import ChangeNickDialog from '../dialogs/change-nick-dialog.svelte'
   import InviteUserDialog from '../dialogs/invite-user-dialog.svelte'
@@ -31,6 +33,7 @@
   import Composer from './composer.svelte'
   import PeerAvatar from './peer-avatar.svelte'
   import MessageList from './message-list.svelte'
+  import MessageSheet from './message-item/sheet.svelte'
   import OccupantList from './occupant-list.svelte'
   import RoomStatusBanner from './room-status-banner.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
@@ -83,6 +86,20 @@
 
   // the outgoing message awaiting a retract confirm
   let retractTarget = $state<ChatMessage | null>(null)
+
+  // the long-press sheet: target outlives the close animation
+  let sheetMessage = $state<ChatMessage | null>(null)
+  let sheetOpen = $state(false)
+
+  // occupant list is an aside on desktop and a bottom sheet on mobile
+  let desktop = $state(true)
+  $effect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const update = () => (desktop = mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  })
 
   // reaction sender keys are bare jids in dms and nicks or XEP-0421
   // occupant ids in mucs; resolve all three to display names so the
@@ -148,6 +165,29 @@
         () => toast.error($LL.uploadFailed())
       )
     }
+  }
+
+  // toggling an emoji keeps every other reaction of ours; muc reactions
+  // reference the room stanza-id, dms the wire id
+  function reactToMessage(message: ChatMessage, emoji: string) {
+    if (!account || !conversation) return
+    // occupant-id keys reactions when the room assigns one, so a
+    // rename mid-session does not split our pills
+    const self = isRoom ? (conversation.ourOccupantId ?? conversation.ourNick ?? '') : account.jid
+    const senders = message.reactions[emoji] ?? []
+    const emojis = senders.includes(self)
+      ? Object.keys(message.reactions).filter(
+          (e) => e !== emoji && (message.reactions[e] ?? []).includes(self)
+        )
+      : [
+          ...Object.keys(message.reactions).filter((e) =>
+            (message.reactions[e] ?? []).includes(self)
+          ),
+          emoji
+        ]
+    const ref = isRoom ? message.id : (message.wireId ?? message.id)
+    sendReactionSet(conversation.peerJid, ref, emojis)
+    app.chatsFor(account.jid).applyReaction(conversation.peerJid, self, ref, emojis)
   }
 
   const peerBlocked = $derived(peer ? (account?.isBlocked(peer) ?? false) : false)
@@ -392,30 +432,7 @@
               app.focusComposer(conversation.peerJid)
             }
           }}
-          onReact={(message, emoji) => {
-            if (!account) return
-            // occupant-id keys reactions when the room assigns one, so a
-            // rename mid-session does not split our pills
-            const self = isRoom
-              ? (conversation.ourOccupantId ?? conversation.ourNick ?? '')
-              : account.jid
-            const senders = message.reactions[emoji] ?? []
-            const emojis = senders.includes(self)
-              ? Object.keys(message.reactions).filter(
-                  (e) => e !== emoji && (message.reactions[e] ?? []).includes(self)
-                )
-              : [
-                  ...Object.keys(message.reactions).filter((e) =>
-                    (message.reactions[e] ?? []).includes(self)
-                  ),
-                  emoji
-                ]
-            // MUC reactions/replies reference the room stanza-id, DMs the
-            // wire id; message.id holds the stanza-id when the server sent one
-            const ref = isRoom ? message.id : (message.wireId ?? message.id)
-            sendReactionSet(conversation.peerJid, ref, emojis)
-            app.chatsFor(account.jid).applyReaction(conversation.peerJid, self, ref, emojis)
-          }}
+          onReact={reactToMessage}
           {senderLabel}
           onRetract={(message) => (retractTarget = message)}
           onCancelUpload={(message) => cancelUpload(message.id)}
@@ -428,6 +445,10 @@
             if (!account) return
             app.chatsFor(account.jid).dropMessage(conversation.peerJid, message.id)
           }}
+          onLongPress={(message) => {
+            sheetMessage = message
+            sheetOpen = true
+          }}
         />
         <Composer
           peerJid={conversation.peerJid}
@@ -435,8 +456,8 @@
           peerName={isRoom ? conversation.peerJid.split('@')[0] : (contact?.name ?? undefined)}
         />
       </div>
-      {#if isRoom && showOccupants}
-        <aside class="hidden w-56 shrink-0 border-l md:block">
+      {#if isRoom && showOccupants && desktop}
+        <aside class="w-56 shrink-0 border-l">
           <OccupantList {conversation} />
         </aside>
       {/if}
@@ -536,3 +557,37 @@
   destructive
   onConfirm={retractMessage}
 />
+
+{#if conversation}
+  <MessageSheet
+    bind:open={sheetOpen}
+    message={sheetMessage}
+    {canModerate}
+    onReply={(message) => {
+      app.setComposer(conversation.peerJid, { replyTo: message })
+      app.focusComposer(conversation.peerJid)
+    }}
+    onEdit={(message) => {
+      if (message.outgoing) {
+        app.setComposer(conversation.peerJid, { editing: message })
+        app.focusComposer(conversation.peerJid)
+      }
+    }}
+    onReact={reactToMessage}
+    onRetract={(message) => (retractTarget = message)}
+    onModerate={(message) => {
+      moderateReason = ''
+      moderateTarget = message
+    }}
+    onDismiss={(message) => {
+      if (!account) return
+      app.chatsFor(account.jid).dropMessage(conversation.peerJid, message.id)
+    }}
+  />
+{/if}
+
+{#if isRoom && conversation && !desktop}
+  <Sheet bind:open={showOccupants} title={$LL.occupants({ count: conversation.occupants.size })}>
+    <OccupantList {conversation} />
+  </Sheet>
+{/if}

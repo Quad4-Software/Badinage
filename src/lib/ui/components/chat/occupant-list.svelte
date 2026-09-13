@@ -141,7 +141,7 @@
             {#if canKick(occupant) || canBan(occupant)}
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger
-                  class="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 shrink-0 items-center justify-center rounded opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                  class="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 shrink-0 items-center justify-center rounded opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 max-md:opacity-100"
                   aria-label={$LL.occupantOptions()}
                 >
                   <EllipsisVertical class="size-4" />

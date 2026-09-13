@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MapPin, Mic, Paperclip, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
+  import { MapPin, Mic, Paperclip, Plus, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
 
   import type { Geoloc } from '$lib/core/xmpp/stanzas'
   import LL from '$lib/i18n/i18n-svelte'
@@ -13,6 +13,8 @@
   import { Button } from '$lib/ui/primitives/button'
 
   import EmojiPicker from './emoji-picker.svelte'
+  import AttachSheet from './composer/attach-sheet.svelte'
+  import ComposerContext from './composer/context.svelte'
   import RecordingMeter from './recording-meter.svelte'
   import { createVoiceRecorder } from '../../voice.svelte'
   import { createFileSend } from './composer/files'
@@ -34,6 +36,7 @@
   let inputEl = $state<HTMLTextAreaElement | null>(null)
   let fileEl = $state<HTMLInputElement | null>(null)
   let emojiOpen = $state(false)
+  let attachOpen = $state(false)
   // XEP-0372: the @token under the cursor and its completion candidates
   let mentionQuery = $state<{ start: number; text: string } | null>(null)
   let mentionIndex = $state(0)
@@ -236,42 +239,11 @@
 </script>
 
 <div class="border-t">
-  {#if composerCtx.replyTo}
-    <div class="bg-muted/60 flex items-center gap-2 px-3 py-1.5 text-xs">
-      <span class="border-primary min-w-0 flex-1 truncate border-l-2 pl-2">
-        {$LL.replyingTo({
-          name: composerCtx.replyTo.nick ?? bareJid(composerCtx.replyTo.peerJid)
-        })}:
-        {composerCtx.replyTo.body}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        class="size-6 shrink-0"
-        onclick={() => app.setComposer(peerJid, {})}
-        aria-label={$LL.cancelEdit()}
-      >
-        <X class="size-3.5" />
-      </Button>
-    </div>
-  {:else if composerCtx.editing}
-    <div class="bg-muted/60 flex items-center gap-2 px-3 py-1.5 text-xs">
-      <span class="border-primary min-w-0 flex-1 truncate border-l-2 pl-2">
-        {$LL.editingMessage()}: {composerCtx.editing.body}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        class="size-6 shrink-0"
-        onclick={() => app.setComposer(peerJid, {})}
-        aria-label={$LL.cancelEdit()}
-      >
-        <X class="size-3.5" />
-      </Button>
-    </div>
-  {/if}
+  <ComposerContext {peerJid} ctx={composerCtx} />
 
-  <div class="flex items-end gap-1.5 p-[var(--density-composer-pad)]">
+  <div
+    class="flex items-end gap-1.5 p-[var(--density-composer-pad)] pb-[max(var(--density-composer-pad),env(safe-area-inset-bottom))]"
+  >
     <input
       bind:this={fileEl}
       type="file"
@@ -280,32 +252,28 @@
       aria-hidden="true"
       tabindex={-1}
     />
+    <!-- mobile: one button opens the attach sheet; desktop keeps the
+         separate row buttons -->
     <Button
       variant="ghost"
       size="icon"
+      class="max-md:size-10 md:hidden"
+      onclick={() => (attachOpen = true)}
+      aria-label={$LL.attachFile()}
+      disabled={voice.recording}
+    >
+      <Plus class="size-5" />
+    </Button>
+    <Button
+      variant="ghost"
+      size="icon"
+      class="hidden md:inline-flex"
       onclick={attach}
       aria-label={$LL.attachFile()}
       disabled={voice.recording}
     >
       <Paperclip class="size-4" />
     </Button>
-    <div class="relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        onclick={() => (emojiOpen = !emojiOpen)}
-        aria-label={$LL.addReactionEmoji()}
-        aria-expanded={emojiOpen}
-        disabled={voice.recording}
-      >
-        <Smile class="size-4" />
-      </Button>
-      {#if emojiOpen}
-        <div class="absolute bottom-full left-0 z-50 mb-2">
-          <EmojiPicker onPick={pickEmoji} onClose={() => (emojiOpen = false)} />
-        </div>
-      {/if}
-    </div>
     <div class="relative min-w-0 flex-1">
       {#if mentionCandidates.length > 0}
         <div
@@ -332,6 +300,22 @@
           {/each}
         </div>
       {/if}
+      <Button
+        variant="ghost"
+        size="icon"
+        class="absolute bottom-0.5 left-0.5 size-8"
+        onclick={() => (emojiOpen = !emojiOpen)}
+        aria-label={$LL.addReactionEmoji()}
+        aria-expanded={emojiOpen}
+        disabled={voice.recording}
+      >
+        <Smile class="size-4" />
+      </Button>
+      {#if emojiOpen}
+        <div class="absolute bottom-full left-0 z-50 mb-2">
+          <EmojiPicker onPick={pickEmoji} onClose={() => (emojiOpen = false)} />
+        </div>
+      {/if}
       <textarea
         bind:value={body}
         bind:this={inputEl}
@@ -346,12 +330,15 @@
         {placeholder}
         aria-label={placeholder}
         disabled={voice.recording}
-        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+        enterkeyhint={settings.current.sendWithEnter ? 'send' : 'enter'}
+        autocapitalize="sentences"
+        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-md border bg-transparent py-2 pr-3 pl-10 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
       ></textarea>
     </div>
     <Button
       variant="ghost"
       size="icon"
+      class="hidden md:inline-flex"
       onclick={shareLocation}
       aria-label={$LL.shareLocation()}
       disabled={voice.recording || locating}
@@ -368,22 +355,36 @@
       <Button
         variant="ghost"
         size="icon"
+        class="max-md:size-10"
         onclick={() => voice.cancel()}
         aria-label={$LL.cancelRecording()}
       >
         <X class="size-4" />
       </Button>
-      <Button size="icon" onclick={toggleRecording} aria-label={$LL.stopRecording()}>
+      <Button
+        size="icon"
+        class="max-md:size-10"
+        onclick={toggleRecording}
+        aria-label={$LL.stopRecording()}
+      >
         <Square class="size-4" />
       </Button>
     {:else if body.trim()}
-      <Button size="icon" onclick={send} aria-label={$LL.send()}>
+      <Button size="icon" class="max-md:size-10" onclick={send} aria-label={$LL.send()}>
         <SendHorizontal class="size-4" />
       </Button>
     {:else}
-      <Button variant="ghost" size="icon" onclick={toggleRecording} aria-label={$LL.recordVoice()}>
+      <Button
+        variant="ghost"
+        size="icon"
+        class="max-md:size-10"
+        onclick={toggleRecording}
+        aria-label={$LL.recordVoice()}
+      >
         <Mic class="size-4" />
       </Button>
     {/if}
   </div>
 </div>
+
+<AttachSheet bind:open={attachOpen} {locating} onAttach={attach} onLocation={shareLocation} />

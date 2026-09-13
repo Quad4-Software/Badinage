@@ -57,6 +57,22 @@
     document.documentElement.dataset.density = normalizeDensity(settings.current.density)
   })
 
+  // keyboard dock: visualViewport.height shrinks when the on-screen
+  // keyboard overlays the page, so --app-height keeps the composer
+  // visible on ios where the layout viewport never resizes
+  $effect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const root = document.documentElement
+    const sync = () => root.style.setProperty('--app-height', `${vv.height}px`)
+    sync()
+    vv.addEventListener('resize', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      root.style.removeProperty('--app-height')
+    }
+  })
+
   onMount(() => {
     loadLocale('en')
     setLocale('en')

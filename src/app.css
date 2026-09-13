@@ -164,6 +164,28 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /* --app-height tracks window.visualViewport so the shell docks above
+     the on-screen keyboard on platforms where the keyboard overlays the
+     layout viewport (ios). interactive-widget=resizes-content covers
+     android chrome; the property stays unset there and this falls back
+     to the full height. */
+  #app {
+    height: var(--app-height, 100%);
+  }
+}
+
+/* touch message bubbles: suppress the ios long-press callout and text
+   selection so the custom action sheet is the only menu, and hide the
+   hover-revealed desktop action bar which taps would flash open. */
+@media (pointer: coarse) {
+  .msg-bubble {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .msg-hover-only {
+    display: none;
+  }
 }
 
 /* Sidebar pane collapse. paneforge flips data-pane-state to collapsing or

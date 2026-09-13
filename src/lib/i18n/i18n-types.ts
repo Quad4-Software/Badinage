@@ -448,6 +448,10 @@ type RootTranslation = {
 	 */
 	copyMessage: string
 	/**
+	 * M​e​s​s​a​g​e​ ​a​c​t​i​o​n​s
+	 */
+	messageActions: string
+	/**
 	 * A​t​t​a​c​h​ ​f​i​l​e
 	 */
 	attachFile: string
@@ -1968,6 +1972,10 @@ export type TranslationFunctions = {
 	 * Copy message text
 	 */
 	copyMessage: () => LocalizedString
+	/**
+	 * Message actions
+	 */
+	messageActions: () => LocalizedString
 	/**
 	 * Attach file
 	 */

@@ -33,7 +33,17 @@
   import { Input } from '$lib/ui/primitives/input'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
-  let { onPick, onClose }: { onPick: (emoji: string) => void; onClose: () => void } = $props()
+  let {
+    onPick,
+    onClose,
+    // embedded inside another dialog: drop the nested dialog role, the
+    // click-away layer, and the autofocus that would pop the keyboard
+    embedded = false
+  }: {
+    onPick: (emoji: string) => void
+    onClose: () => void
+    embedded?: boolean
+  } = $props()
 
   const EMOJIS = [
     '👍',
@@ -93,7 +103,7 @@
   })
 
   onMount(() => {
-    searchRef?.focus()
+    if (!embedded) searchRef?.focus()
     void loadDataset()
       .then((items) => {
         all = items
@@ -118,17 +128,19 @@
 <svelte:window onkeydown={onKeydown} />
 
 <!-- click-away layer, kept unfocusable so tab order stays on the emoji grid -->
-<button
-  type="button"
-  tabindex="-1"
-  aria-label={$LL.cancel()}
-  class="fixed inset-0 z-40 cursor-default"
-  onclick={onClose}
-></button>
+{#if !embedded}
+  <button
+    type="button"
+    tabindex="-1"
+    aria-label={$LL.cancel()}
+    class="fixed inset-0 z-40 cursor-default"
+    onclick={onClose}
+  ></button>
+{/if}
 
 <div
-  role="dialog"
-  aria-label={$LL.addReactionEmoji()}
+  role={embedded ? undefined : 'dialog'}
+  aria-label={embedded ? undefined : $LL.addReactionEmoji()}
   class="bg-popover relative z-50 w-72 rounded-lg border p-2 shadow-md"
 >
   <Input

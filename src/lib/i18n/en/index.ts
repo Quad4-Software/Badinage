@@ -110,6 +110,7 @@ const en = {
   uploading: 'Uploading attachment',
   cancelUpload: 'Cancel upload',
   copyMessage: 'Copy message text',
+  messageActions: 'Message actions',
   attachFile: 'Attach file',
   dropToSend: 'Drop files to send',
   searchEmoji: 'Search emoji',
