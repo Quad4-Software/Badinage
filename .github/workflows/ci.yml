@@ -39,6 +39,7 @@ jobs:
       - run: pnpm check
       - run: pnpm test:coverage
       - run: pnpm knip
+      - run: pnpm check:size
       - run: pnpm --filter @quad4-software/omemo typecheck
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0

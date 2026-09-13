@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "check:tsgo": "svelte-check --tsgo --tsconfig ./tsconfig.json --fail-on-warnings",
+    "check:size": "node scripts/check-size.mjs",
     "i18n": "typesafe-i18n --no-watch",
     "lint": "eslint .",
     "format": "prettier --write .",

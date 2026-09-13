@@ -7,7 +7,9 @@
 - Every folder that is a unit of API gets an index.ts that re-exports the
   public surface. Import through the index, not deep paths.
 - Barrel files only inside one feature boundary. No global barrel.
-- A file near 300 lines or a folder over ~10 files needs a split.
+- A file over 300 lines or a folder over 10 direct files needs a split or
+  a subfolder. `pnpm check:size` enforces both in CI; existing offenders
+  sit in a shrinking allowlist in scripts/check-size.mjs.
 - Test fixtures and harnesses that must not ship in src/ live in test/ at
   the repo root (test/fake-xmpp-server.ts, test/stub-connection.ts,
   test/stanza-gen/). They sit outside coverage and knip scope.

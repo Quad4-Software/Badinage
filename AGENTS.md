@@ -64,8 +64,10 @@ License: 0BSD. Copyright Quad4 Software.
 - ui/ components read state/ stores and call core/ through them.
 - Protocol features plug in through Module (src/lib/core/module.ts) and are
   registered per Account. One Account equals one XmppConnection.
-- No god files. A file over ~300 lines or a folder over ~10 files needs a
-  split or a subfolder.
+- No god files. 300 lines per file and 10 direct files per folder is the
+  hard limit, enforced in CI by `pnpm check:size` (scripts/check-size.mjs).
+  Existing offenders are allowlisted at their current size and must shrink,
+  not grow. Generated code is exempt.
 - Shared literals live in constants.ts or core/xmpp/ns.ts. No magic strings
   for namespaces, storage keys, or timing values.
 - Storage keys are namespaced per account through scopedKey() in
