@@ -18,6 +18,10 @@ type RootTranslation = {
 	 */
 	appName: string
 	/**
+	 * b​a​d​-​i​n​-​A​H​Z​H​,​ ​p​l​a​y​f​u​l​ ​b​a​n​t​e​r
+	 */
+	appPronunciation: string
+	/**
 	 * S​i​g​n​ ​i​n
 	 */
 	signIn: string
@@ -170,6 +174,10 @@ type RootTranslation = {
 	 */
 	demoHint: string
 	/**
+	 * D​e​m​o
+	 */
+	demoBadge: string
+	/**
 	 * R​o​o​m​s
 	 */
 	rooms: string
@@ -260,6 +268,22 @@ type RootTranslation = {
 	 */
 	search: string
 	/**
+	 * S​e​a​r​c​h​ ​c​o​n​v​e​r​s​a​t​i​o​n​s​,​ ​c​o​n​t​a​c​t​s​,​ ​a​c​t​i​o​n​s
+	 */
+	palettePlaceholder: string
+	/**
+	 * A​c​t​i​o​n​s
+	 */
+	paletteActions: string
+	/**
+	 * N​o​ ​r​e​s​u​l​t​s
+	 */
+	paletteEmpty: string
+	/**
+	 * N​o​ ​s​e​t​t​i​n​g​s​ ​m​a​t​c​h​ ​y​o​u​r​ ​s​e​a​r​c​h
+	 */
+	noSettingsResults: string
+	/**
 	 * E​x​p​a​n​d​ ​s​e​c​t​i​o​n
 	 */
 	expandSection: string
@@ -300,6 +324,14 @@ type RootTranslation = {
 	 * A​t​t​a​c​h​ ​f​i​l​e
 	 */
 	attachFile: string
+	/**
+	 * D​r​o​p​ ​f​i​l​e​s​ ​t​o​ ​s​e​n​d
+	 */
+	dropToSend: string
+	/**
+	 * S​e​a​r​c​h​ ​e​m​o​j​i
+	 */
+	searchEmoji: string
 	/**
 	 * R​e​c​o​r​d​ ​v​o​i​c​e​ ​m​e​s​s​a​g​e
 	 */
@@ -453,6 +485,34 @@ type RootTranslation = {
 	 */
 	searchSettings: string
 	/**
+	 * A​p​p​e​a​r​a​n​c​e
+	 */
+	appearance: string
+	/**
+	 * T​h​e​m​e
+	 */
+	theme: string
+	/**
+	 * L​i​g​h​t
+	 */
+	themeLight: string
+	/**
+	 * D​a​r​k
+	 */
+	themeDark: string
+	/**
+	 * S​y​s​t​e​m
+	 */
+	themeSystem: string
+	/**
+	 * A​c​c​e​n​t​ ​c​o​l​o​r
+	 */
+	accentColor: string
+	/**
+	 * C​u​s​t​o​m​ ​h​u​e
+	 */
+	accentHue: string
+	/**
 	 * A​c​c​o​u​n​t​s
 	 */
 	accounts: string
@@ -521,6 +581,10 @@ type RootTranslation = {
 	 * T​o​g​g​l​e​ ​s​i​d​e​b​a​r
 	 */
 	kbToggleSidebar: string
+	/**
+	 * O​p​e​n​ ​c​o​m​m​a​n​d​ ​p​a​l​e​t​t​e
+	 */
+	kbCommandPalette: string
 	/**
 	 * S​w​i​t​c​h​ ​t​o​ ​a​c​c​o​u​n​t​ ​{​n​}
 	 * @param {number} n
@@ -847,6 +911,10 @@ export type TranslationFunctions = {
 	 */
 	appName: () => LocalizedString
 	/**
+	 * bad-in-AHZH, playful banter
+	 */
+	appPronunciation: () => LocalizedString
+	/**
 	 * Sign in
 	 */
 	signIn: () => LocalizedString
@@ -995,6 +1063,10 @@ export type TranslationFunctions = {
 	 */
 	demoHint: () => LocalizedString
 	/**
+	 * Demo
+	 */
+	demoBadge: () => LocalizedString
+	/**
 	 * Rooms
 	 */
 	rooms: () => LocalizedString
@@ -1083,6 +1155,22 @@ export type TranslationFunctions = {
 	 */
 	search: () => LocalizedString
 	/**
+	 * Search conversations, contacts, actions
+	 */
+	palettePlaceholder: () => LocalizedString
+	/**
+	 * Actions
+	 */
+	paletteActions: () => LocalizedString
+	/**
+	 * No results
+	 */
+	paletteEmpty: () => LocalizedString
+	/**
+	 * No settings match your search
+	 */
+	noSettingsResults: () => LocalizedString
+	/**
 	 * Expand section
 	 */
 	expandSection: () => LocalizedString
@@ -1122,6 +1210,14 @@ export type TranslationFunctions = {
 	 * Attach file
 	 */
 	attachFile: () => LocalizedString
+	/**
+	 * Drop files to send
+	 */
+	dropToSend: () => LocalizedString
+	/**
+	 * Search emoji
+	 */
+	searchEmoji: () => LocalizedString
 	/**
 	 * Record voice message
 	 */
@@ -1275,6 +1371,34 @@ export type TranslationFunctions = {
 	 */
 	searchSettings: () => LocalizedString
 	/**
+	 * Appearance
+	 */
+	appearance: () => LocalizedString
+	/**
+	 * Theme
+	 */
+	theme: () => LocalizedString
+	/**
+	 * Light
+	 */
+	themeLight: () => LocalizedString
+	/**
+	 * Dark
+	 */
+	themeDark: () => LocalizedString
+	/**
+	 * System
+	 */
+	themeSystem: () => LocalizedString
+	/**
+	 * Accent color
+	 */
+	accentColor: () => LocalizedString
+	/**
+	 * Custom hue
+	 */
+	accentHue: () => LocalizedString
+	/**
 	 * Accounts
 	 */
 	accounts: () => LocalizedString
@@ -1342,6 +1466,10 @@ export type TranslationFunctions = {
 	 * Toggle sidebar
 	 */
 	kbToggleSidebar: () => LocalizedString
+	/**
+	 * Open command palette
+	 */
+	kbCommandPalette: () => LocalizedString
 	/**
 	 * Switch to account {n}
 	 */
