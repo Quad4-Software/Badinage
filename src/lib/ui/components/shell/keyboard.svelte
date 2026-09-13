@@ -13,6 +13,7 @@
     'nav.nextConversation': () => app.cycleConversation(1),
     'nav.prevConversation': () => app.cycleConversation(-1),
     'nav.closeConversation': () => (app.activePeer = null),
+    'nav.toggleSidebar': () => app.dispatch('nav.toggleSidebar'),
     'chat.focusComposer': () => app.focusComposer(app.activePeer)
   }
 

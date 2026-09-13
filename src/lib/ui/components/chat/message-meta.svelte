@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, CheckCheck, ShieldCheck } from '@lucide/svelte'
+  import { Check, CheckCheck, Lock, ShieldCheck } from '@lucide/svelte'
 
   import LL, { locale } from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
@@ -12,14 +12,17 @@
 <div
   class={cn(
     'mt-0.5 flex items-center justify-end gap-1 text-[0.65rem]',
-    message.outgoing ? 'text-primary-foreground/70' : 'text-muted-foreground'
+    message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
   )}
 >
   {#if message.edited}
     <span>{$LL.edited()}</span>
   {/if}
   {#if message.encrypted}
-    <ShieldCheck class="size-3" aria-label={$LL.encrypted()} />
+    <Lock
+      class={cn('size-3', message.untrustedDevice && 'text-warning')}
+      aria-label={message.untrustedDevice ? $LL.untrustedDevice() : $LL.encrypted()}
+    />
   {/if}
   {#if message.signed}
     <ShieldCheck class="text-success size-3" aria-label={$LL.signed()} />
@@ -29,7 +32,7 @@
   </time>
   {#if message.outgoing}
     {#if message.read}
-      <CheckCheck class="size-3" aria-label={$LL.read()} />
+      <CheckCheck class="text-success size-3" aria-label={$LL.read()} />
     {:else if message.delivered}
       <CheckCheck class="size-3 opacity-60" aria-label={$LL.delivered()} />
     {:else}

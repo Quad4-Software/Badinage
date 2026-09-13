@@ -2,6 +2,7 @@
   import { Dialog as DialogPrimitive } from 'bits-ui'
   import { X } from '@lucide/svelte'
 
+  import LL from '$lib/i18n/i18n-svelte'
   import { cn } from '$lib/utils/cn'
 
   let { class: className, children, ...rest }: DialogPrimitive.ContentProps = $props()
@@ -23,7 +24,7 @@
     {@render children?.()}
     <DialogPrimitive.Close
       class="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none"
-      aria-label="Close"
+      aria-label={$LL.close()}
     >
       <X class="size-4" />
     </DialogPrimitive.Close>

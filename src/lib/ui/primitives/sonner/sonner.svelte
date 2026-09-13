@@ -9,7 +9,6 @@
 <Toaster
   theme={mode.current ?? 'system'}
   position="bottom-right"
-  richColors
   closeButton
   toastOptions={{
     classes: {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { COPY_FEEDBACK_MS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import { Button } from '$lib/ui/primitives/button'
 
@@ -10,7 +11,7 @@
   function copyError() {
     void navigator.clipboard.writeText(message)
     copied.value = true
-    setTimeout(() => (copied.value = false), 2000)
+    setTimeout(() => (copied.value = false), COPY_FEEDBACK_MS)
   }
 
   function reload() {

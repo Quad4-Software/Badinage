@@ -102,6 +102,10 @@ type RootTranslation = {
 	 */
 	busy: string
 	/**
+	 * e​x​t​e​n​d​e​d​ ​a​w​a​y
+	 */
+	extendedAway: string
+	/**
 	 * M​e​s​s​a​g​e​ ​{​p​e​e​r​}
 	 * @param {string} peer
 	 */
@@ -148,6 +152,15 @@ type RootTranslation = {
 	 * @param {string} name
 	 */
 	typingNick: RequiredParams<'name'>
+	/**
+	 * {​n​a​m​e​s​}​ ​t​y​p​i​n​g​…
+	 * @param {string} names
+	 */
+	typingNames: RequiredParams<'names'>
+	/**
+	 * S​e​e​n
+	 */
+	seen: string
 	/**
 	 * T​r​y​ ​t​h​e​ ​d​e​m​o
 	 */
@@ -308,6 +321,34 @@ type RootTranslation = {
 	 */
 	imageAttachment: string
 	/**
+	 * V​i​d​e​o​ ​a​t​t​a​c​h​m​e​n​t
+	 */
+	videoAttachment: string
+	/**
+	 * S​e​e​k
+	 */
+	videoSeek: string
+	/**
+	 * M​u​t​e
+	 */
+	mute: string
+	/**
+	 * U​n​m​u​t​e
+	 */
+	unmute: string
+	/**
+	 * F​u​l​l​s​c​r​e​e​n
+	 */
+	fullscreen: string
+	/**
+	 * V​i​e​w​ ​i​m​a​g​e
+	 */
+	viewImage: string
+	/**
+	 * O​p​e​n​ ​o​r​i​g​i​n​a​l
+	 */
+	openOriginal: string
+	/**
 	 * F​i​l​e​ ​a​t​t​a​c​h​m​e​n​t
 	 */
 	fileAttachment: string
@@ -315,6 +356,10 @@ type RootTranslation = {
 	 * U​p​l​o​a​d​ ​f​a​i​l​e​d
 	 */
 	uploadFailed: string
+	/**
+	 * E​n​c​r​y​p​t​i​o​n​ ​f​a​i​l​e​d​ ​-​ ​m​e​s​s​a​g​e​ ​n​o​t​ ​s​e​n​t
+	 */
+	encryptFailed: string
 	/**
 	 * S​i​g​n​e​d
 	 */
@@ -347,6 +392,14 @@ type RootTranslation = {
 	 * S​e​n​d​ ​r​e​a​d​ ​m​a​r​k​e​r​s
 	 */
 	sendReadMarkers: string
+	/**
+	 * S​h​a​r​e​ ​c​r​a​s​h​ ​r​e​p​o​r​t​s
+	 */
+	crashReporting: string
+	/**
+	 * S​e​n​d​s​ ​a​ ​s​c​r​u​b​b​e​d​ ​e​r​r​o​r​ ​r​e​p​o​r​t​ ​w​h​e​n​ ​s​o​m​e​t​h​i​n​g​ ​b​r​e​a​k​s​.​ ​A​d​d​r​e​s​s​e​s​ ​a​r​e​ ​r​e​m​o​v​e​d​ ​b​e​f​o​r​e​ ​s​e​n​d​i​n​g​,​ ​a​n​d​ ​r​e​p​o​r​t​i​n​g​ ​o​n​l​y​ ​w​o​r​k​s​ ​i​f​ ​t​h​i​s​ ​d​e​p​l​o​y​m​e​n​t​ ​c​o​n​f​i​g​u​r​e​d​ ​a​ ​s​e​r​v​e​r​.
+	 */
+	crashReportingHint: string
 	/**
 	 * S​p​l​i​t​ ​v​i​e​w
 	 */
@@ -395,6 +448,14 @@ type RootTranslation = {
 	 * P​r​e​f​e​r​e​n​c​e​s​ ​a​r​e​ ​s​t​o​r​e​d​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​o​n​l​y
 	 */
 	settingsHint: string
+	/**
+	 * S​e​a​r​c​h​ ​s​e​t​t​i​n​g​s
+	 */
+	searchSettings: string
+	/**
+	 * A​c​c​o​u​n​t​s
+	 */
+	accounts: string
 	/**
 	 * G​e​n​e​r​a​l
 	 */
@@ -456,6 +517,10 @@ type RootTranslation = {
 	 * F​o​c​u​s​ ​m​e​s​s​a​g​e​ ​i​n​p​u​t
 	 */
 	kbFocusComposer: string
+	/**
+	 * T​o​g​g​l​e​ ​s​i​d​e​b​a​r
+	 */
+	kbToggleSidebar: string
 	/**
 	 * S​w​i​t​c​h​ ​t​o​ ​a​c​c​o​u​n​t​ ​{​n​}
 	 * @param {number} n
@@ -537,6 +602,223 @@ type RootTranslation = {
 	 * C​o​n​n​e​c​t​i​n​g​ ​t​o​ ​t​h​e​ ​s​e​r​v​e​r
 	 */
 	connectingStatus: string
+	/**
+	 * C​o​l​l​a​p​s​e​ ​s​i​d​e​b​a​r
+	 */
+	collapseSidebar: string
+	/**
+	 * E​x​p​a​n​d​ ​s​i​d​e​b​a​r
+	 */
+	expandSidebar: string
+	/**
+	 * S​e​t​ ​y​o​u​r​ ​p​r​e​s​e​n​c​e
+	 */
+	presencePickerLabel: string
+	/**
+	 * S​t​a​t​u​s​ ​m​e​s​s​a​g​e
+	 */
+	statusMessage: string
+	/**
+	 * S​e​t​ ​a​ ​s​t​a​t​u​s​ ​m​e​s​s​a​g​e
+	 */
+	statusPlaceholder: string
+	/**
+	 * P​r​e​s​s​ ​E​n​t​e​r​ ​t​o​ ​a​p​p​l​y
+	 */
+	statusMessageHint: string
+	/**
+	 * C​h​a​t​ ​o​p​t​i​o​n​s
+	 */
+	chatOptions: string
+	/**
+	 * B​l​o​c​k
+	 */
+	block: string
+	/**
+	 * U​n​b​l​o​c​k
+	 */
+	unblock: string
+	/**
+	 * B​l​o​c​k​ ​u​s​e​r
+	 */
+	blockUser: string
+	/**
+	 * U​n​b​l​o​c​k​ ​u​s​e​r
+	 */
+	unblockUser: string
+	/**
+	 * B​l​o​c​k​ ​t​h​i​s​ ​c​o​n​t​a​c​t​?
+	 */
+	blockUserTitle: string
+	/**
+	 * {​j​i​d​}​ ​w​i​l​l​ ​n​o​ ​l​o​n​g​e​r​ ​b​e​ ​a​b​l​e​ ​t​o​ ​s​e​n​d​ ​y​o​u​ ​m​e​s​s​a​g​e​s​ ​o​r​ ​s​e​e​ ​y​o​u​r​ ​p​r​e​s​e​n​c​e​.
+	 * @param {string} jid
+	 */
+	blockUserDescription: RequiredParams<'jid'>
+	/**
+	 * B​l​o​c​k​e​d​ ​c​o​n​t​a​c​t​s
+	 */
+	blockedContacts: string
+	/**
+	 * B​l​o​c​k​ ​a​n​ ​a​d​d​r​e​s​s​,​ ​e​.​g​.​ ​s​p​a​m​@​e​x​a​m​p​l​e​.​o​r​g
+	 */
+	blockJidPlaceholder: string
+	/**
+	 * U​n​b​l​o​c​k​ ​{​j​i​d​}
+	 * @param {string} jid
+	 */
+	unblockJid: RequiredParams<'jid'>
+	/**
+	 * U​n​b​l​o​c​k​ ​a​l​l
+	 */
+	unblockAll: string
+	/**
+	 * N​o​b​o​d​y​ ​i​s​ ​b​l​o​c​k​e​d
+	 */
+	blockedEmpty: string
+	/**
+	 * N​o​ ​b​l​o​c​k​e​d​ ​c​o​n​t​a​c​t​s​ ​m​a​t​c​h​ ​t​h​e​ ​s​e​a​r​c​h
+	 */
+	noBlockedMatch: string
+	/**
+	 * b​l​o​c​k​e​d
+	 */
+	blockedBadge: string
+	/**
+	 * S​e​a​r​c​h​ ​m​e​m​b​e​r​s
+	 */
+	searchMembers: string
+	/**
+	 * N​o​ ​m​e​m​b​e​r​s​ ​m​a​t​c​h​ ​t​h​e​ ​s​e​a​r​c​h
+	 */
+	noMembersFound: string
+	/**
+	 * M​o​d​e​r​a​t​o​r​s
+	 */
+	groupModerators: string
+	/**
+	 * M​e​m​b​e​r​s
+	 */
+	groupParticipants: string
+	/**
+	 * V​i​s​i​t​o​r​s
+	 */
+	groupVisitors: string
+	/**
+	 * E​n​c​r​y​p​t​i​o​n
+	 */
+	encryption: string
+	/**
+	 * Y​o​u​r​ ​d​e​v​i​c​e​ ​f​i​n​g​e​r​p​r​i​n​t
+	 */
+	yourDevice: string
+	/**
+	 * C​o​p​y​ ​f​i​n​g​e​r​p​r​i​n​t
+	 */
+	copyFingerprint: string
+	/**
+	 * F​i​n​g​e​r​p​r​i​n​t
+	 */
+	fingerprint: string
+	/**
+	 * D​e​v​i​c​e​ ​{​i​d​}
+	 * @param {number} id
+	 */
+	deviceId: RequiredParams<'id'>
+	/**
+	 * N​o​ ​O​M​E​M​O​ ​d​e​v​i​c​e​s​ ​p​u​b​l​i​s​h​e​d
+	 */
+	noOmemoDevices: string
+	/**
+	 * O​M​E​M​O​ ​i​s​ ​n​o​t​ ​a​v​a​i​l​a​b​l​e​ ​f​o​r​ ​t​h​i​s​ ​a​c​c​o​u​n​t​ ​y​e​t
+	 */
+	omemoUnavailable: string
+	/**
+	 * T​h​i​s​ ​d​e​v​i​c​e​ ​c​a​n​n​o​t​ ​s​t​o​r​e​ ​e​n​c​r​y​p​t​i​o​n​ ​k​e​y​s​ ​s​e​c​u​r​e​l​y​.​ ​K​e​y​s​ ​a​r​e​ ​k​e​p​t​ ​i​n​ ​p​l​a​i​n​ ​b​r​o​w​s​e​r​ ​s​t​o​r​a​g​e​.
+	 */
+	omemoInsecureStorage: string
+	/**
+	 * B​l​i​n​d​l​y​ ​t​r​u​s​t​ ​n​e​w​ ​d​e​v​i​c​e​s
+	 */
+	omemoBlindTrust: string
+	/**
+	 * T​r​u​s​t​ ​o​n​ ​f​i​r​s​t​ ​u​s​e​:​ ​n​e​w​ ​d​e​v​i​c​e​ ​f​i​n​g​e​r​p​r​i​n​t​s​ ​a​r​e​ ​t​r​u​s​t​e​d​ ​a​u​t​o​m​a​t​i​c​a​l​l​y​.​ ​Y​o​u​ ​c​a​n​ ​s​t​i​l​l​ ​v​e​r​i​f​y​ ​o​r​ ​d​i​s​t​r​u​s​t​ ​t​h​e​m​ ​b​e​l​o​w​.
+	 */
+	omemoBlindTrustHint: string
+	/**
+	 * V​e​r​i​f​i​e​d
+	 */
+	trustVerified: string
+	/**
+	 * B​l​i​n​d​l​y​ ​t​r​u​s​t​e​d
+	 */
+	trustBlind: string
+	/**
+	 * N​o​t​ ​v​e​r​i​f​i​e​d
+	 */
+	trustUndecided: string
+	/**
+	 * D​i​s​t​r​u​s​t​e​d
+	 */
+	trustDistrusted: string
+	/**
+	 * T​h​i​s​ ​d​e​v​i​c​e​ ​p​r​e​s​e​n​t​e​d​ ​a​ ​n​e​w​ ​k​e​y​ ​s​i​n​c​e​ ​y​o​u​ ​l​a​s​t​ ​s​a​w​ ​i​t
+	 */
+	keyChanged: string
+	/**
+	 * V​e​r​i​f​y
+	 */
+	verify: string
+	/**
+	 * V​e​r​i​f​y​ ​t​h​i​s​ ​d​e​v​i​c​e​?
+	 */
+	verifyFingerprintTitle: string
+	/**
+	 * C​o​m​p​a​r​e​ ​t​h​i​s​ ​f​i​n​g​e​r​p​r​i​n​t​ ​w​i​t​h​ ​{​j​i​d​}​ ​t​h​r​o​u​g​h​ ​a​n​o​t​h​e​r​ ​c​h​a​n​n​e​l​ ​b​e​f​o​r​e​ ​c​o​n​f​i​r​m​i​n​g​.
+	 * @param {string} jid
+	 */
+	verifyFingerprintDescription: RequiredParams<'jid'>
+	/**
+	 * D​i​s​t​r​u​s​t
+	 */
+	distrust: string
+	/**
+	 * D​i​s​t​r​u​s​t​ ​t​h​i​s​ ​d​e​v​i​c​e​?
+	 */
+	distrustTitle: string
+	/**
+	 * {​j​i​d​}​ ​w​i​l​l​ ​s​t​o​p​ ​r​e​c​e​i​v​i​n​g​ ​e​n​c​r​y​p​t​e​d​ ​c​o​p​i​e​s​ ​o​f​ ​y​o​u​r​ ​m​e​s​s​a​g​e​s​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​.
+	 * @param {string} jid
+	 */
+	distrustDescription: RequiredParams<'jid'>
+	/**
+	 * T​r​u​s​t​ ​a​g​a​i​n
+	 */
+	trustAgain: string
+	/**
+	 * E​n​c​r​y​p​t​e​d​ ​m​e​s​s​a​g​e​ ​c​o​u​l​d​ ​n​o​t​ ​b​e​ ​d​e​c​r​y​p​t​e​d
+	 */
+	couldNotDecrypt: string
+	/**
+	 * F​r​o​m​ ​a​n​ ​u​n​v​e​r​i​f​i​e​d​ ​d​e​v​i​c​e
+	 */
+	untrustedDevice: string
+	/**
+	 * E​n​d​-​t​o​-​e​n​d​ ​e​n​c​r​y​p​t​e​d
+	 */
+	encryptedChat: string
+	/**
+	 * L​o​a​d​i​n​g
+	 */
+	loading: string
+	/**
+	 * C​l​o​s​e
+	 */
+	close: string
+	/**
+	 * R​e​c​o​r​d​i​n​g
+	 */
+	recording: string
 	/**
 	 * D​a​n​g​e​r​ ​z​o​n​e
 	 */
@@ -649,6 +931,10 @@ export type TranslationFunctions = {
 	 */
 	busy: () => LocalizedString
 	/**
+	 * extended away
+	 */
+	extendedAway: () => LocalizedString
+	/**
 	 * Message {peer}
 	 */
 	messagePlaceholder: (arg: { peer: string }) => LocalizedString
@@ -692,6 +978,14 @@ export type TranslationFunctions = {
 	 * {name} is typing…
 	 */
 	typingNick: (arg: { name: string }) => LocalizedString
+	/**
+	 * {names} typing…
+	 */
+	typingNames: (arg: { names: string }) => LocalizedString
+	/**
+	 * Seen
+	 */
+	seen: () => LocalizedString
 	/**
 	 * Try the demo
 	 */
@@ -849,6 +1143,34 @@ export type TranslationFunctions = {
 	 */
 	imageAttachment: () => LocalizedString
 	/**
+	 * Video attachment
+	 */
+	videoAttachment: () => LocalizedString
+	/**
+	 * Seek
+	 */
+	videoSeek: () => LocalizedString
+	/**
+	 * Mute
+	 */
+	mute: () => LocalizedString
+	/**
+	 * Unmute
+	 */
+	unmute: () => LocalizedString
+	/**
+	 * Fullscreen
+	 */
+	fullscreen: () => LocalizedString
+	/**
+	 * View image
+	 */
+	viewImage: () => LocalizedString
+	/**
+	 * Open original
+	 */
+	openOriginal: () => LocalizedString
+	/**
 	 * File attachment
 	 */
 	fileAttachment: () => LocalizedString
@@ -856,6 +1178,10 @@ export type TranslationFunctions = {
 	 * Upload failed
 	 */
 	uploadFailed: () => LocalizedString
+	/**
+	 * Encryption failed - message not sent
+	 */
+	encryptFailed: () => LocalizedString
 	/**
 	 * Signed
 	 */
@@ -888,6 +1214,14 @@ export type TranslationFunctions = {
 	 * Send read markers
 	 */
 	sendReadMarkers: () => LocalizedString
+	/**
+	 * Share crash reports
+	 */
+	crashReporting: () => LocalizedString
+	/**
+	 * Sends a scrubbed error report when something breaks. Addresses are removed before sending, and reporting only works if this deployment configured a server.
+	 */
+	crashReportingHint: () => LocalizedString
 	/**
 	 * Split view
 	 */
@@ -936,6 +1270,14 @@ export type TranslationFunctions = {
 	 * Preferences are stored on this device only
 	 */
 	settingsHint: () => LocalizedString
+	/**
+	 * Search settings
+	 */
+	searchSettings: () => LocalizedString
+	/**
+	 * Accounts
+	 */
+	accounts: () => LocalizedString
 	/**
 	 * General
 	 */
@@ -996,6 +1338,10 @@ export type TranslationFunctions = {
 	 * Focus message input
 	 */
 	kbFocusComposer: () => LocalizedString
+	/**
+	 * Toggle sidebar
+	 */
+	kbToggleSidebar: () => LocalizedString
 	/**
 	 * Switch to account {n}
 	 */
@@ -1072,6 +1418,218 @@ export type TranslationFunctions = {
 	 * Connecting to the server
 	 */
 	connectingStatus: () => LocalizedString
+	/**
+	 * Collapse sidebar
+	 */
+	collapseSidebar: () => LocalizedString
+	/**
+	 * Expand sidebar
+	 */
+	expandSidebar: () => LocalizedString
+	/**
+	 * Set your presence
+	 */
+	presencePickerLabel: () => LocalizedString
+	/**
+	 * Status message
+	 */
+	statusMessage: () => LocalizedString
+	/**
+	 * Set a status message
+	 */
+	statusPlaceholder: () => LocalizedString
+	/**
+	 * Press Enter to apply
+	 */
+	statusMessageHint: () => LocalizedString
+	/**
+	 * Chat options
+	 */
+	chatOptions: () => LocalizedString
+	/**
+	 * Block
+	 */
+	block: () => LocalizedString
+	/**
+	 * Unblock
+	 */
+	unblock: () => LocalizedString
+	/**
+	 * Block user
+	 */
+	blockUser: () => LocalizedString
+	/**
+	 * Unblock user
+	 */
+	unblockUser: () => LocalizedString
+	/**
+	 * Block this contact?
+	 */
+	blockUserTitle: () => LocalizedString
+	/**
+	 * {jid} will no longer be able to send you messages or see your presence.
+	 */
+	blockUserDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Blocked contacts
+	 */
+	blockedContacts: () => LocalizedString
+	/**
+	 * Block an address, e.g. spam@example.org
+	 */
+	blockJidPlaceholder: () => LocalizedString
+	/**
+	 * Unblock {jid}
+	 */
+	unblockJid: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Unblock all
+	 */
+	unblockAll: () => LocalizedString
+	/**
+	 * Nobody is blocked
+	 */
+	blockedEmpty: () => LocalizedString
+	/**
+	 * No blocked contacts match the search
+	 */
+	noBlockedMatch: () => LocalizedString
+	/**
+	 * blocked
+	 */
+	blockedBadge: () => LocalizedString
+	/**
+	 * Search members
+	 */
+	searchMembers: () => LocalizedString
+	/**
+	 * No members match the search
+	 */
+	noMembersFound: () => LocalizedString
+	/**
+	 * Moderators
+	 */
+	groupModerators: () => LocalizedString
+	/**
+	 * Members
+	 */
+	groupParticipants: () => LocalizedString
+	/**
+	 * Visitors
+	 */
+	groupVisitors: () => LocalizedString
+	/**
+	 * Encryption
+	 */
+	encryption: () => LocalizedString
+	/**
+	 * Your device fingerprint
+	 */
+	yourDevice: () => LocalizedString
+	/**
+	 * Copy fingerprint
+	 */
+	copyFingerprint: () => LocalizedString
+	/**
+	 * Fingerprint
+	 */
+	fingerprint: () => LocalizedString
+	/**
+	 * Device {id}
+	 */
+	deviceId: (arg: { id: number }) => LocalizedString
+	/**
+	 * No OMEMO devices published
+	 */
+	noOmemoDevices: () => LocalizedString
+	/**
+	 * OMEMO is not available for this account yet
+	 */
+	omemoUnavailable: () => LocalizedString
+	/**
+	 * This device cannot store encryption keys securely. Keys are kept in plain browser storage.
+	 */
+	omemoInsecureStorage: () => LocalizedString
+	/**
+	 * Blindly trust new devices
+	 */
+	omemoBlindTrust: () => LocalizedString
+	/**
+	 * Trust on first use: new device fingerprints are trusted automatically. You can still verify or distrust them below.
+	 */
+	omemoBlindTrustHint: () => LocalizedString
+	/**
+	 * Verified
+	 */
+	trustVerified: () => LocalizedString
+	/**
+	 * Blindly trusted
+	 */
+	trustBlind: () => LocalizedString
+	/**
+	 * Not verified
+	 */
+	trustUndecided: () => LocalizedString
+	/**
+	 * Distrusted
+	 */
+	trustDistrusted: () => LocalizedString
+	/**
+	 * This device presented a new key since you last saw it
+	 */
+	keyChanged: () => LocalizedString
+	/**
+	 * Verify
+	 */
+	verify: () => LocalizedString
+	/**
+	 * Verify this device?
+	 */
+	verifyFingerprintTitle: () => LocalizedString
+	/**
+	 * Compare this fingerprint with {jid} through another channel before confirming.
+	 */
+	verifyFingerprintDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Distrust
+	 */
+	distrust: () => LocalizedString
+	/**
+	 * Distrust this device?
+	 */
+	distrustTitle: () => LocalizedString
+	/**
+	 * {jid} will stop receiving encrypted copies of your messages on this device.
+	 */
+	distrustDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Trust again
+	 */
+	trustAgain: () => LocalizedString
+	/**
+	 * Encrypted message could not be decrypted
+	 */
+	couldNotDecrypt: () => LocalizedString
+	/**
+	 * From an unverified device
+	 */
+	untrustedDevice: () => LocalizedString
+	/**
+	 * End-to-end encrypted
+	 */
+	encryptedChat: () => LocalizedString
+	/**
+	 * Loading
+	 */
+	loading: () => LocalizedString
+	/**
+	 * Close
+	 */
+	close: () => LocalizedString
+	/**
+	 * Recording
+	 */
+	recording: () => LocalizedString
 	/**
 	 * Danger zone
 	 */

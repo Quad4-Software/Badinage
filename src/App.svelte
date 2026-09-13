@@ -3,19 +3,20 @@
   import { onMount } from 'svelte'
   import { toast } from 'svelte-sonner'
 
+  import { reportError } from '$lib/core/telemetry'
   import { loadLocale } from '$lib/i18n/i18n-util.sync'
   import { setLocale } from '$lib/i18n/i18n-svelte'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
-  import AddContactDialog from '$lib/ui/components/add-contact-dialog.svelte'
-  import AppShell from '$lib/ui/components/app-shell.svelte'
-  import CrashView from '$lib/ui/components/crash-view.svelte'
-  import JoinRoomDialog from '$lib/ui/components/join-room-dialog.svelte'
-  import Keyboard from '$lib/ui/components/keyboard.svelte'
-  import LoginForm from '$lib/ui/components/login-form.svelte'
-  import SettingsDialog from '$lib/ui/components/settings-dialog.svelte'
-  import StatusToasts from '$lib/ui/components/status-toasts.svelte'
+  import AddContactDialog from '$lib/ui/components/dialogs/add-contact-dialog.svelte'
+  import JoinRoomDialog from '$lib/ui/components/dialogs/join-room-dialog.svelte'
+  import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
+  import AppShell from '$lib/ui/components/shell/app-shell.svelte'
+  import CrashView from '$lib/ui/components/shell/crash-view.svelte'
+  import Keyboard from '$lib/ui/components/shell/keyboard.svelte'
+  import LoginForm from '$lib/ui/components/shell/login-form.svelte'
+  import StatusToasts from '$lib/ui/components/shell/status-toasts.svelte'
   import {
     Dialog,
     DialogContent,
@@ -70,16 +71,16 @@
   </DialogContent>
 </Dialog>
 
-<svelte:boundary>
+<svelte:boundary onerror={(error) => reportError(error, { source: 'crash-boundary' })}>
   {#snippet failed(error, reset)}
     <CrashView {error} {reset} />
   {/snippet}
 
-  <main class="h-full">
-    {#if accounts.list.length === 0}
+  {#if accounts.list.length === 0}
+    <main class="h-full">
       <LoginForm />
-    {:else}
-      <AppShell />
-    {/if}
-  </main>
+    </main>
+  {:else}
+    <AppShell />
+  {/if}
 </svelte:boundary>

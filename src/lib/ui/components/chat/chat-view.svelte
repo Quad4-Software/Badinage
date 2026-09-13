@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { ArrowLeft, Columns2, LogOut, Users, X } from '@lucide/svelte'
+  import { DropdownMenu } from 'bits-ui'
+  import {
+    ArrowLeft,
+    Ban,
+    Columns2,
+    EllipsisVertical,
+    Lock,
+    LogOut,
+    Users,
+    X
+  } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
@@ -7,11 +17,14 @@
   import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { Separator } from '$lib/ui/primitives/separator'
+  import { presenceLabel } from '$lib/ui/presence'
 
+  import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import Composer from './composer.svelte'
   import MessageList from './message-list.svelte'
   import OccupantList from './occupant-list.svelte'
-  import PresenceDot from './presence-dot.svelte'
+  import PresenceDot from '../presence/presence-dot.svelte'
+  import TypingIndicator from './typing-indicator.svelte'
 
   // peer: which conversation this pane shows. split: true when rendered in a
   // secondary pane (has its own conversation picker + close button).
@@ -33,6 +46,10 @@
   )
 
   let showOccupants = $state(false)
+  let confirmBlock = $state(false)
+
+  const peerBlocked = $derived(peer ? (account?.isBlocked(peer) ?? false) : false)
+  const typers = $derived(conversation ? [...conversation.typers] : [])
 
   function leaveRoom() {
     if (!account || !conversation?.ourNick) return
@@ -46,7 +63,7 @@
   {#if conversation}
     <div class="flex h-full min-w-0">
       <div class="flex h-full min-w-0 flex-1 flex-col">
-        <header class="flex items-center gap-2 p-3">
+        <div class="flex items-center gap-2 p-3">
           {#if !split}
             <Button
               variant="ghost"
@@ -67,23 +84,36 @@
             </AvatarFallback>
           </Avatar>
           <div class="min-w-0 flex-1">
-            <h2 class="truncate font-medium">
-              {isRoom ? conversation.peerJid.split('@')[0] : contact?.name || conversation.peerJid}
-            </h2>
+            <h1 class="flex items-center gap-1.5 truncate font-medium">
+              <span class="truncate">
+                {isRoom
+                  ? conversation.peerJid.split('@')[0]
+                  : contact?.name || conversation.peerJid}
+              </span>
+              {#if !isRoom && conversation.encrypted}
+                <Lock class="text-success size-3.5 shrink-0" aria-label={$LL.encryptedChat()} />
+              {/if}
+            </h1>
             <p class="text-muted-foreground flex items-center gap-1.5 text-xs">
               {#if isRoom}
-                {#if conversation.peerState === 'composing' && conversation.peerStateNick}
+                {#if typers.length > 0}
+                  <TypingIndicator class="text-primary" />
                   <span class="text-primary truncate"
-                    >{$LL.typingNick({ name: conversation.peerStateNick })}</span
+                    >{$LL.typingNames({ names: typers.join(', ') })}</span
                   >
                 {:else}
                   <span class="truncate">{conversation.subject ?? ''}</span>
                 {/if}
               {:else if conversation.peerState === 'composing'}
+                <TypingIndicator class="text-primary" />
                 <span class="text-primary">{$LL.typing()}</span>
               {:else if contact}
                 <PresenceDot presence={contact.presence} />
-                {contact.presenceStatus || contact.presence}
+                <span class="truncate">
+                  {presenceLabel(contact.presence)}{contact.presenceStatus
+                    ? ` · ${contact.presenceStatus}`
+                    : ''}
+                </span>
               {:else}
                 {conversation.peerJid}
               {/if}
@@ -116,8 +146,37 @@
                 <Columns2 class="size-4" />
               </Button>
             {/if}
+            {#if !isRoom}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger class="shrink-0">
+                  {#snippet child({ props })}
+                    <Button {...props} variant="ghost" size="icon" aria-label={$LL.chatOptions()}>
+                      <EllipsisVertical class="size-4" />
+                    </Button>
+                  {/snippet}
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
+                    sideOffset={4}
+                    align="end"
+                  >
+                    <DropdownMenu.Item
+                      class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                      onSelect={() => {
+                        if (peerBlocked) account?.unblock(conversation.peerJid)
+                        else confirmBlock = true
+                      }}
+                    >
+                      <Ban class="size-4" />
+                      {peerBlocked ? $LL.unblockUser() : $LL.blockUser()}
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            {/if}
           </div>
-        </header>
+        </div>
         <Separator />
         <MessageList
           {conversation}
@@ -209,3 +268,12 @@
 {:else}
   {@render paneContent()}
 {/if}
+
+<ConfirmDialog
+  bind:open={confirmBlock}
+  title={$LL.blockUserTitle()}
+  description={$LL.blockUserDescription({ jid: conversation?.peerJid ?? '' })}
+  confirmLabel={$LL.block()}
+  destructive
+  onConfirm={() => conversation && account?.block(conversation.peerJid)}
+/>

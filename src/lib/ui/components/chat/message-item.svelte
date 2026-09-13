@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Copy, Pencil, Reply, Smile } from '@lucide/svelte'
+  import { Copy, Lock, Pencil, Reply, Smile } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
@@ -41,7 +41,12 @@
   const URL_RE = /(https?:\/\/\S+)/g
   const isUrl = (part: string) => /^https?:\/\/\S+$/.test(part)
 
-  const bodyParts = $derived(message.body.split(URL_RE))
+  // senders put the oob url in the body as a fallback; when the body is
+  // exactly that url the attachment block already renders it
+  const bodyIsAttachmentUrl = $derived(
+    (message.attachments ?? []).some((a) => a.url === message.body.trim())
+  )
+  const bodyParts = $derived(bodyIsAttachmentUrl ? [] : message.body.split(URL_RE))
   const reactionEntries = $derived(Object.entries(message.reactions))
   const initials = $derived((avatarName || message.nick || '?').slice(0, 2))
 
@@ -97,7 +102,7 @@
               <span
                 class={cn(
                   'line-clamp-2 block',
-                  message.outgoing ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                  message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
                 )}
               >
                 {message.replyTo.quote}
@@ -112,7 +117,17 @@
           </div>
         {/if}
 
-        {#if message.body}
+        {#if message.undecryptable}
+          <p
+            class={cn(
+              'flex items-center gap-1.5 italic',
+              message.outgoing ? 'text-primary-foreground/70' : 'text-foreground/70'
+            )}
+          >
+            <Lock class="size-3.5 shrink-0" />
+            {$LL.couldNotDecrypt()}
+          </p>
+        {:else if message.body && !bodyIsAttachmentUrl}
           <p class="break-words whitespace-pre-wrap">
             {#each bodyParts as part, i (i)}
               {#if isUrl(part)}

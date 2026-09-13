@@ -6,34 +6,13 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
-  import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle
-  } from '$lib/ui/primitives/alert-dialog'
-  import { Button, buttonVariants } from '$lib/ui/primitives/button'
+  import { Button } from '$lib/ui/primitives/button'
 
-  import PresenceDot from './presence-dot.svelte'
+  import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
+  import PresenceDot from '../presence/presence-dot.svelte'
 
   const active = $derived(accounts.active)
   let confirmRemove = $state<string | null>(null)
-  let ownPresence = $state('online')
-
-  const presenceOptions = [
-    { value: 'online', label: () => $LL.online() },
-    { value: 'away', label: () => $LL.away() },
-    { value: 'dnd', label: () => $LL.busy() }
-  ]
-
-  function setPresence(show: string) {
-    ownPresence = show
-    active?.connection.sendPresence(show === 'online' ? undefined : show)
-  }
 </script>
 
 <div class="flex items-center gap-2">
@@ -41,6 +20,10 @@
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="w-full justify-between">
+          <PresenceDot
+            presence={active?.status === 'connected' ? active.presence : 'offline'}
+            class="mr-1"
+          />
           <span class="truncate">{active?.jid ?? ''}</span>
           <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
         </Button>
@@ -67,21 +50,6 @@
             {/if}
           </DropdownMenu.Item>
         {/each}
-        {#if active}
-          <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
-          {#each presenceOptions as option (option.value)}
-            <DropdownMenu.Item
-              class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-              onSelect={() => setPresence(option.value)}
-            >
-              <PresenceDot presence={option.value} />
-              {option.label()}
-              {#if ownPresence === option.value}
-                <Check class="ml-auto size-4 shrink-0" />
-              {/if}
-            </DropdownMenu.Item>
-          {/each}
-        {/if}
         <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
         <DropdownMenu.Item
           class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
@@ -111,27 +79,15 @@
   </DropdownMenu.Root>
 </div>
 
-<AlertDialog open={confirmRemove !== null} onOpenChange={(o) => !o && (confirmRemove = null)}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>{$LL.removeAccountTitle()}</AlertDialogTitle>
-      <AlertDialogDescription>
-        {$LL.removeAccountDescription({ jid: confirmRemove ?? '' })}
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel class={cn(buttonVariants({ variant: 'outline' }))}>
-        {$LL.cancel()}
-      </AlertDialogCancel>
-      <AlertDialogAction
-        class={cn(buttonVariants({ variant: 'destructive' }))}
-        onclick={() => {
-          if (confirmRemove) accounts.remove(confirmRemove)
-          confirmRemove = null
-        }}
-      >
-        {$LL.confirm()}
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+<ConfirmDialog
+  open={confirmRemove !== null}
+  onOpenChange={(o) => !o && (confirmRemove = null)}
+  title={$LL.removeAccountTitle()}
+  description={$LL.removeAccountDescription({ jid: confirmRemove ?? '' })}
+  confirmLabel={$LL.confirm()}
+  destructive
+  onConfirm={() => {
+    if (confirmRemove) accounts.remove(confirmRemove)
+    confirmRemove = null
+  }}
+/>

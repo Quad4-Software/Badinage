@@ -3,23 +3,23 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { Attachment } from '$lib/state/chats.svelte'
+  import { formatSize, mediaKind } from '$lib/utils/media'
   import { safeUrl } from '$lib/utils/url'
 
   import ChatImage from './chat-image.svelte'
-  import VoicePlayer from './voice-player.svelte'
+  import ImageLightbox from '../media/image-lightbox.svelte'
+  import VideoPlayer from '../media/video-player.svelte'
+  import VoicePlayer from '../media/voice-player.svelte'
 
   let { attachments }: { attachments: Attachment[] } = $props()
 
-  function formatSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
+  let lightbox = $state<{ src: string; alt: string } | null>(null)
 </script>
 
 <div class="flex flex-col gap-1">
   {#each attachments as attachment (attachment.url)}
     {@const url = safeUrl(attachment.url)}
+    {@const kind = url ? mediaKind(attachment.url, attachment.mediaType) : 'file'}
     {#if url === null}
       <!-- scheme is not on the allow-list: show a name chip, never a link -->
       <span
@@ -31,13 +31,12 @@
           <span class="text-muted-foreground shrink-0 text-xs">{formatSize(attachment.size)}</span>
         {/if}
       </span>
-    {:else if attachment.mediaType.startsWith('image/')}
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="block w-fit"
-        aria-label={$LL.imageAttachment()}
+    {:else if kind === 'image'}
+      <button
+        type="button"
+        class="block w-fit cursor-zoom-in"
+        aria-label={$LL.viewImage()}
+        onclick={() => (lightbox = { src: url, alt: attachment.name ?? $LL.imageAttachment() })}
       >
         <ChatImage
           src={url}
@@ -45,8 +44,10 @@
           mediaType={attachment.mediaType}
           class="max-h-64 max-w-xs rounded-lg object-cover"
         />
-      </a>
-    {:else if attachment.mediaType.startsWith('audio/')}
+      </button>
+    {:else if kind === 'video'}
+      <VideoPlayer {url} name={attachment.name} />
+    {:else if kind === 'audio'}
       <VoicePlayer {url} duration={attachment.duration} />
     {:else}
       <a
@@ -63,3 +64,7 @@
     {/if}
   {/each}
 </div>
+
+{#if lightbox}
+  <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => (lightbox = null)} />
+{/if}

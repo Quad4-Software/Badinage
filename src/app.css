@@ -114,3 +114,48 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* Sidebar pane collapse. paneforge flips data-pane-state to collapsing or
+   expanding around programmatic collapse and expand calls, so the
+   transition only applies then - drags stay immediate. The rail and the
+   full sidebar swap purely off the state attribute, which means no
+   timers and no mid-animation content flashes. */
+[data-pane][data-pane-state='collapsing'],
+[data-pane][data-pane-state='expanding'] {
+  transition: flex-grow 200ms ease-in-out;
+}
+
+[data-pane] .pane-rail {
+  display: none;
+}
+
+[data-pane][data-pane-state='collapsed'] .pane-rail {
+  display: block;
+}
+
+[data-pane][data-pane-state='collapsed'] .pane-full {
+  display: none;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot {
+    animation: none;
+  }
+}

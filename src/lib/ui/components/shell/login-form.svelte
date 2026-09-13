@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { LOGIN_STATUS_POLL_MS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, type AccountOptions } from '$lib/state/accounts.svelte'
+  import { app } from '$lib/state/app.svelte'
   import { isValidUserJid } from '$lib/utils/jid'
+  import { isWebSocketUrl } from '$lib/utils/url'
   import { Button } from '$lib/ui/primitives/button'
   import { Checkbox } from '$lib/ui/primitives/checkbox'
   import { Input } from '$lib/ui/primitives/input'
@@ -35,30 +38,33 @@
     submitting = true
     const options: AccountOptions = { jid, password, remember }
     if (server) {
-      if (server.startsWith('wss://') || server.startsWith('ws://')) {
+      if (isWebSocketUrl(server)) {
         options.websocketUrl = server
       } else {
         options.boshUrl = server
       }
     }
     const account = await accounts.add(options)
+    // 'disconnected' is only terminal once a real attempt was observed;
+    // the account starts out disconnected before the first status lands
+    let started = false
     const timer = setInterval(() => {
-      if (
-        account.status === 'connected' ||
-        account.status === 'authfail' ||
-        account.status === 'error'
-      ) {
+      if (account.status !== 'disconnected') started = true
+      if (account.status === 'connected') {
         clearInterval(timer)
         submitting = false
-        if (account.status === 'authfail') {
-          error = $LL.authFailed()
-          accounts.remove(account.jid)
-        } else if (account.status === 'error') {
-          error = $LL.connectionError()
-          accounts.remove(account.jid)
-        }
+        app.loginOpen = false
+      } else if (account.lastError) {
+        clearInterval(timer)
+        submitting = false
+        error = account.lastError === 'authfail' ? $LL.authFailed() : $LL.connectionError()
+        accounts.remove(account.jid)
+      } else if (started && account.status === 'disconnected') {
+        clearInterval(timer)
+        submitting = false
+        error = $LL.connectionError()
       }
-    }, 250)
+    }, LOGIN_STATUS_POLL_MS)
   }
 </script>
 

@@ -20,4 +20,3 @@ export {
   Description as AlertDialogDescription,
   Footer as AlertDialogFooter
 }
-export default Root

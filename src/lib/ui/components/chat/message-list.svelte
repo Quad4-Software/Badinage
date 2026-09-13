@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { locale } from '$lib/i18n/i18n-svelte'
+  import { CheckCheck } from '@lucide/svelte'
+
+  import LL, { locale } from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import type { ChatMessage, Conversation } from '$lib/state/chats.svelte'
@@ -9,6 +11,7 @@
 
   import LoadOlder from './load-older.svelte'
   import MessageItem from './message-item.svelte'
+  import TypingIndicator from './typing-indicator.svelte'
 
   interface Props {
     conversation: Conversation
@@ -39,6 +42,13 @@
 
   // in a muc, our reaction sender entry is our nick rather than our jid
   const self = $derived(conversation.kind === 'muc' ? (conversation.ourNick ?? selfJid) : selfJid)
+
+  const lastMessage = $derived(conversation.messages.at(-1))
+  const typing = $derived(
+    conversation.kind === 'muc'
+      ? conversation.typers.size > 0
+      : conversation.peerState === 'composing'
+  )
 
   // a new visual group starts on a different sender, a day separator,
   // or a gap of more than five minutes
@@ -147,5 +157,31 @@
         />
       </li>
     {/each}
+    {#if typing}
+      <li class="mt-3 flex items-center gap-2" aria-live="polite">
+        <span class="bg-muted inline-flex items-center rounded-2xl rounded-bl-sm px-3 py-2">
+          <TypingIndicator class="text-muted-foreground" />
+        </span>
+        {#if conversation.kind === 'muc'}
+          <span class="text-muted-foreground text-xs">
+            {$LL.typingNames({ names: [...conversation.typers].join(', ') })}
+          </span>
+        {/if}
+      </li>
+    {/if}
+    {#if conversation.kind === 'dm' && lastMessage?.outgoing && !typing}
+      <li
+        class="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-[0.65rem]"
+        aria-live="polite"
+      >
+        {#if lastMessage.read}
+          <CheckCheck class="text-success size-3" aria-hidden="true" />
+          {$LL.seen()}
+        {:else if lastMessage.delivered}
+          <CheckCheck class="size-3 opacity-60" aria-hidden="true" />
+          {$LL.delivered()}
+        {/if}
+      </li>
+    {/if}
   </ol>
 </ScrollArea>

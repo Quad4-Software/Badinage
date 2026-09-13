@@ -1,19 +1,20 @@
 <script lang="ts">
   import { Mic, Paperclip, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
 
+  import { TYPING_NOTICE_MS } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { settings } from '$lib/state/settings.svelte'
   import type { Attachment, ConversationKind } from '$lib/state/chats.svelte'
+  import { uploadAndSend } from '$lib/state/upload'
   import { bareJid } from '$lib/utils/jid'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Button } from '$lib/ui/primitives/button'
   import { Input } from '$lib/ui/primitives/input'
 
   import EmojiPicker from './emoji-picker.svelte'
-  import { uploadAndSend } from '../upload'
-  import { createVoiceRecorder } from '../voice.svelte'
+  import { createVoiceRecorder } from '../../voice.svelte'
 
   let {
     peerJid,
@@ -59,14 +60,16 @@
         composingSent = false
         account.connection.sendChatState(peerJid, 'paused')
       }
-    }, 4000)
+    }, TYPING_NOTICE_MS)
   }
 
-  function pushOutgoing(text: string, attachments?: Attachment[]) {
+  function pushOutgoing(text: string, attachments?: Attachment[], id?: string) {
     if (!account) return
     const store = app.chatsFor(account.jid)
+    const msgId = id ?? account.connection.uniqueId('local')
     store.push(peerJid, {
-      id: account.connection.uniqueId('local'),
+      id: msgId,
+      wireId: id,
       peerJid,
       body: text,
       outgoing: true,
@@ -80,7 +83,7 @@
     })
   }
 
-  function send() {
+  async function send() {
     const text = body.trim()
     if (!account || (!text && !voice.recording)) return
     clearTimeout(pauseTimer)
@@ -91,7 +94,26 @@
 
     if (ctx.editing) {
       const ref = ctx.editing.wireId ?? ctx.editing.id
-      account.connection.sendChatMessage(peerJid, text, type, { replaceId: ref })
+      let sent = false
+      if (type === 'chat') {
+        const omemo = account.omemo ?? (await account.omemoService())
+        if (omemo) {
+          try {
+            const xml = await omemo.encryptBody(peerJid, text, { replaceId: ref })
+            if (xml !== null) {
+              account.connection.sendEncryptedMessage(peerJid, xml, { replaceId: ref })
+              sent = true
+            }
+          } catch {
+            // never downgrade a correction to plaintext on encrypt failure
+            toast.error($LL.encryptFailed())
+            return
+          }
+        }
+      }
+      if (!sent) {
+        account.connection.sendChatMessage(peerJid, text, type, { replaceId: ref })
+      }
       app.chatsFor(account.jid).applyCorrection(peerJid, ctx.editing.id, text, Date.now())
     } else {
       const replyTo = ctx.replyTo
@@ -102,12 +124,33 @@
           ? replyTo.id
           : (replyTo.wireId ?? replyTo.id)
         : undefined
-      const id = account.connection.sendChatMessage(peerJid, text, type, {
-        replyTo:
-          replyTo && wireRef ? { id: wireRef, to: replyTo.outgoing ? peerJid : peerJid } : undefined
-      })
+      const replyRef =
+        replyTo && wireRef ? { id: wireRef, to: replyTo.outgoing ? peerJid : peerJid } : undefined
+      // encrypt when the peer publishes omemo devices; falls back to
+      // plaintext when there are none or every device is distrusted
+      let encryptedXml: string | null = null
+      if (type === 'chat') {
+        // await the in-flight service creation so a message sent right
+        // after connect is still encrypted
+        const omemo = account.omemo ?? (await account.omemoService())
+        if (omemo) {
+          try {
+            // null means the peer publishes no usable devices; a thrown
+            // error is a real failure and must not downgrade to plaintext
+            encryptedXml = await omemo.encryptBody(peerJid, text)
+          } catch {
+            toast.error($LL.encryptFailed())
+            return
+          }
+        }
+      }
+      const encrypted = encryptedXml !== null
+      const id = encryptedXml
+        ? account.connection.sendEncryptedMessage(peerJid, encryptedXml, { replyTo: replyRef })
+        : account.connection.sendChatMessage(peerJid, text, type, { replyTo: replyRef })
       const store = app.chatsFor(account.jid)
       const conversation = store.open(peerJid)
+      if (encrypted) conversation.encrypted = true
       store.push(peerJid, {
         id,
         wireId: id,
@@ -115,7 +158,7 @@
         body: text,
         outgoing: true,
         timestamp: Date.now(),
-        encrypted: false,
+        encrypted,
         delivered: false,
         read: false,
         reactions: {},
@@ -147,7 +190,7 @@
     if (!settings.current.sendWithEnter) return
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      send()
+      void send()
     }
   }
 
@@ -172,14 +215,14 @@
   function sendFile(file: Blob, name: string, mediaType: string, duration?: number) {
     if (!account) return
     uploadAndSend(
-      account.connection,
+      account,
       peerJid,
       kind === 'muc' ? 'groupchat' : 'chat',
       file,
       name,
       mediaType,
       duration,
-      (url, attachment) => pushOutgoing(url, [attachment]),
+      (url, attachment, id) => pushOutgoing(url, [attachment], id),
       () => toast.error($LL.uploadFailed())
     )
   }
@@ -278,7 +321,9 @@
       disabled={voice.recording}
     />
     {#if voice.recording}
-      <span class="text-destructive animate-pulse px-1 text-xs font-medium">REC</span>
+      <span class="text-destructive animate-pulse px-1 text-xs font-medium" role="status">
+        {$LL.recording()}
+      </span>
       <Button
         variant="ghost"
         size="icon"

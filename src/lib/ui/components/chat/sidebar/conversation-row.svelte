@@ -1,0 +1,90 @@
+<script lang="ts">
+  import LL from '$lib/i18n/i18n-svelte'
+  import type { Conversation } from '$lib/state/chats.svelte'
+  import { cn } from '$lib/utils/cn'
+  import { mediaKind } from '$lib/utils/media'
+  import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
+
+  import TypingIndicator from '../typing-indicator.svelte'
+
+  interface Props {
+    conversation: Conversation
+    // display name: roster name or jid for dms, room address local part for mucs
+    name: string
+    selected?: boolean
+    onSelect: () => void
+  }
+
+  let { conversation, name, selected = false, onSelect }: Props = $props()
+
+  const isRoom = $derived(conversation.kind === 'muc')
+  const initials = $derived(name.slice(0, 2))
+  const typers = $derived([...conversation.typers])
+
+  // sidebar preview line: attachment-only messages have their url as the
+  // body, which reads poorly in a list - show a kind label instead
+  function previewText(conversation: Conversation): string {
+    const last = conversation.messages.at(-1)
+    if (!last) return conversation.subject ?? ''
+    const attachment = last.attachments?.[0]
+    if (!attachment) return last.body
+    switch (mediaKind(attachment.url, attachment.mediaType)) {
+      case 'image':
+        return $LL.imageAttachment()
+      case 'video':
+        return $LL.videoAttachment()
+      case 'audio':
+        return $LL.voiceMessage()
+      default:
+        return attachment.name ?? $LL.fileAttachment()
+    }
+  }
+</script>
+
+<button
+  class="hover:bg-accent flex min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left"
+  class:bg-accent={selected}
+  onclick={onSelect}
+>
+  <Avatar class="shrink-0">
+    {#if isRoom && conversation.avatar}
+      <AvatarImage src={conversation.avatar} alt="" />
+    {/if}
+    <AvatarFallback>{isRoom ? '#' : initials}</AvatarFallback>
+  </Avatar>
+  <span class="min-w-0 flex-1">
+    <span class="block truncate text-sm font-medium">{name}</span>
+    <span
+      class={cn(
+        'block truncate text-xs',
+        selected ? 'text-foreground/70' : 'text-muted-foreground'
+      )}
+    >
+      {#if isRoom}
+        {#if typers.length > 0}
+          <span class="text-primary inline-flex items-center gap-1.5">
+            <TypingIndicator />
+            {$LL.typingNames({ names: typers.join(', ') })}
+          </span>
+        {:else}
+          {previewText(conversation)}
+        {/if}
+      {:else if conversation.peerState === 'composing'}
+        <span class="text-primary inline-flex items-center gap-1.5">
+          <TypingIndicator />
+          {$LL.typing()}
+        </span>
+      {:else}
+        {previewText(conversation)}
+      {/if}
+    </span>
+  </span>
+  {#if conversation.unread > 0}
+    <span
+      class="bg-primary text-primary-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-[0.65rem] leading-none font-medium"
+      aria-label={$LL.unread({ count: conversation.unread })}
+    >
+      {conversation.unread > 99 ? '99+' : conversation.unread}
+    </span>
+  {/if}
+</button>
