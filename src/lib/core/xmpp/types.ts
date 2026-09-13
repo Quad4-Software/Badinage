@@ -58,6 +58,9 @@ export type ConnectionEvents = {
   // blocklist. An empty unblocked list means the list was cleared.
   blocked: string[]
   unblocked: string[]
+  // XEP-0199 measured server round trip in milliseconds, emitted by the
+  // keepalive ping whenever a pong lands
+  latency: number
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
@@ -126,4 +129,11 @@ export interface ChatConnection {
     onDone: (result: MamPageResult) => void
   ): void
   enableCarbons(): void
+  // XEP-0352: tell the server whether the ui is in the foreground. Only
+  // sent while connected; transports may dedupe repeat calls.
+  setClientActive(active: boolean): void
+  // XEP-0198: whether stream management was negotiated on this session
+  streamManagementEnabled(): boolean
+  // XEP-0198: whether the current session resumed a previous one
+  sessionResumed(): boolean
 }

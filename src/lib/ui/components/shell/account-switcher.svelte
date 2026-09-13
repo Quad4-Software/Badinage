@@ -57,6 +57,11 @@
             ></span>
             <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
             <span class="min-w-0 flex-1 truncate">{account.jid}</span>
+            {#if account.latency !== null}
+              <span class="text-muted-foreground shrink-0 text-xs">
+                {$LL.latencyMs({ ms: account.latency })}
+              </span>
+            {/if}
             {#if account.jid === active?.jid}
               <Check class="size-4 shrink-0" />
             {/if}

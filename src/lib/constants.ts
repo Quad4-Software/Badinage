@@ -35,6 +35,23 @@ export const LOGIN_STATUS_POLL_MS = 250
 // attachments larger than this are never inlined as data uris
 export const INLINE_ATTACHMENT_LIMIT = 512 * 1024
 
+// XEP-0199 keepalive cadence: a ping only goes out when the connection
+// has seen no inbound traffic for this long
+export const PING_INTERVAL_MS = 60_000
+
+// a ping unanswered for this long counts as failed
+export const PING_TIMEOUT_MS = 15_000
+
+// XEP-0198: ask the server for a stanza ack after this many unacked sends
+export const SM_ACK_EVERY = 5
+
+// escalating wait before the login button re-enables after authfail or
+// error, indexed by consecutive failure count
+export const AUTHFAIL_BACKOFF_MS = [2_000, 5_000, 15_000, 60_000] as const
+
+// abort a stalled in-band registration handshake after this long
+export const REGISTER_TIMEOUT_MS = 15_000
+
 // cleartext body on omemo stanzas for clients that cannot decrypt
 export const OMEMO_FALLBACK_BODY =
   'I sent you an OMEMO encrypted message but your client does not support it.'

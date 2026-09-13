@@ -10,6 +10,7 @@ import { RECONNECT_DELAY_MAX_MS, RECONNECT_DELAY_MS } from '$lib/constants'
 import { Emitter } from '$lib/core/events'
 
 import { blockJids, fetchBlocklist, unblockJids } from './features/blocking'
+import { sendClientState } from './features/csi'
 import {
   handleBlockPush,
   handleMessage,
@@ -27,8 +28,10 @@ import {
 } from './features/messaging'
 import { joinRoom, leaveRoom, setRoomSubject } from './features/muc'
 import { pepGet, pepPublish, sendEncryptedMessage } from './features/pep'
+import { PingManager } from './features/ping'
 import { fetchAvatar, sendDirectedPresence, sendPresence } from './features/presence'
 import { fetchRoster, rosterRemove, rosterSet } from './features/roster'
+import { smConnectionOptions } from './features/sm'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
 import { discoverUploadService, requestUploadSlot, uploadFile } from './features/upload'
 import { NS } from './ns'
@@ -53,14 +56,21 @@ export class XmppConnection implements ChatConnection {
 
   private conn: StropheConnection
   private readonly transport: XmppTransport
+  private readonly ping: PingManager
   private reconnectDelay = RECONNECT_DELAY_MS
   private manualDisconnect = false
+  // XEP-0352 desired and last-sent client state; null means the ui never
+  // told us, so nothing is sent
+  private csiActive: boolean | null = null
+  private csiSent: boolean | null = null
 
   constructor(
     private readonly service: string,
     conn?: StropheConnection
   ) {
-    this.conn = conn ?? new Strophe.Connection(service)
+    // XEP-0198 stream management is negotiated by strophe itself when the
+    // option is set; a test-supplied connection keeps its own options
+    this.conn = conn ?? new Strophe.Connection(service, smConnectionOptions())
     conn = this.conn
     this.transport = {
       sendIq: (stanza, onResult, onError) => this.sendIq(stanza, onResult, onError),
@@ -70,6 +80,9 @@ export class XmppConnection implements ChatConnection {
         return conn.jid ?? ''
       }
     }
+    this.ping = new PingManager(this.transport, (ms) => this.events.emit('latency', ms))
+    // inbound stanzas reset the keepalive silence clock
+    conn.xmlInput = () => this.ping.noteInbound()
   }
 
   get connected(): boolean {
@@ -87,6 +100,7 @@ export class XmppConnection implements ChatConnection {
 
   disconnect(): void {
     this.manualDisconnect = true
+    this.ping.stop()
     this.conn.disconnect()
   }
 
@@ -258,6 +272,23 @@ export class XmppConnection implements ChatConnection {
     )
   }
 
+  // ---- client state and stream management ------------------------------------
+
+  setClientActive(active: boolean): void {
+    this.csiActive = active
+    if (!this.conn.connected || this.csiSent === active) return
+    this.csiSent = active
+    sendClientState(this.transport, active)
+  }
+
+  streamManagementEnabled(): boolean {
+    return this.conn.isStreamManagementEnabled()
+  }
+
+  sessionResumed(): boolean {
+    return this.conn.hasResumed()
+  }
+
   // ---- internals -----------------------------------------------------------------
 
   private onStatus(status: number): void {
@@ -270,6 +301,7 @@ export class XmppConnection implements ChatConnection {
       case Strophe.Status.ATTACHED:
         this.reconnectDelay = RECONNECT_DELAY_MS
         this.onConnected()
+        this.ping.start()
         this.events.emit('status', 'connected')
         break
       case Strophe.Status.DISCONNECTING:
@@ -284,6 +316,7 @@ export class XmppConnection implements ChatConnection {
         this.events.emit('status', 'error')
         break
       case Strophe.Status.DISCONNECTED:
+        this.ping.stop()
         this.events.emit('status', 'disconnected')
         if (!this.manualDisconnect) this.scheduleReconnect()
         break
@@ -313,6 +346,10 @@ export class XmppConnection implements ChatConnection {
     this.enableCarbons()
     this.sendPresence()
     this.fetchRoster()
+    // a reconnect re-establishes the csi signal: only a hidden tab needs
+    // re-sending, active is the server's default assumption
+    this.csiSent = null
+    if (this.csiActive === false) this.setClientActive(false)
   }
 
   private scheduleReconnect(): void {

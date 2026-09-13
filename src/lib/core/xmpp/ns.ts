@@ -36,7 +36,14 @@ export const NS = {
   OOB: 'jabber:x:oob',
   FILE_METADATA: 'urn:xmpp:file:metadata:0',
   SIMS: 'urn:xmpp:sims:0',
-  REFERENCE: 'urn:xmpp:reference:0'
+  REFERENCE: 'urn:xmpp:reference:0',
+  // XEP-0199 ping payload namespace
+  PING: 'urn:xmpp:ping',
+  // XEP-0352 client state indication nonzas
+  CSI: 'urn:xmpp:csi:0',
+  // XEP-0077 iq payload and its pre-auth stream feature
+  REGISTER: 'jabber:iq:register',
+  REGISTER_FEATURE: 'http://jabber.org/features/iq-register'
 } as const
 
 // XEP-0156 host-meta link relations used by endpoint discovery. These are

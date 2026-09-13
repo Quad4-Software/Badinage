@@ -65,6 +65,9 @@ export class DemoConnection implements ChatConnection {
       setTimeout(() => {
         this.connected = true
         this.events.emit('status', 'connected')
+        // pretend the server answered a ping so the latency indicator has
+        // something to show in demo mode
+        this.events.emit('latency', 24)
         // seed on the next macrotask so listeners bound in reaction to
         // the connected status attach first; a real transport gets this
         // ordering for free from network latency
@@ -316,6 +319,18 @@ export class DemoConnection implements ChatConnection {
 
   enableCarbons(): void {
     // demo mode emits carbon-shaped history directly
+  }
+
+  setClientActive(_active: boolean): void {
+    // no server to notify in demo mode
+  }
+
+  streamManagementEnabled(): boolean {
+    return false
+  }
+
+  sessionResumed(): boolean {
+    return false
   }
 
   private seed(): void {

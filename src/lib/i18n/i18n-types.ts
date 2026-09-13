@@ -86,6 +86,44 @@ type RootTranslation = {
 	 */
 	connectionError: string
 	/**
+	 * T​o​o​ ​m​a​n​y​ ​f​a​i​l​e​d​ ​a​t​t​e​m​p​t​s​.​ ​T​r​y​ ​a​g​a​i​n​ ​i​n​ ​{​s​e​c​o​n​d​s​}​ ​s
+	 * @param {number} seconds
+	 */
+	loginBackoffWait: RequiredParams<'seconds'>
+	/**
+	 * C​r​e​a​t​e​ ​a​ ​n​e​w​ ​X​M​P​P​ ​a​c​c​o​u​n​t
+	 */
+	registerTitle: string
+	/**
+	 * C​r​e​a​t​e​ ​a​n​ ​a​c​c​o​u​n​t
+	 */
+	createAccount: string
+	/**
+	 * R​e​g​i​s​t​e​r
+	 */
+	register: string
+	/**
+	 * R​e​g​i​s​t​e​r​i​n​g
+	 */
+	registering: string
+	/**
+	 * R​e​g​i​s​t​r​a​t​i​o​n​ ​f​a​i​l​e​d
+	 */
+	registerFailed: string
+	/**
+	 * T​h​a​t​ ​a​d​d​r​e​s​s​ ​i​s​ ​a​l​r​e​a​d​y​ ​r​e​g​i​s​t​e​r​e​d
+	 */
+	registerConflict: string
+	/**
+	 * T​h​i​s​ ​s​e​r​v​e​r​ ​d​o​e​s​ ​n​o​t​ ​s​u​p​p​o​r​t​ ​a​c​c​o​u​n​t​ ​r​e​g​i​s​t​r​a​t​i​o​n
+	 */
+	registerUnsupported: string
+	/**
+	 * {​m​s​}​ ​m​s
+	 * @param {number} ms
+	 */
+	latencyMs: RequiredParams<'ms'>
+	/**
 	 * C​o​n​v​e​r​s​a​t​i​o​n​s
 	 */
 	conversations: string
@@ -1043,6 +1081,42 @@ export type TranslationFunctions = {
 	 * Could not reach the server
 	 */
 	connectionError: () => LocalizedString
+	/**
+	 * Too many failed attempts. Try again in {seconds} s
+	 */
+	loginBackoffWait: (arg: { seconds: number }) => LocalizedString
+	/**
+	 * Create a new XMPP account
+	 */
+	registerTitle: () => LocalizedString
+	/**
+	 * Create an account
+	 */
+	createAccount: () => LocalizedString
+	/**
+	 * Register
+	 */
+	register: () => LocalizedString
+	/**
+	 * Registering
+	 */
+	registering: () => LocalizedString
+	/**
+	 * Registration failed
+	 */
+	registerFailed: () => LocalizedString
+	/**
+	 * That address is already registered
+	 */
+	registerConflict: () => LocalizedString
+	/**
+	 * This server does not support account registration
+	 */
+	registerUnsupported: () => LocalizedString
+	/**
+	 * {ms} ms
+	 */
+	latencyMs: (arg: { ms: number }) => LocalizedString
 	/**
 	 * Conversations
 	 */
