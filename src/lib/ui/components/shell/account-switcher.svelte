@@ -11,7 +11,7 @@
   import { bareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
 
-  import { presenceRingClass } from '$lib/ui/presence'
+  import { presenceLabel, presenceRingClass } from '$lib/ui/presence'
 
   import PeerAvatar from '../chat/peer-avatar.svelte'
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
@@ -41,6 +41,7 @@
                   presenceRingClass(shown)
                 )}
               />
+              <span class="sr-only">{presenceLabel(shown)}</span>
             {/if}
             <span class="truncate">{active?.jid ?? ''}</span>
           </span>
