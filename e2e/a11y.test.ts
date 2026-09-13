@@ -80,9 +80,7 @@ test('join room dialog has no detectable axe violations', async ({ page }) => {
   await expectNoViolations(page)
 })
 
-test('command palette with a message search has no detectable axe violations', async ({
-  page
-}) => {
+test('command palette with a message search has no detectable axe violations', async ({ page }) => {
   await enterDemo(page)
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
   const dialog = page.getByRole('dialog')

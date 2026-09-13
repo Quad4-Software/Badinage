@@ -37,13 +37,24 @@ export const NS = {
   FILE_METADATA: 'urn:xmpp:file:metadata:0',
   SIMS: 'urn:xmpp:sims:0',
   REFERENCE: 'urn:xmpp:reference:0',
-  // XEP-0199 ping payload namespace
+  // XEP-0249 direct invitation payload
+  DIRECT_INVITE: 'jabber:x:conference',
+  // XEP-0199 ping, also used for MUC self-ping
   PING: 'urn:xmpp:ping',
   // XEP-0352 client state indication nonzas
   CSI: 'urn:xmpp:csi:0',
   // XEP-0077 iq payload and its pre-auth stream feature
   REGISTER: 'jabber:iq:register',
-  REGISTER_FEATURE: 'http://jabber.org/features/iq-register'
+  REGISTER_FEATURE: 'http://jabber.org/features/iq-register',
+  // XEP-0421 stable occupant identifiers
+  OCCUPANT_ID: 'urn:xmpp:occupant-id:0',
+  // XEP-0425 moderated message retraction, version 1 of the protocol
+  // dropped the fasten apply-to wrapper in favor of a direct iq
+  MESSAGE_MODERATE: 'urn:xmpp:message-moderate:1',
+  // XEP-0424 message retraction, shared with XEP-0425 tombstones
+  MESSAGE_RETRACT: 'urn:xmpp:message-retract:1',
+  // RFC 6120 stanza error conditions
+  STANZA_ERROR: 'urn:ietf:params:xml:ns:xmpp-stanzas'
 } as const
 
 // XEP-0156 host-meta link relations used by endpoint discovery. These are

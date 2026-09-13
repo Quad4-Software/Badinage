@@ -4,11 +4,14 @@ import { describe, expect, it } from 'vitest'
 import {
   hasDiscoFeature,
   parseBlockPush,
+  parseDataForm,
   parseDiscoItemJids,
   parseJidItems,
   parseMamFin,
   parseMessage,
   parsePresence,
+  parseRoomDecline,
+  parseRoomInvite,
   parseRosterItems,
   parseUploadSlot,
   parseVcardPhoto
@@ -265,6 +268,56 @@ my answer</body>
     const m = parseMessage(xml(`<message from="a@b.c" to="x@y.z" type="chat"/>`))
     expect(m).toBeNull()
   })
+
+  it('parses a XEP-0421 occupant id on groupchat messages', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y/nick1" to="x@y.z" type="groupchat">
+        <body>hi</body>
+        <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-7"/>
+      </message>`)
+    )
+    expect(m?.occupantId).toBe('occ-7')
+  })
+
+  it('parses a XEP-0425 moderation notice as a retraction', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y" to="x@y.z" type="groupchat">
+        <retract xmlns="urn:xmpp:message-retract:1" id="stanza-9">
+          <moderated xmlns="urn:xmpp:message-moderate:1" by="mod@x.y">
+            <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-mod"/>
+          </moderated>
+          <reason>spam</reason>
+        </retract>
+      </message>`)
+    )
+    expect(m?.retraction).toEqual({ id: 'stanza-9', reason: 'spam', by: 'mod@x.y' })
+    expect(m?.body).toBe('')
+  })
+
+  it('reads the moderating occupant id when no by jid is present', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y" to="x@y.z" type="groupchat">
+        <retract xmlns="urn:xmpp:message-retract:1" id="stanza-9">
+          <moderated xmlns="urn:xmpp:message-moderate:1">
+            <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-mod"/>
+          </moderated>
+        </retract>
+      </message>`)
+    )
+    expect(m?.retraction?.by).toBe('occ-mod')
+  })
+
+  it('parses a retracted tombstone on archived messages', () => {
+    const m = parseMessage(
+      xml(`<message from="room@conference.x.y/nick1" to="x@y.z" type="groupchat">
+        <body>gone</body>
+        <retracted xmlns="urn:xmpp:message-retract:1" stamp="2024-03-03T10:00:00Z">
+          <moderated xmlns="urn:xmpp:message-moderate:1" by="mod@x.y"/>
+        </retracted>
+      </message>`)
+    )
+    expect(m?.retracted).toEqual({ reason: undefined, by: 'mod@x.y' })
+  })
 })
 
 describe('parsePresence', () => {
@@ -306,6 +359,85 @@ describe('parsePresence', () => {
       expect(p.occupant.self).toBe(true)
       expect(p.occupant.role).toBe('participant')
     }
+  })
+
+  it('parses occupant jid, occupant-id and status codes', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <item affiliation="member" role="participant" jid="real@x.y/phone"/>
+          <status code="110"/>
+        </x>
+        <occupant-id xmlns="urn:xmpp:occupant-id:0" id="occ-1"/>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.jid).toBe('real@x.y/phone')
+    expect(p.occupant.occupantId).toBe('occ-1')
+    expect(p.occupant.codes).toEqual(['110'])
+  })
+
+  it('parses a 303 nick change broadcast', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/old" type="unavailable">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <item affiliation="member" role="none" nick="new"/>
+          <status code="303"/>
+          <status code="110"/>
+        </x>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.presence).toBe('offline')
+    expect(p.occupant.newNick).toBe('new')
+    expect(p.occupant.self).toBe(true)
+  })
+
+  it('parses a kick with the item reason', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1" type="unavailable">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <item affiliation="member" role="none">
+            <reason>flooding</reason>
+          </item>
+          <status code="307"/>
+        </x>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.reason).toBe('flooding')
+    expect(p.occupant.codes).toContain('307')
+  })
+
+  it('handles muc presence without an item element', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1">
+        <x xmlns="http://jabber.org/protocol/muc#user"/>
+      </presence>`)
+    )
+    if (p?.kind !== 'occupant') throw new Error('expected occupant')
+    expect(p.occupant.affiliation).toBe('none')
+    expect(p.occupant.role).toBe('none')
+  })
+
+  it('parses a presence stanza error', () => {
+    const p = parsePresence(
+      xml(`<presence from="room@conference.x.y/nick1" to="x@y.z" type="error">
+        <error type="cancel" code="409">
+          <conflict xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+          <text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">nick in use</text>
+        </error>
+      </presence>`)
+    )
+    expect(p).toEqual({
+      kind: 'presenceError',
+      error: {
+        from: 'room@conference.x.y/nick1',
+        code: '409',
+        condition: 'conflict',
+        text: 'nick in use'
+      }
+    })
   })
 })
 
@@ -453,5 +585,113 @@ describe('parseMamFin', () => {
     expect(fin.complete).toBe(true)
     expect(fin.first).toBeUndefined()
     expect(fin.last).toBeUndefined()
+  })
+})
+
+describe('parseRoomInvite', () => {
+  it('parses a direct XEP-0249 invite with password, reason and continue', () => {
+    const invite = parseRoomInvite(
+      xml(`<message from="crone@shakespeare.lit" to="me@x.y">
+        <x xmlns="jabber:x:conference" jid="darkcave@macbeth.shakespeare.lit"
+           password="cauldronburn" reason="come chat" continue="true"/>
+      </message>`)
+    )
+    expect(invite).toEqual({
+      room: 'darkcave@macbeth.shakespeare.lit',
+      from: 'crone@shakespeare.lit',
+      kind: 'direct',
+      password: 'cauldronburn',
+      reason: 'come chat',
+      continueSession: true
+    })
+  })
+
+  it('parses a mediated muc#user invite with reason and password', () => {
+    const invite = parseRoomInvite(
+      xml(`<message from="darkcave@chat.shakespeare.lit" to="me@x.y">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <invite from="crone@shakespeare.lit"><reason>blood</reason></invite>
+          <password>cauldronburn</password>
+        </x>
+      </message>`)
+    )
+    expect(invite).toEqual({
+      room: 'darkcave@chat.shakespeare.lit',
+      from: 'crone@shakespeare.lit',
+      kind: 'mediated',
+      password: 'cauldronburn',
+      reason: 'blood'
+    })
+  })
+
+  it('returns null for messages without an invite', () => {
+    expect(
+      parseRoomInvite(xml(`<message from="a@b.c" to="x@y.z"><body>hi</body></message>`))
+    ).toBeNull()
+  })
+})
+
+describe('parseRoomDecline', () => {
+  it('parses a mediated decline relayed by the room', () => {
+    const decline = parseRoomDecline(
+      xml(`<message from="darkcave@chat.shakespeare.lit" to="me@x.y">
+        <x xmlns="http://jabber.org/protocol/muc#user">
+          <decline from="hag66@shakespeare.lit"><reason>busy</reason></decline>
+        </x>
+      </message>`)
+    )
+    expect(decline).toEqual({
+      room: 'darkcave@chat.shakespeare.lit',
+      from: 'hag66@shakespeare.lit',
+      reason: 'busy'
+    })
+  })
+})
+
+describe('parseDataForm', () => {
+  it('parses a room config form generically', () => {
+    const form = parseDataForm(
+      xml(`<iq type="result" to="me@x.y" from="room@conference.x.y">
+        <query xmlns="http://jabber.org/protocol/muc#owner">
+          <x xmlns="jabber:x:data" type="form">
+            <title>Config</title>
+            <instructions>Fill it in</instructions>
+            <field var="FORM_TYPE" type="hidden"><value>http://jabber.org/protocol/muc#roomconfig</value></field>
+            <field var="muc#roomconfig_persistentroom" type="boolean" label="Persistent">
+              <value>1</value>
+            </field>
+            <field var="muc#roomconfig_whois" type="list-single" label="Whois">
+              <option label="Mods"><value>moderators</value></option>
+              <option label="All"><value>anyone</value></option>
+              <value>moderators</value>
+            </field>
+            <field var="muc#roomconfig_roomadmins" type="jid-multi">
+              <desc>Admin list</desc>
+              <required/>
+              <value>a@x.y</value><value>b@x.y</value>
+            </field>
+          </x>
+        </query>
+      </iq>`)
+    )
+    expect(form?.title).toBe('Config')
+    expect(form?.instructions).toBe('Fill it in')
+    expect(form?.fields).toHaveLength(4)
+    expect(form?.fields[1]).toMatchObject({ type: 'boolean', values: ['1'] })
+    expect(form?.fields[2]?.options).toEqual([
+      { value: 'moderators', label: 'Mods' },
+      { value: 'anyone', label: 'All' }
+    ])
+    expect(form?.fields[3]?.required).toBe(true)
+    expect(form?.fields[3]?.values).toEqual(['a@x.y', 'b@x.y'])
+    expect(form?.fields[3]?.desc).toBe('Admin list')
+  })
+
+  it('returns null when no data form is present', () => {
+    expect(
+      parseDataForm(
+        xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/muc#owner"/></iq>`)
+      )
+    ).toBeNull()
   })
 })

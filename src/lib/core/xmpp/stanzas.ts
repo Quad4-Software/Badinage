@@ -4,7 +4,14 @@
 // suite runs under @xmldom/xmldom, which has no selector engine.
 
 import { bareJid, jidResource } from '$lib/utils/jid'
-import { allNsTags, firstNsTag, firstTag, firstTagText, serializeElement } from '$lib/utils/xml'
+import {
+  allNsTags,
+  childElements,
+  firstNsTag,
+  firstTag,
+  firstTagText,
+  serializeElement
+} from '$lib/utils/xml'
 
 import { NS } from './ns'
 
@@ -67,6 +74,15 @@ export interface IncomingMessage {
   undecryptable?: boolean | undefined
   // decrypted, but the sending device is distrusted or changed keys
   untrustedDevice?: boolean | undefined
+  // XEP-0421: stable sender id on groupchat traffic, survives renames
+  occupantId?: string | undefined
+  // XEP-0425: the room tells us the message carrying this stanza-id was
+  // retracted by a moderator. by is the moderating entity when the room
+  // discloses it.
+  retraction?: { id: string; reason?: string | undefined; by?: string | undefined } | undefined
+  // XEP-0424/0425 tombstone: this stanza is itself the archived form of
+  // an already retracted message
+  retracted?: { reason?: string | undefined; by?: string | undefined } | undefined
 }
 
 export interface PresenceUpdate {
@@ -84,6 +100,67 @@ export interface MucOccupant {
   role: string
   self: boolean
   codes: string[]
+  // real jid, only exposed by non-anonymous rooms via the item jid attr
+  jid?: string | undefined
+  // XEP-0421 stable id attached to occupant presence
+  occupantId?: string | undefined
+  // the item nick attribute on a 303 nick-change broadcast
+  newNick?: string | undefined
+  // kick or ban reason from the item reason element, or the status text
+  reason?: string | undefined
+}
+
+// Presence type=error carrying an RFC 6120 stanza error; on the room
+// join path this is how 401/403/404/407/409 failures arrive.
+export interface PresenceError {
+  from: string
+  code?: string | undefined
+  condition?: string | undefined
+  text?: string | undefined
+}
+
+// XEP-0249 direct invite or XEP-0045 mediated invite arriving as a
+// message stanza.
+export interface MucInvite {
+  room: string
+  // the inviter: stanza from for direct invites, the invite from
+  // attribute for mediated ones
+  from: string
+  kind: 'direct' | 'mediated'
+  password?: string | undefined
+  reason?: string | undefined
+  // XEP-0249 continue flag: the room continues an existing 1:1 thread
+  continueSession?: boolean | undefined
+}
+
+// XEP-0045 mediated decline, relayed by the room.
+export interface MucDecline {
+  room: string
+  from: string
+  reason?: string | undefined
+}
+
+// XEP-0004 data form, parsed generically so room configuration and any
+// future form consumer share one shape.
+interface DataFormOption {
+  value: string
+  label?: string | undefined
+}
+
+export interface DataFormField {
+  var: string
+  type?: string | undefined
+  label?: string | undefined
+  desc?: string | undefined
+  required: boolean
+  values: string[]
+  options: DataFormOption[]
+}
+
+export interface DataForm {
+  title?: string | undefined
+  instructions?: string | undefined
+  fields: DataFormField[]
 }
 
 // XEP-0363 slot granted by an upload service: PUT the file to putUrl,
@@ -299,6 +376,31 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
   const attachments = parseAttachments(inner)
   if (attachments.length > 0) message.attachments = attachments
 
+  const occupantId = firstNsTag(inner, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
+  if (occupantId) message.occupantId = occupantId
+
+  // XEP-0425: a live moderation notice from the room names the stanza-id
+  // being retracted and carries a moderated element inside the retract.
+  const retract = firstNsTag(inner, NS.MESSAGE_RETRACT, 'retract')
+  if (retract) {
+    const moderated = firstNsTag(retract, NS.MESSAGE_MODERATE, 'moderated')
+    message.retraction = {
+      id: retract.getAttribute('id') ?? '',
+      reason: firstTagText(retract, 'reason') ?? undefined,
+      by: moderatedBy(moderated)
+    }
+  }
+  // XEP-0424/0425 tombstone in archive results: the retracted element in
+  // past tense means this stanza itself is already moderated content.
+  const retractedEl = firstNsTag(inner, NS.MESSAGE_RETRACT, 'retracted')
+  if (retractedEl) {
+    const moderated = firstNsTag(retractedEl, NS.MESSAGE_MODERATE, 'moderated')
+    message.retracted = {
+      reason: firstTagText(retractedEl, 'reason') ?? undefined,
+      by: moderatedBy(moderated)
+    }
+  }
+
   // OMEMO payloads survive as raw xml for the service layer to decrypt;
   // the wire body is only a fallback for clients without encryption.
   const encrypted =
@@ -331,11 +433,24 @@ export function parseMessage(stanza: Element): IncomingMessage | null {
     !message.reactionTo &&
     !message.attachments?.length &&
     !message.encryptedXml &&
+    !message.retraction &&
+    !message.retracted &&
     message.subject === undefined
   ) {
     return null
   }
   return message
+}
+
+// The moderated element inside a retract or retracted names the
+// moderating entity by jid, or by occupant id in semi-anonymous rooms.
+function moderatedBy(moderated: Element | null): string | undefined {
+  if (!moderated) return undefined
+  return (
+    moderated.getAttribute('by') ??
+    firstNsTag(moderated, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id') ??
+    undefined
+  )
 }
 
 // Parse a <presence> stanza. Returns one of three shapes: an occupant update
@@ -346,6 +461,7 @@ export function parsePresence(
   | { kind: 'occupant'; occupant: MucOccupant }
   | { kind: 'subscribe'; from: string; status: string }
   | { kind: 'presence'; presence: PresenceUpdate }
+  | { kind: 'presenceError'; error: PresenceError }
   | null {
   const from = stanza.getAttribute('from')
   if (!from) return null
@@ -355,18 +471,48 @@ export function parsePresence(
   if (mucUser) {
     const item = firstNsTag(mucUser, NS.MUC_USER, 'item')
     const codes = allNsTags(mucUser, NS.MUC_USER, 'status').map((s) => s.getAttribute('code') ?? '')
-    return {
-      kind: 'occupant',
-      occupant: {
-        room: bareJid(from),
-        nick: jidResource(from) ?? '',
-        presence: type === 'unavailable' ? 'offline' : (firstTagText(stanza, 'show') ?? 'online'),
-        affiliation: item?.getAttribute('affiliation') ?? 'none',
-        role: item?.getAttribute('role') ?? 'none',
-        self: codes.includes('110') || codes.includes('210'),
-        codes
+    const occupant: MucOccupant = {
+      room: bareJid(from),
+      nick: jidResource(from) ?? '',
+      presence: type === 'unavailable' ? 'offline' : (firstTagText(stanza, 'show') ?? 'online'),
+      affiliation: item?.getAttribute('affiliation') ?? 'none',
+      role: item?.getAttribute('role') ?? 'none',
+      self: codes.includes('110') || codes.includes('210'),
+      codes
+    }
+    // the item jid attribute is present only in non-anonymous rooms
+    const realJid = item?.getAttribute('jid')
+    if (realJid) occupant.jid = realJid
+    const nick = item?.getAttribute('nick')
+    if (nick) occupant.newNick = nick
+    // kick and ban reasons ride in an item reason child, falling back
+    // to the status text some servers send instead
+    const itemReason = item ? firstNsTag(item, NS.MUC_USER, 'reason')?.textContent : null
+    const reason = itemReason ?? firstTagText(stanza, 'status')
+    if (reason) occupant.reason = reason
+    const occupantId = firstNsTag(stanza, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
+    if (occupantId) occupant.occupantId = occupantId
+    return { kind: 'occupant', occupant }
+  }
+
+  // stanza errors on the join path arrive without a muc#user payload:
+  // surface the RFC 6120 code and condition so the room ui can react
+  if (type === 'error') {
+    const error = firstTag(stanza, 'error')
+    const parsed: PresenceError = {
+      from,
+      code: error?.getAttribute('code') ?? undefined
+    }
+    if (error) {
+      for (const child of childElements(error)) {
+        if (child.localName === 'text') {
+          parsed.text = child.textContent ?? undefined
+        } else {
+          parsed.condition ??= child.localName ?? undefined
+        }
       }
     }
+    return { kind: 'presenceError', error: parsed }
   }
 
   if (type === 'subscribe') {
@@ -441,4 +587,84 @@ export function parseMamFin(stanza: Element): MamPageResult {
     last: last ?? undefined,
     first: first ?? undefined
   }
+}
+
+// direct children in a namespace; descendant search would overmatch
+// nested structures like data form option values
+function childNsTags(el: Element, ns: string, local: string): Element[] {
+  return childElements(el).filter((e) => e.localName === local && e.namespaceURI === ns)
+}
+
+// XEP-0249 direct invites and XEP-0045 mediated invites share one
+// parsed shape. Direct invites come from the inviter with a
+// jabber:x:conference x element naming the room; mediated invites come
+// from the room itself with a muc#user invite element naming the
+// inviter.
+export function parseRoomInvite(stanza: Element): MucInvite | null {
+  const direct = firstNsTag(stanza, NS.DIRECT_INVITE, 'x')
+  const room = direct?.getAttribute('jid')
+  if (direct && room) {
+    const invite: MucInvite = {
+      room,
+      from: stanza.getAttribute('from') ?? '',
+      kind: 'direct',
+      password: direct.getAttribute('password') ?? undefined,
+      reason: direct.getAttribute('reason') ?? undefined
+    }
+    const cont = direct.getAttribute('continue')
+    if (cont === 'true' || cont === '1') invite.continueSession = true
+    return invite
+  }
+
+  const x = firstNsTag(stanza, NS.MUC_USER, 'x')
+  const invite = x ? firstNsTag(x, NS.MUC_USER, 'invite') : null
+  if (!x || !invite) return null
+  return {
+    room: bareJid(stanza.getAttribute('from') ?? ''),
+    from: invite.getAttribute('from') ?? '',
+    kind: 'mediated',
+    // the room passes the password through as a sibling of the invite
+    password: firstNsTag(x, NS.MUC_USER, 'password')?.textContent ?? undefined,
+    reason: firstNsTag(invite, NS.MUC_USER, 'reason')?.textContent ?? undefined
+  }
+}
+
+// XEP-0045: the room relays a decline to the inviter.
+export function parseRoomDecline(stanza: Element): MucDecline | null {
+  const x = firstNsTag(stanza, NS.MUC_USER, 'x')
+  const decline = x ? firstNsTag(x, NS.MUC_USER, 'decline') : null
+  if (!x || !decline) return null
+  return {
+    room: bareJid(stanza.getAttribute('from') ?? ''),
+    from: decline.getAttribute('from') ?? '',
+    reason: firstNsTag(decline, NS.MUC_USER, 'reason')?.textContent ?? undefined
+  }
+}
+
+// XEP-0004: parse a jabber:x:data form into a generic shape the ui can
+// render without knowing the consumer (room config today).
+export function parseDataForm(stanza: Element): DataForm | null {
+  const x = firstNsTag(stanza, NS.FORMS, 'x')
+  if (!x) return null
+  const form: DataForm = { fields: [] }
+  const title = childNsTags(x, NS.FORMS, 'title')[0]?.textContent
+  if (title) form.title = title
+  const instructions = childNsTags(x, NS.FORMS, 'instructions')[0]?.textContent
+  if (instructions) form.instructions = instructions
+  for (const field of childNsTags(x, NS.FORMS, 'field')) {
+    const parsed: DataFormField = {
+      var: field.getAttribute('var') ?? '',
+      type: field.getAttribute('type') ?? undefined,
+      label: field.getAttribute('label') ?? undefined,
+      desc: childNsTags(field, NS.FORMS, 'desc')[0]?.textContent ?? undefined,
+      required: childNsTags(field, NS.FORMS, 'required').length > 0,
+      values: childNsTags(field, NS.FORMS, 'value').map((v) => v.textContent ?? ''),
+      options: childNsTags(field, NS.FORMS, 'option').map((option) => ({
+        value: childNsTags(option, NS.FORMS, 'value')[0]?.textContent ?? '',
+        label: option.getAttribute('label') ?? undefined
+      }))
+    }
+    form.fields.push(parsed)
+  }
+  return form
 }

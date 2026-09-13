@@ -7,6 +7,10 @@
     EllipsisVertical,
     Lock,
     LogOut,
+    Pencil,
+    Quote,
+    Settings,
+    UserPlus,
     Users,
     X
   } from '@lucide/svelte'
@@ -14,18 +18,25 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import type { ChatMessage } from '$lib/state/chats.svelte'
   import { sendFileMessage } from '$lib/state/upload'
   import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
+  import { Input } from '$lib/ui/primitives/input'
   import { Separator } from '$lib/ui/primitives/separator'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { presenceLabel } from '$lib/ui/presence'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
+  import ChangeNickDialog from '../dialogs/change-nick-dialog.svelte'
+  import InviteUserDialog from '../dialogs/invite-user-dialog.svelte'
+  import RoomConfigDialog from '../dialogs/room-config-dialog.svelte'
+  import SubjectDialog from '../dialogs/subject-dialog.svelte'
   import Composer from './composer.svelte'
   import MessageList from './message-list.svelte'
   import OccupantList from './occupant-list.svelte'
+  import RoomStatusBanner from './room-status-banner.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
   import TypingIndicator from './typing-indicator.svelte'
 
@@ -51,6 +62,25 @@
   let showOccupants = $state(false)
   let confirmBlock = $state(false)
   let dragOver = $state(false)
+  // room dialogs
+  let nickOpen = $state(false)
+  let subjectOpen = $state(false)
+  let inviteOpen = $state(false)
+  let configOpen = $state(false)
+  // XEP-0425 retraction confirm: the target message is captured because
+  // the row can unmount before the dialog resolves
+  let moderateTarget = $state<ChatMessage | null>(null)
+  let moderateReason = $state('')
+
+  // our own occupant record carries the role and affiliation that gate
+  // every moderation and configuration control
+  const selfOccupant = $derived(
+    conversation ? [...conversation.occupants.values()].find((o) => o.self) : undefined
+  )
+  // XEP-0045: subject change is a moderator privilege by default
+  const canEditSubject = $derived(selfOccupant?.role === 'moderator')
+  const canConfigure = $derived(selfOccupant?.affiliation === 'owner')
+  const canModerate = $derived(isRoom && selfOccupant?.role === 'moderator')
 
   function onDragOver(event: DragEvent) {
     if (event.dataTransfer?.types.includes('Files')) {
@@ -108,6 +138,38 @@
       liveSeq += 1
     })
   )
+
+  function changeNick(newNick: string) {
+    if (!account || !conversation?.ourNick) return
+    account.connection.changeRoomNick(
+      conversation.peerJid,
+      conversation.ourNick,
+      newNick,
+      conversation.password
+    )
+  }
+
+  function sendInvite(jid: string, reason: string) {
+    if (!account || !conversation) return
+    // the stored room password rides along on the direct invite so a
+    // password-protected room stays joinable from the invite alone
+    account.connection.inviteToRoom(conversation.peerJid, jid, {
+      reason: reason || undefined,
+      password: conversation.password
+    })
+    toast.success($LL.inviteSent())
+  }
+
+  function doModerate() {
+    if (!moderateTarget || !conversation) return
+    // moderation addresses the room stanza-id, which message.id holds
+    account?.connection.moderateMessage(
+      conversation.peerJid,
+      moderateTarget.id,
+      moderateReason || undefined
+    )
+    moderateReason = ''
+  }
 </script>
 
 {#if !split}
@@ -212,6 +274,57 @@
               <Button variant="ghost" size="icon" onclick={leaveRoom} aria-label={$LL.leaveRoom()}>
                 <LogOut class="size-4" />
               </Button>
+              {#if conversation.joined}
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger class="shrink-0">
+                    {#snippet child({ props })}
+                      <Button {...props} variant="ghost" size="icon" aria-label={$LL.roomOptions()}>
+                        <EllipsisVertical class="size-4" />
+                      </Button>
+                    {/snippet}
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
+                      sideOffset={4}
+                      align="end"
+                    >
+                      <DropdownMenu.Item
+                        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                        onSelect={() => (nickOpen = true)}
+                      >
+                        <Pencil class="size-4" />
+                        {$LL.changeNickname()}
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                        onSelect={() => (inviteOpen = true)}
+                      >
+                        <UserPlus class="size-4" />
+                        {$LL.inviteToRoom()}
+                      </DropdownMenu.Item>
+                      {#if canEditSubject}
+                        <DropdownMenu.Item
+                          class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                          onSelect={() => (subjectOpen = true)}
+                        >
+                          <Quote class="size-4" />
+                          {$LL.editSubject()}
+                        </DropdownMenu.Item>
+                      {/if}
+                      {#if canConfigure}
+                        <DropdownMenu.Item
+                          class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                          onSelect={() => (configOpen = true)}
+                        >
+                          <Settings class="size-4" />
+                          {$LL.roomConfig()}
+                        </DropdownMenu.Item>
+                      {/if}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+              {/if}
             {/if}
             {#if !split}
               <Button
@@ -257,6 +370,9 @@
           </div>
         </div>
         <Separator />
+        {#if isRoom}
+          <RoomStatusBanner {conversation} />
+        {/if}
         <MessageList
           {conversation}
           selfJid={account?.jid ?? ''}
@@ -275,7 +391,11 @@
           }}
           onReact={(message, emoji) => {
             if (!account) return
-            const self = isRoom ? (conversation.ourNick ?? '') : account.jid
+            // occupant-id keys reactions when the room assigns one, so a
+            // rename mid-session does not split our pills
+            const self = isRoom
+              ? (conversation.ourOccupantId ?? conversation.ourNick ?? '')
+              : account.jid
             const senders = message.reactions[emoji] ?? []
             const emojis = senders.includes(self)
               ? Object.keys(message.reactions).filter(
@@ -293,6 +413,11 @@
             const type = isRoom ? 'groupchat' : 'chat'
             account.connection.sendReaction(conversation.peerJid, ref, emojis, type)
             app.chatsFor(account.jid).applyReaction(conversation.peerJid, self, ref, emojis)
+          }}
+          {canModerate}
+          onModerate={(message) => {
+            moderateReason = ''
+            moderateTarget = message
           }}
         />
         <Composer
@@ -356,3 +481,37 @@
   destructive
   onConfirm={() => conversation && account?.block(conversation.peerJid)}
 />
+
+{#if isRoom && conversation}
+  <ChangeNickDialog
+    bind:open={nickOpen}
+    currentNick={conversation.ourNick ?? ''}
+    onSubmit={changeNick}
+  />
+  <SubjectDialog
+    bind:open={subjectOpen}
+    subject={conversation.subject ?? ''}
+    onSubmit={(subject) => account?.connection.setRoomSubject(conversation.peerJid, subject)}
+  />
+  <InviteUserDialog bind:open={inviteOpen} onSubmit={sendInvite} />
+  <RoomConfigDialog bind:open={configOpen} room={conversation.peerJid} />
+
+  <ConfirmDialog
+    open={moderateTarget !== null}
+    onOpenChange={(o) => {
+      if (!o) moderateTarget = null
+    }}
+    title={$LL.removeMessageTitle()}
+    confirmLabel={$LL.removeMessage()}
+    destructive
+    onConfirm={doModerate}
+  >
+    <span class="block">{$LL.removeMessageDescription()}</span>
+    <Input
+      bind:value={moderateReason}
+      placeholder={$LL.reasonOptional()}
+      aria-label={$LL.reasonOptional()}
+      class="mt-2"
+    />
+  </ConfirmDialog>
+{/if}

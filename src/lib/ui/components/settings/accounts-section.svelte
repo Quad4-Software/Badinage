@@ -57,8 +57,7 @@
           style={`background: oklch(0.65 0.17 ${effectiveHue(meta, account.jid)})`}
           aria-label={$LL.accountColor({ jid: account.jid })}
           title={$LL.accountColor({ jid: account.jid })}
-          onclick={() =>
-            settings.setAccountMeta(account.jid, { hue: nextAccountHue(meta.hue) })}
+          onclick={() => settings.setAccountMeta(account.jid, { hue: nextAccountHue(meta.hue) })}
         ></button>
         <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
         <span class="min-w-0 flex-1">

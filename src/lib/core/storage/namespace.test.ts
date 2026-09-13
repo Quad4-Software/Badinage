@@ -17,7 +17,11 @@ const SRC_ROOT = join(import.meta.dirname, '..', '..', '..')
 const ALLOWED = ['src/lib/core/storage/']
 
 // files allowed even though they sit outside the allowed directories
-const ALLOWED_FILES = new Set<string>([])
+const ALLOWED_FILES = new Set<string>([
+  // asserts the ScopedSmStorage adapter writes the real sessionStorage
+  // key layout, which requires reading the store it wraps
+  'src/lib/core/xmpp/features/sm.test.ts'
+])
 
 const RAW_USE =
   /\b(?:localStorage|sessionStorage)\s*(?:\.\s*(?:getItem|setItem|removeItem|clear|key|length)\b|\[)|\bindexedDB\s*\.\s*open\b/

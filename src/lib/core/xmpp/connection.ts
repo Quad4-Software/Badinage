@@ -14,6 +14,7 @@ import { sendClientState } from './features/csi'
 import {
   handleBlockPush,
   handleMessage,
+  handlePing,
   handlePresence,
   handleRosterPush
 } from './features/handlers'
@@ -26,7 +27,20 @@ import {
   sendReaction,
   sendReceipt
 } from './features/messaging'
-import { joinRoom, leaveRoom, setRoomSubject } from './features/muc'
+import {
+  banOccupant,
+  changeRoomNick,
+  fetchRoomConfig,
+  inviteToRoom,
+  joinRoom,
+  kickOccupant,
+  leaveRoom,
+  moderateMessage,
+  pingOccupant,
+  sendRoomDecline,
+  setRoomSubject,
+  submitRoomConfig
+} from './features/muc'
 import { pepGet, pepPublish, sendEncryptedMessage } from './features/pep'
 import { PingManager } from './features/ping'
 import { fetchAvatar, sendDirectedPresence, sendPresence } from './features/presence'
@@ -35,7 +49,7 @@ import { smConnectionOptions } from './features/sm'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
 import { discoverUploadService, requestUploadSlot, uploadFile } from './features/upload'
 import { NS } from './ns'
-import type { ChatState, MamPageResult, MarkerType, UploadSlot } from './stanzas'
+import type { ChatState, DataForm, MamPageResult, MarkerType, UploadSlot } from './stanzas'
 import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptions } from './types'
 
 // The public contract lives in types.ts and the parsed result shapes in
@@ -251,6 +265,42 @@ export class XmppConnection implements ChatConnection {
     setRoomSubject(this.transport, room, subject)
   }
 
+  changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void {
+    changeRoomNick(this.transport, room, oldNick, newNick, password)
+  }
+
+  inviteToRoom(room: string, to: string, opts?: { reason?: string; password?: string }): void {
+    inviteToRoom(this.transport, room, to, opts)
+  }
+
+  declineRoomInvite(room: string, to: string, reason?: string): void {
+    sendRoomDecline(this.transport, room, to, reason)
+  }
+
+  kickOccupant(room: string, nick: string, reason?: string): void {
+    kickOccupant(this.transport, room, nick, reason)
+  }
+
+  banOccupant(room: string, jid: string, reason?: string): void {
+    banOccupant(this.transport, room, jid, reason)
+  }
+
+  moderateMessage(room: string, stanzaId: string, reason?: string): void {
+    moderateMessage(this.transport, room, stanzaId, reason)
+  }
+
+  fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void {
+    fetchRoomConfig(this.transport, room, onDone)
+  }
+
+  submitRoomConfig(room: string, form: DataForm): void {
+    submitRoomConfig(this.transport, room, form)
+  }
+
+  pingOccupant(room: string, nick: string, onDone: (alive: boolean) => void): void {
+    pingOccupant(this.transport, room, nick, onDone)
+  }
+
   // ---- MAM, implemented in features/mam.ts ---------------------------------------
 
   // Results arrive as 'message' events flagged with mam=true; onDone
@@ -342,6 +392,14 @@ export class XmppConnection implements ChatConnection {
       NS.BLOCKING,
       'iq',
       'set'
+    )
+    // XEP-0199: answer pings; MUC self-ping relies on the room routing
+    // our own ping back at us
+    this.conn.addHandler(
+      (stanza) => handlePing(stanza, this.events, this.transport),
+      NS.PING,
+      'iq',
+      'get'
     )
     this.enableCarbons()
     this.sendPresence()

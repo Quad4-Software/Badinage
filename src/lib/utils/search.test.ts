@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { findMessageHits, MIN_SEARCH_CHARS } from './search'
 
-function convo(peerJid: string, bodies: [string, number][]): {
+function convo(
+  peerJid: string,
+  bodies: [string, number][]
+): {
   peerJid: string
   messages: { id: string; body: string; timestamp: number }[]
 } {

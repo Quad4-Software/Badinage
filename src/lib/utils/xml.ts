@@ -28,6 +28,19 @@ export function firstTagText(el: Element, local: string): string | null {
   return firstTag(el, local)?.textContent ?? null
 }
 
+// direct children that are elements, skipping text and comment nodes;
+// needed where descendant search would overmatch, e.g. the condition
+// child of a stanza error or value children vs option children of a
+// data form field
+export function childElements(el: Element): Element[] {
+  const out: Element[] = []
+  for (let i = 0; i < el.childNodes.length; i++) {
+    const node = el.childNodes.item(i)
+    if (node.nodeType === 1) out.push(node as Element)
+  }
+  return out
+}
+
 // DOM Elements serialize via outerHTML; under xmldom toString does the
 // same job. The OMEMO parser consumes the serialized form.
 export function serializeElement(el: Element): string {

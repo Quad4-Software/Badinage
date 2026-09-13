@@ -68,3 +68,11 @@ export const SEARCH_MESSAGE_HITS = 10
 // oklch hues offered for per-account badge colors; also the pool the
 // jid-hash auto color picks from
 export const ACCOUNT_HUES = [25, 95, 145, 180, 210, 264, 300, 340] as const
+
+// XEP-0199 self-ping interval while joined to a room, detects ghost joins
+export const MUC_SELF_PING_MS = 60_000
+
+// auto-rejoin after a kick or a dropped session: this many attempts,
+// each delayed by the base delay times two to the attempt number
+export const ROOM_REJOIN_MAX_ATTEMPTS = 3
+export const ROOM_REJOIN_DELAY_MS = 5_000

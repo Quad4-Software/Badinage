@@ -16,6 +16,7 @@
 
   let room = $state('')
   let nick = $state('')
+  let password = $state('')
 
   const roomValid = $derived(isValidBareJid(room))
   const canJoin = $derived(roomValid && nick.trim().length > 0)
@@ -29,14 +30,15 @@
 
   function submit(event: SubmitEvent) {
     event.preventDefault()
-    const account = accounts.active
-    if (!account || !canJoin) return
+    if (!accounts.active || !canJoin) return
     const bare = bareJid(room)
-    account.joinRoom(bare, nick.trim())
-    app.chatsFor(account.jid).open(bare, 'muc')
+    // goes through the app store so nick and password are remembered
+    // for watchdog rejoins and error-banner retries
+    app.joinRoom(bare, nick.trim(), password || undefined)
     app.joinRoomOpen = false
     app.selectPeer(bare)
     room = ''
+    password = ''
   }
 </script>
 
@@ -59,6 +61,10 @@
       <div class="grid gap-2">
         <Label for="room-nick">{$LL.nickname()}</Label>
         <Input id="room-nick" bind:value={nick} placeholder={$LL.nicknamePlaceholder()} required />
+      </div>
+      <div class="grid gap-2">
+        <Label for="room-password">{$LL.roomPasswordOptional()}</Label>
+        <Input id="room-password" bind:value={password} type="password" />
       </div>
       <DialogFooter>
         <Button type="button" variant="ghost" onclick={() => (app.joinRoomOpen = false)}>

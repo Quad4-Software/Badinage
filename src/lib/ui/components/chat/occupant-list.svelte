@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { Search } from '@lucide/svelte'
+  import { DropdownMenu } from 'bits-ui'
+  import { Ban, EllipsisVertical, Search, UserX } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
+  import { accounts } from '$lib/state/accounts.svelte'
   import type { Conversation, RoomOccupant } from '$lib/state/chats.svelte'
   import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
   import { Input } from '$lib/ui/primitives/input'
@@ -9,11 +11,32 @@
   import { cn } from '$lib/utils/cn'
   import { presenceLabel } from '$lib/ui/presence'
 
+  import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
 
   let { conversation }: { conversation: Conversation } = $props()
 
   let query = $state('')
+  // moderation dialog state; the target is captured when the menu item
+  // fires because the row can unmount before the confirm runs
+  let kickTarget = $state<RoomOccupant | null>(null)
+  let kickReason = $state('')
+  let banTarget = $state<RoomOccupant | null>(null)
+  let banReason = $state('')
+
+  const account = $derived(accounts.active)
+  // our own occupant record decides which moderation controls exist
+  const selfOccupant = $derived([...conversation.occupants.values()].find((o) => o.self))
+
+  // XEP-0045: moderators kick participants and visitors; admins and
+  // owners ban by real jid, which only non-anonymous rooms disclose
+  const canKick = (occupant: RoomOccupant) =>
+    selfOccupant?.role === 'moderator' && !occupant.self && occupant.role !== 'moderator'
+  const canBan = (occupant: RoomOccupant) =>
+    (selfOccupant?.affiliation === 'admin' || selfOccupant?.affiliation === 'owner') &&
+    !occupant.self &&
+    occupant.affiliation !== 'owner' &&
+    occupant.jid !== undefined
 
   const roleRank = (role: string) => (role === 'moderator' ? 0 : role === 'participant' ? 1 : 2)
 
@@ -37,6 +60,19 @@
       : occupant.affiliation === 'admin' || occupant.affiliation === 'owner'
         ? $LL.roleAdmin()
         : ''
+
+  function doKick() {
+    if (!kickTarget) return
+    account?.connection.kickOccupant(conversation.peerJid, kickTarget.nick, kickReason || undefined)
+    kickReason = ''
+  }
+
+  function doBan() {
+    const jid = banTarget?.jid
+    if (!jid) return
+    account?.connection.banOccupant(conversation.peerJid, jid, banReason || undefined)
+    banReason = ''
+  }
 </script>
 
 <div class="flex h-full min-w-0 flex-col">
@@ -65,7 +101,7 @@
           {group.title} · {group.members.length}
         </li>
         {#each group.members as occupant (occupant.nick)}
-          <li class="hover:bg-accent flex items-center gap-2.5 rounded-md px-2 py-1.5">
+          <li class="group hover:bg-accent flex items-center gap-2.5 rounded-md px-2 py-1.5">
             <span class="relative shrink-0">
               <Avatar class="size-7">
                 <AvatarFallback class="text-[0.65rem]">
@@ -92,7 +128,9 @@
                 {/if}
               </span>
               <span class="text-muted-foreground block truncate text-xs">
-                {presenceLabel(occupant.presence)}
+                {#if occupant.jid}
+                  {occupant.jid} ·
+                {/if}{presenceLabel(occupant.presence)}
               </span>
             </span>
             {#if badge(occupant)}
@@ -107,6 +145,48 @@
                 {badge(occupant)}
               </span>
             {/if}
+            {#if canKick(occupant) || canBan(occupant)}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger
+                  class="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 shrink-0 items-center justify-center rounded opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                  aria-label={$LL.occupantOptions()}
+                >
+                  <EllipsisVertical class="size-4" />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
+                    sideOffset={4}
+                    align="end"
+                  >
+                    {#if canKick(occupant)}
+                      <DropdownMenu.Item
+                        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                        onSelect={() => {
+                          kickReason = ''
+                          kickTarget = occupant
+                        }}
+                      >
+                        <UserX class="size-4" />
+                        {$LL.kick()}
+                      </DropdownMenu.Item>
+                    {/if}
+                    {#if canBan(occupant)}
+                      <DropdownMenu.Item
+                        class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                        onSelect={() => {
+                          banReason = ''
+                          banTarget = occupant
+                        }}
+                      >
+                        <Ban class="size-4" />
+                        {$LL.ban()}
+                      </DropdownMenu.Item>
+                    {/if}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            {/if}
           </li>
         {/each}
       {:else}
@@ -115,3 +195,45 @@
     </ul>
   </ScrollArea>
 </div>
+
+<ConfirmDialog
+  open={kickTarget !== null}
+  onOpenChange={(o) => {
+    if (!o) kickTarget = null
+  }}
+  title={$LL.kickOccupantTitle({ nick: kickTarget?.nick ?? '' })}
+  confirmLabel={$LL.kick()}
+  destructive
+  onConfirm={doKick}
+>
+  <span class="block">
+    {$LL.kickOccupantDescription({ nick: kickTarget?.nick ?? '' })}
+  </span>
+  <Input
+    bind:value={kickReason}
+    placeholder={$LL.reasonOptional()}
+    aria-label={$LL.reasonOptional()}
+    class="mt-2"
+  />
+</ConfirmDialog>
+
+<ConfirmDialog
+  open={banTarget !== null}
+  onOpenChange={(o) => {
+    if (!o) banTarget = null
+  }}
+  title={$LL.banOccupantTitle({ jid: banTarget?.jid ?? '' })}
+  confirmLabel={$LL.ban()}
+  destructive
+  onConfirm={doBan}
+>
+  <span class="block">
+    {$LL.banOccupantDescription({ jid: banTarget?.jid ?? '' })}
+  </span>
+  <Input
+    bind:value={banReason}
+    placeholder={$LL.reasonOptional()}
+    aria-label={$LL.reasonOptional()}
+    class="mt-2"
+  />
+</ConfirmDialog>

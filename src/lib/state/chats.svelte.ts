@@ -8,6 +8,7 @@ import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
 import { MESSAGE_PAGE_SIZE } from '$lib/constants'
 import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
+import { SELF_BANNED_CODE, SELF_KICKED_CODE, SELF_RENAMED_CODE } from '$lib/core/xmpp/features/muc'
 import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 import { isLiveIncoming } from '$lib/utils/notify'
@@ -130,8 +131,12 @@ export class ChatStore {
       outgoing = true
     } else if (message.type === 'groupchat') {
       peer = bareJid(message.from)
-      const ownNick = this.conversations.get(peer)?.ourNick
-      outgoing = message.nick !== undefined && message.nick === ownNick
+      const room = this.conversations.get(peer)
+      // nicks we held earlier still count as ours so a self-echo sent
+      // before a rename still merges after it lands
+      outgoing =
+        message.nick !== undefined &&
+        (message.nick === room?.ourNick || (room?.ourNicks.has(message.nick) ?? false))
     } else if (bareJid(message.from) === this.accountJid) {
       peer = bareJid(message.to)
       outgoing = true
@@ -143,6 +148,27 @@ export class ChatStore {
     if (message.type === 'groupchat') conversation.kind = 'muc'
 
     const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
+    // XEP-0421: the stable occupant id keys reactions when the room
+    // assigns one, so a rename does not split a sender's pills
+    const reactionSender = message.type === 'groupchat' ? (message.occupantId ?? sender) : sender
+
+    // XEP-0425: the room itself (never an occupant) announces that a
+    // stanza-id was retracted. Tombstone the stored copy and drop the
+    // notice so it never renders as a message.
+    if (message.retraction) {
+      if (message.type === 'groupchat' && !message.nick) {
+        const target = this.findMessage(peer, message.retraction.id)
+        if (target) {
+          target.retracted = true
+          target.retractReason = message.retraction.reason
+          target.body = ''
+          target.attachments = undefined
+          target.reactions = {}
+          this.persistence.schedule(conversation)
+        }
+      }
+      return
+    }
 
     // stanza-level metadata first so empty stanzas still update state
     if (message.receiptFor) {
@@ -162,7 +188,7 @@ export class ChatStore {
       }
     }
     if (message.reactionTo) {
-      this.applyReaction(peer, sender, message.reactionTo.id, message.reactionTo.emojis)
+      this.applyReaction(peer, reactionSender, message.reactionTo.id, message.reactionTo.emojis)
     }
     if (message.chatState !== undefined && !outgoing) {
       // muc typers are tracked per nick in the typing tracker; peerState
@@ -187,7 +213,14 @@ export class ChatStore {
       // target unknown: fall through and show it as a normal message
     }
     if (message.encrypted && conversation.kind === 'dm') conversation.encrypted = true
-    if (!message.body && !message.attachments?.length && !message.undecryptable) return
+    // tombstones carry no body; store them so the placeholder renders
+    if (
+      !message.body &&
+      !message.attachments?.length &&
+      !message.undecryptable &&
+      !message.retracted
+    )
+      return
 
     // MUC self-echo: the room reflects our own message back with a fresh
     // stanza id. Merge it into the locally pushed copy (mark delivered,
@@ -196,7 +229,15 @@ export class ChatStore {
       for (let i = conversation.messages.length - 1; i >= 0; i--) {
         const recent = conversation.messages[i]
         if (!recent || Date.now() - recent.timestamp > 60_000) break
-        if (recent.outgoing && !recent.delivered && recent.body === message.body) {
+        // the nick check pins the merge to the nick the message was
+        // sent under, so echoes of older sends cannot misfire on a
+        // same-body message sent after a rename
+        if (
+          recent.outgoing &&
+          !recent.delivered &&
+          recent.body === message.body &&
+          recent.nick === message.nick
+        ) {
           recent.delivered = true
           if (message.stanzaId) recent.id = message.stanzaId
           return
@@ -218,6 +259,13 @@ export class ChatStore {
       timestamp: message.delay ?? Date.now(),
       delivered: outgoing ? message.carbon === 'sent' : false,
       nick: message.type === 'groupchat' ? message.nick : undefined
+    }
+    if (message.type === 'groupchat' && message.occupantId) {
+      stored.occupantId = message.occupantId
+    }
+    if (message.retracted) {
+      stored.retracted = true
+      stored.retractReason = message.retracted.reason
     }
     if (message.replyTo) stored.replyTo = message.replyTo
     if (message.attachments?.length) stored.attachments = message.attachments
@@ -267,17 +315,60 @@ export class ChatStore {
     )
   }
 
+  // remember join parameters so the rejoin watchdog can replay them and
+  // retry banners can re-send them without asking again
+  noteJoin(room: string, nick: string, password?: string): void {
+    const conversation = this.open(room, 'muc')
+    conversation.ourNick = nick
+    conversation.ourNicks.add(nick)
+    conversation.password = password
+    conversation.joinError = undefined
+    conversation.kicked = false
+    conversation.kickReason = undefined
+    conversation.banned = false
+  }
+
   setOccupant(room: string, occupant: RoomOccupant): void {
     const conversation = this.open(room, 'muc')
+    const renamed = occupant.codes.includes(SELF_RENAMED_CODE)
+    // offline stanzas without a 110 still leave our nick in the from
+    // resource; online presence gets no such fallback, or a stranger
+    // taking our nick after a kick would mark us joined
+    const self =
+      occupant.self || (occupant.presence === 'offline' && occupant.nick === conversation.ourNick)
     if (occupant.presence === 'offline') {
       conversation.occupants.delete(occupant.nick)
+      conversation.typers.delete(occupant.nick)
     } else {
       conversation.occupants.set(occupant.nick, occupant)
     }
-    if (occupant.self) {
-      conversation.joined = occupant.presence !== 'offline'
-      conversation.ourNick = occupant.nick
+    if (!self) return
+    if (occupant.presence === 'offline') {
+      if (renamed && occupant.newNick) {
+        // the departing half of a nick change already names the new
+        // nick; adopt it so pending sends use it immediately
+        conversation.ourNick = occupant.newNick
+        conversation.ourNicks.add(occupant.newNick)
+        return
+      }
+      conversation.joined = false
+      if (occupant.codes.includes(SELF_BANNED_CODE)) {
+        conversation.banned = true
+        conversation.kicked = false
+      } else if (occupant.codes.includes(SELF_KICKED_CODE)) {
+        conversation.kicked = true
+        conversation.kickReason = occupant.reason
+      }
+      return
     }
+    conversation.joined = true
+    conversation.joinError = undefined
+    conversation.kicked = false
+    conversation.kickReason = undefined
+    conversation.banned = false
+    conversation.ourNick = occupant.nick
+    conversation.ourNicks.add(occupant.nick)
+    if (occupant.occupantId) conversation.ourOccupantId = occupant.occupantId
   }
 
   private isDuplicate(peer: string, ids: string[]): boolean {

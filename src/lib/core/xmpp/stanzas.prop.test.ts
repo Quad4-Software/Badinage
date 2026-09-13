@@ -93,7 +93,7 @@ describe('property: structured stanzas', () => {
     fc.assert(
       fc.property(presenceArb, (s) => {
         const p = parsePresence(xml(s.xml))
-        if (p) expect(['occupant', 'subscribe', 'presence']).toContain(p.kind)
+        if (p) expect(['occupant', 'subscribe', 'presence', 'presenceError']).toContain(p.kind)
       })
     )
   })

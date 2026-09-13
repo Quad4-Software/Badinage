@@ -95,12 +95,7 @@
     </main>
   </div>
 {:else}
-  <PaneGroup
-    direction="horizontal"
-    class="h-full"
-    autoSaveId={SHELL_PANE_AUTOSAVE_ID}
-    role="main"
-  >
+  <PaneGroup direction="horizontal" class="h-full" autoSaveId={SHELL_PANE_AUTOSAVE_ID} role="main">
     <Pane
       bind:this={sidebarPane}
       defaultSize={SIDEBAR_DEFAULT}
@@ -118,11 +113,7 @@
     {@render resizer(app.sidebarCollapsed)}
     <Pane defaultSize={76} minSize={40} class="min-w-0">
       {#if app.splitPeer !== null}
-        <PaneGroup
-          direction="horizontal"
-          class="h-full"
-          autoSaveId={SPLIT_PANE_AUTOSAVE_ID}
-        >
+        <PaneGroup direction="horizontal" class="h-full" autoSaveId={SPLIT_PANE_AUTOSAVE_ID}>
           <Pane defaultSize={55} minSize={30} class="min-w-0">
             <ChatView peer={app.activePeer} />
           </Pane>

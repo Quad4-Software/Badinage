@@ -21,9 +21,21 @@
     onReply?: ((message: ChatMessage) => void) | undefined
     onEdit?: ((message: ChatMessage) => void) | undefined
     onReact?: ((message: ChatMessage, emoji: string) => void) | undefined
+    // XEP-0425 moderation affordance, gated on our own room role
+    canModerate?: boolean
+    onModerate?: ((message: ChatMessage) => void) | undefined
   }
 
-  let { conversation, selfJid = '', onQuoteClick, onReply, onEdit, onReact }: Props = $props()
+  let {
+    conversation,
+    selfJid = '',
+    onQuoteClick,
+    onReply,
+    onEdit,
+    onReact,
+    canModerate = false,
+    onModerate
+  }: Props = $props()
 
   const GROUP_GAP_MS = 5 * 60 * 1000
   // scrollTop under this counts as near the top and shows the pager button
@@ -40,8 +52,24 @@
   // the pager only makes sense while a transport can answer it
   const canLoadOlder = $derived(accounts.active?.status === 'connected')
 
-  // in a muc, our reaction sender entry is our nick rather than our jid
-  const self = $derived(conversation.kind === 'muc' ? (conversation.ourNick ?? selfJid) : selfJid)
+  // in a muc, our reaction sender entry is our XEP-0421 occupant id when
+  // the room assigns one, else our nick; in a dm it is our bare jid
+  const self = $derived(
+    conversation.kind === 'muc'
+      ? (conversation.ourOccupantId ?? conversation.ourNick ?? selfJid)
+      : selfJid
+  )
+
+  // reaction sender keys are occupant ids when the room assigns them;
+  // map them back to nicks for display, falling back to the raw key for
+  // occupants that already left
+  const senderLabel = $derived((key: string) => {
+    if (conversation.kind !== 'muc') return key
+    for (const occupant of conversation.occupants.values()) {
+      if (occupant.occupantId === key || occupant.nick === key) return occupant.nick
+    }
+    return key
+  })
 
   const lastMessage = $derived(conversation.messages.at(-1))
   const typing = $derived(
@@ -157,6 +185,9 @@
           {onReply}
           {onEdit}
           onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
+          {canModerate}
+          onModerate={onModerate ? () => onModerate(message) : undefined}
+          {senderLabel}
         />
       </li>
     {/each}
