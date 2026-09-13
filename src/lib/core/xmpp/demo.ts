@@ -7,14 +7,19 @@ import { Emitter } from '$lib/core/events'
 
 import type {
   AttachmentMeta,
+  Bookmark,
   ChatConnection,
   ConnectionEvents,
+  DiscoInfo,
+  DiscoItem,
   MamPageResult,
+  PepPublishOptions,
   SendMessageOptions,
   UploadSlot
 } from './connection'
 import {
   DemoOmemoPeers,
+  demoBookmarks,
   demoRoomConfig,
   demoRosterItems,
   emitArchivePage,
@@ -31,6 +36,7 @@ import {
   roomOccupants,
   scheduleLiveEvents
 } from './demo-data'
+import { DISCO_FEATURES, DISCO_IDENTITY } from './features/disco'
 import type { ChatState, DataForm, MarkerType } from './stanzas'
 
 const DEMO_CONNECT_DELAY_MS = 400
@@ -57,6 +63,9 @@ export class DemoConnection implements ChatConnection {
   // the demo blocklist lives in memory and echoes pushes like a real
   // server would so every connected "resource" stays in sync
   private blocklist = new Set<string>()
+  // in-memory PEP bookmark node, seeded with a couple of entries; built
+  // eagerly so the connect-time fetch already sees them
+  private bookmarks = new Map<string, Bookmark>(demoBookmarks().map((b) => [b.jid, b]))
   private readonly omemoPeers = new DemoOmemoPeers()
 
   connect(jid: string, _password: string): void {
@@ -176,10 +185,18 @@ export class DemoConnection implements ChatConnection {
     this.omemoPeers.get(node, jid, this.jid, onDone)
   }
 
-  pepPublish(node: string, itemId: string, payloadXml: string): void {
+  pepPublish(
+    node: string,
+    itemId: string,
+    payloadXml: string,
+    options?: PepPublishOptions,
+    onDone?: (ok: boolean) => void
+  ): void {
     void node
     void itemId
     void payloadXml
+    void options
+    onDone?.(true)
   }
 
   sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string {
@@ -448,6 +465,37 @@ export class DemoConnection implements ChatConnection {
 
   sessionResumed(): boolean {
     return false
+  }
+
+  discoInfo(jid: string, node: string | undefined, onDone: (info: DiscoInfo | null) => void): void {
+    // every demo peer pretends to be Badinage itself
+    void jid
+    void node
+    onDone({ identities: [{ ...DISCO_IDENTITY }], features: [...DISCO_FEATURES], forms: [] })
+  }
+
+  discoItems(jid: string, onDone: (items: DiscoItem[] | null) => void): void {
+    void jid
+    onDone([
+      { jid: 'conference.badinage.local', name: 'Chat rooms' },
+      { jid: 'upload.badinage.local', name: 'File uploads' }
+    ])
+  }
+
+  fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void {
+    // deferred like a real network round trip so listeners bound after
+    // connect still observe the follow-up traffic
+    this.timers.push(setTimeout(() => onDone([...this.bookmarks.values()]), DEMO_CONNECT_DELAY_MS))
+  }
+
+  addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void {
+    this.bookmarks.set(bookmark.jid, bookmark)
+    onDone?.(true)
+  }
+
+  removeBookmark(jid: string, onDone?: (ok: boolean) => void): void {
+    this.bookmarks.delete(jid)
+    onDone?.(true)
   }
 
   private seed(): void {

@@ -8,7 +8,7 @@ import { firstNsTag } from '$lib/utils/xml'
 
 import type { SendMessageOptions } from '../types'
 import { NS } from '../ns'
-import { noop, type XmppTransport } from './transport'
+import type { XmppTransport } from './transport'
 
 function domFromXml(xml: string): Element | null {
   return new DOMParser().parseFromString(xml, 'text/xml').documentElement
@@ -30,19 +30,56 @@ export function pepGet(
   )
 }
 
+// XEP-0060 publish-options, sent alongside a publish so the server
+// applies the node config atomically. Omitted options keep the server
+// defaults.
+export interface PepPublishOptions {
+  persistItems?: boolean | undefined
+  maxItems?: string | undefined
+  accessModel?: string | undefined
+  sendLastPublishedItem?: string | undefined
+}
+
 export function pepPublish(
   conn: XmppTransport,
   node: string,
   itemId: string,
-  payloadXml: string
+  payloadXml: string,
+  options?: PepPublishOptions,
+  onDone?: (ok: boolean) => void
 ): void {
   const stanza = $iq({ type: 'set', id: conn.uniqueId('pep-pub') })
     .c('pubsub', { xmlns: NS.PUBSUB })
     .c('publish', { node })
     .c('item', { id: itemId })
   const payload = domFromXml(payloadXml)
-  if (payload) stanza.cnode(payload)
-  conn.sendIq(stanza, noop)
+  if (payload) stanza.cnode(payload).up()
+  stanza.up().up() // item -> publish -> pubsub
+  if (options) {
+    // c() descends into each named child; c() with text does not, so
+    // each field only needs one up() to get back to the form element
+    stanza
+      .c('publish-options')
+      .c('x', { xmlns: NS.FORMS, type: 'submit' })
+      .c('field', { var: 'FORM_TYPE', type: 'hidden' })
+      .c('value', {}, NS.PUBSUB_PUBLISH_OPTIONS)
+      .up()
+    const fields: [string, string][] = []
+    if (options.persistItems) fields.push(['pubsub#persist_items', 'true'])
+    if (options.maxItems) fields.push(['pubsub#max_items', options.maxItems])
+    if (options.sendLastPublishedItem) {
+      fields.push(['pubsub#send_last_published_item', options.sendLastPublishedItem])
+    }
+    if (options.accessModel) fields.push(['pubsub#access_model', options.accessModel])
+    for (const [varName, value] of fields) {
+      stanza.c('field', { var: varName }).c('value', {}, value).up()
+    }
+  }
+  conn.sendIq(
+    stanza,
+    () => onDone?.(true),
+    () => onDone?.(false)
+  )
 }
 
 // The cleartext body is fallback text for clients without OMEMO, so

@@ -10,6 +10,7 @@ import { childElements } from '$lib/utils/xml'
 import { NS } from '../ns'
 import { parseDataForm, type DataForm } from '../stanzas'
 import { appendSubmitForm } from './dataforms'
+import { ownCaps } from './disco'
 import { noop, type XmppTransport } from './transport'
 
 const JOIN_HISTORY_STANZAS = '100'
@@ -27,7 +28,12 @@ export const SELF_KICKED_CODE = '307'
 export function joinRoom(conn: XmppTransport, room: string, nick: string, password?: string): void {
   const x = $pres({ to: `${room}/${nick}` }).c('x', { xmlns: NS.MUC })
   if (password) x.c('password').t(password).up()
+  // caps ride along on join presence so occupants can disco our features
+  const caps = ownCaps()
   x.c('history', { maxstanzas: JOIN_HISTORY_STANZAS })
+    .up()
+    .up()
+    .c('c', { xmlns: NS.CAPS, hash: caps.hash, node: caps.node, ver: caps.ver })
   conn.send(x)
 }
 

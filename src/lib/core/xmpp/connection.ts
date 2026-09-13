@@ -9,10 +9,15 @@ import { $iq, Strophe } from 'strophe.js'
 import { RECONNECT_DELAY_MAX_MS, RECONNECT_DELAY_MS } from '$lib/constants'
 import { Emitter } from '$lib/core/events'
 
+import { fetchAvatar } from './features/avatars'
 import { blockJids, fetchBlocklist, unblockJids } from './features/blocking'
+import { fetchBookmarks, publishBookmark, retractBookmark } from './features/bookmarks'
 import { sendClientState } from './features/csi'
+import { discoInfo, discoItems } from './features/disco'
 import {
   handleBlockPush,
+  handleDiscoInfoGet,
+  handleDiscoItemsGet,
   handleMessage,
   handlePing,
   handlePresence,
@@ -42,20 +47,30 @@ import {
   setRoomSubject,
   submitRoomConfig
 } from './features/muc'
-import { pepGet, pepPublish, sendEncryptedMessage } from './features/pep'
+import { pepGet, pepPublish, sendEncryptedMessage, type PepPublishOptions } from './features/pep'
 import { PingManager } from './features/ping'
-import { fetchAvatar, sendDirectedPresence, sendPresence } from './features/presence'
+import { sendDirectedPresence, sendPresence } from './features/presence'
 import { fetchRoster, rosterRemove, rosterSet } from './features/roster'
 import { smConnectionOptions } from './features/sm'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
 import { discoverUploadService, requestUploadSlot, uploadFile } from './features/upload'
 import { NS } from './ns'
-import type { ChatState, DataForm, MamPageResult, MarkerType, UploadSlot } from './stanzas'
+import type {
+  Bookmark,
+  ChatState,
+  DataForm,
+  DiscoInfo,
+  DiscoItem,
+  MamPageResult,
+  MarkerType,
+  UploadSlot
+} from './stanzas'
 import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptions } from './types'
 
 // The public contract lives in types.ts and the parsed result shapes in
 // stanzas.ts; re-exported here so importers of this module keep working.
-export type { MamPageResult, UploadSlot } from './stanzas'
+export type { Bookmark, DiscoInfo, DiscoItem, MamPageResult, UploadSlot } from './stanzas'
+export type { PepPublishOptions } from './features/pep'
 export type {
   AttachmentMeta,
   ChatConnection,
@@ -207,8 +222,14 @@ export class XmppConnection implements ChatConnection {
     pepGet(this.transport, node, jid, onDone)
   }
 
-  pepPublish(node: string, itemId: string, payloadXml: string): void {
-    pepPublish(this.transport, node, itemId, payloadXml)
+  pepPublish(
+    node: string,
+    itemId: string,
+    payloadXml: string,
+    options?: PepPublishOptions,
+    onDone?: (ok: boolean) => void
+  ): void {
+    pepPublish(this.transport, node, itemId, payloadXml, options, onDone)
   }
 
   sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string {
@@ -345,6 +366,30 @@ export class XmppConnection implements ChatConnection {
     return this.conn.hasResumed()
   }
 
+  // ---- service discovery (XEP-0030), implemented in features/disco.ts ----------
+
+  discoInfo(jid: string, node: string | undefined, onDone: (info: DiscoInfo | null) => void): void {
+    discoInfo(this.transport, jid, node, onDone)
+  }
+
+  discoItems(jid: string, onDone: (items: DiscoItem[] | null) => void): void {
+    discoItems(this.transport, jid, onDone)
+  }
+
+  // ---- bookmarks (XEP-0402), implemented in features/bookmarks.ts --------------
+
+  fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void {
+    fetchBookmarks(this.transport, onDone)
+  }
+
+  addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void {
+    publishBookmark(this.transport, bookmark, onDone)
+  }
+
+  removeBookmark(jid: string, onDone?: (ok: boolean) => void): void {
+    retractBookmark(this.transport, jid, onDone)
+  }
+
   // ---- internals -----------------------------------------------------------------
 
   private onStatus(status: number): void {
@@ -404,6 +449,20 @@ export class XmppConnection implements ChatConnection {
     this.conn.addHandler(
       (stanza) => handlePing(stanza, this.events, this.transport),
       NS.PING,
+      'iq',
+      'get'
+    )
+    // XEP-0030/0115: peers disco us to resolve the caps ver we advertise
+    // in presence into a feature list
+    this.conn.addHandler(
+      (stanza) => handleDiscoInfoGet(stanza, this.transport),
+      NS.DISCO_INFO,
+      'iq',
+      'get'
+    )
+    this.conn.addHandler(
+      (stanza) => handleDiscoItemsGet(stanza, this.transport),
+      NS.DISCO_ITEMS,
       'iq',
       'get'
     )

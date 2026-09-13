@@ -3,6 +3,8 @@
   import {
     ArrowLeft,
     Ban,
+    Bookmark as BookmarkIcon,
+    BookmarkX,
     Columns2,
     EllipsisVertical,
     Lock,
@@ -20,7 +22,6 @@
   import { app } from '$lib/state/app.svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
   import { cancelUpload, sendFileMessage } from '$lib/state/upload'
-  import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { Input } from '$lib/ui/primitives/input'
   import { Separator } from '$lib/ui/primitives/separator'
@@ -34,6 +35,7 @@
   import RoomConfigDialog from '../dialogs/room-config-dialog.svelte'
   import SubjectDialog from '../dialogs/subject-dialog.svelte'
   import Composer from './composer.svelte'
+  import PeerAvatar from './peer-avatar.svelte'
   import MessageList from './message-list.svelte'
   import OccupantList from './occupant-list.svelte'
   import RoomStatusBanner from './room-status-banner.svelte'
@@ -149,7 +151,31 @@
   }
 
   const peerBlocked = $derived(peer ? (account?.isBlocked(peer) ?? false) : false)
+  const peerBookmarked = $derived(peer ? (account?.isBookmarked(peer) ?? false) : false)
   const typers = $derived(conversation ? [...conversation.typers] : [])
+
+  function toggleBookmark() {
+    if (!account || !conversation) return
+    if (peerBookmarked) {
+      account.removeBookmark(conversation.peerJid)
+      return
+    }
+    if (isRoom) {
+      account.addBookmark({
+        jid: conversation.peerJid,
+        kind: 'conference',
+        name: conversation.peerJid.split('@')[0],
+        autojoin: true,
+        nick: conversation.ourNick
+      })
+    } else {
+      account.addBookmark({
+        jid: conversation.peerJid,
+        kind: 'contact',
+        name: contact?.name || undefined
+      })
+    }
+  }
 
   function leaveRoom() {
     if (!account || !conversation?.ourNick) return
@@ -238,14 +264,11 @@
               <ArrowLeft class="size-5" />
             </Button>
           {/if}
-          <Avatar>
-            {#if isRoom && conversation.avatar}
-              <AvatarImage src={conversation.avatar} alt="" />
-            {/if}
-            <AvatarFallback>
-              {(isRoom ? '#' : '') + (contact?.name || conversation.peerJid).slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
+          <PeerAvatar
+            jid={conversation.peerJid}
+            fallback={(isRoom ? '#' : '') + (contact?.name || conversation.peerJid).slice(0, 2)}
+            force
+          />
           <div class="min-w-0 flex-1">
             <h1 class="flex items-center gap-1.5 truncate font-medium">
               <span class="truncate">
@@ -293,6 +316,19 @@
           </div>
           <div class="flex shrink-0 items-center gap-0.5">
             {#if isRoom}
+              <Button
+                variant="ghost"
+                size="icon"
+                onclick={toggleBookmark}
+                aria-label={peerBookmarked ? $LL.removeBookmark() : $LL.bookmarkRoom()}
+                aria-pressed={peerBookmarked}
+              >
+                {#if peerBookmarked}
+                  <BookmarkX class="text-primary size-4" />
+                {:else}
+                  <BookmarkIcon class="size-4" />
+                {/if}
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -384,6 +420,18 @@
                     sideOffset={4}
                     align="end"
                   >
+                    <DropdownMenu.Item
+                      class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+                      onSelect={toggleBookmark}
+                    >
+                      {#if peerBookmarked}
+                        <BookmarkX class="size-4" />
+                        {$LL.removeBookmark()}
+                      {:else}
+                        <BookmarkIcon class="size-4" />
+                        {$LL.bookmarkContact()}
+                      {/if}
+                    </DropdownMenu.Item>
                     <DropdownMenu.Item
                       class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
                       onSelect={() => {

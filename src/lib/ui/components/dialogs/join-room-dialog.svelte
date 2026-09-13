@@ -4,6 +4,7 @@
   import { app } from '$lib/state/app.svelte'
   import { bareJid, isValidBareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
+  import { Checkbox } from '$lib/ui/primitives/checkbox'
   import {
     Dialog,
     DialogContent,
@@ -17,6 +18,7 @@
   let room = $state('')
   let nick = $state('')
   let password = $state('')
+  let saveBookmark = $state(false)
 
   const roomValid = $derived(isValidBareJid(room))
   const canJoin = $derived(roomValid && nick.trim().length > 0)
@@ -30,15 +32,28 @@
 
   function submit(event: SubmitEvent) {
     event.preventDefault()
-    if (!accounts.active || !canJoin) return
+    const account = accounts.active
+    if (!account || !canJoin) return
     const bare = bareJid(room)
     // goes through the app store so nick and password are remembered
     // for watchdog rejoins and error-banner retries
     app.joinRoom(bare, nick.trim(), password || undefined)
+    if (saveBookmark) {
+      account.addBookmark({
+        jid: bare,
+        kind: 'conference',
+        name: bare.split('@')[0],
+        autojoin: true,
+        nick: nick.trim(),
+        password: password || undefined
+      })
+    }
+    app.chatsFor(account.jid).open(bare, 'muc')
     app.joinRoomOpen = false
     app.selectPeer(bare)
     room = ''
     password = ''
+    saveBookmark = false
   }
 </script>
 
@@ -65,6 +80,12 @@
       <div class="grid gap-2">
         <Label for="room-password">{$LL.roomPasswordOptional()}</Label>
         <Input id="room-password" bind:value={password} type="password" />
+      </div>
+      <div class="flex items-center gap-2">
+        <Checkbox id="room-bookmark" bind:checked={saveBookmark} />
+        <Label for="room-bookmark" class="text-sm font-normal">
+          {$LL.bookmarkRoom()}
+        </Label>
       </div>
       <DialogFooter>
         <Button type="button" variant="ghost" onclick={() => (app.joinRoomOpen = false)}>

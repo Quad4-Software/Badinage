@@ -165,17 +165,9 @@ class AppStore {
     const store = this.chatsFor(account.jid)
     const conversation = store.open(peer)
     conversation.unread = 0
-    // room avatars come from the room vCard, fetched once per session
-    if (
-      conversation.kind === 'muc' &&
-      !conversation.avatarFetched &&
-      account.status === 'connected'
-    ) {
-      conversation.avatarFetched = true
-      account.connection.fetchAvatar(conversation.peerJid, (uri) => {
-        if (uri) conversation.avatar = uri
-      })
-    }
+    // the open conversation always gets its avatar: deduped and cached
+    // by the transport layer so repeat selects cost nothing
+    account.ensureAvatar(conversation.peerJid, true)
     // pull server history once per session per conversation; dedup by
     // stanza-id keeps it from doubling messages we already cached. The
     // first page has no cursor yet so loadOlder fetches the latest page
@@ -263,6 +255,9 @@ class AppStore {
     })
     account.connection.events.on('occupant', (occupant) => {
       sessions.noteOccupant(occupant)
+      // occupant avatars resolve under the room/nick address their
+      // vcard is fetched from
+      account.noteAvatarHash(`${occupant.room}/${occupant.nick}`, occupant.avatarHash)
       store.setOccupant(occupant.room, {
         nick: occupant.nick,
         presence: occupant.presence,

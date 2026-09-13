@@ -1,10 +1,10 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
   import type { RosterContact } from '$lib/state/accounts.svelte'
-  import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
   import { presenceLabel } from '$lib/ui/presence'
 
   import PresenceDot from '../../presence/presence-dot.svelte'
+  import PeerAvatar from '../peer-avatar.svelte'
 
   interface Props {
     contact: RosterContact
@@ -24,9 +24,7 @@
   onclick={onSelect}
 >
   <span class="relative shrink-0">
-    <Avatar>
-      <AvatarFallback>{initials}</AvatarFallback>
-    </Avatar>
+    <PeerAvatar jid={contact.jid} fallback={initials} />
     <PresenceDot
       presence={contact.presence}
       class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"

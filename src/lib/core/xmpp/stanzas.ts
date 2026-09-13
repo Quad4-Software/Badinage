@@ -6,6 +6,7 @@
 import { bareJid, jidResource } from '$lib/utils/jid'
 import {
   allNsTags,
+  allTags,
   childElements,
   firstNsTag,
   firstTag,
@@ -101,6 +102,12 @@ export interface PresenceUpdate {
   show: string
   status: string
   type?: string | undefined
+  // XEP-0115 entity capabilities advertised in the c element
+  caps?: CapsRef | undefined
+  // XEP-0153 vcard-temp:x:update photo hash; the empty string means the
+  // contact explicitly advertises no avatar, undefined means no update
+  // element was present and the cached avatar stays untouched
+  avatarHash?: string | undefined
 }
 
 export interface MucOccupant {
@@ -119,6 +126,8 @@ export interface MucOccupant {
   newNick?: string | undefined
   // kick or ban reason from the item reason element, or the status text
   reason?: string | undefined
+  caps?: CapsRef | undefined
+  avatarHash?: string | undefined
 }
 
 // Presence type=error carrying an RFC 6120 stanza error; on the room
@@ -172,6 +181,58 @@ export interface DataForm {
   title?: string | undefined
   instructions?: string | undefined
   fields: DataFormField[]
+}
+
+// XEP-0115 c element: node identifies the client software, ver is the
+// verification string hashing the advertised identity and features
+export interface CapsRef {
+  node: string
+  hash: string
+  ver: string
+}
+
+// XEP-0030 disco#info result
+export interface DiscoIdentity {
+  category: string
+  type: string
+  name?: string | undefined
+  lang?: string | undefined
+}
+
+// one field of a XEP-0128 service discovery extension form
+interface DiscoField {
+  var: string
+  values: string[]
+}
+
+export interface DiscoForm {
+  formType: string
+  fields: DiscoField[]
+}
+
+export interface DiscoInfo {
+  identities: DiscoIdentity[]
+  features: string[]
+  forms: DiscoForm[]
+}
+
+// XEP-0030 disco#items entry
+export interface DiscoItem {
+  jid: string
+  node?: string | undefined
+  name?: string | undefined
+}
+
+// XEP-0402 PEP bookmark. kind 'contact' is serialized as a contact
+// element in the bookmarks namespace: the spec only defines conference,
+// so this is a client-local extension that other clients ignore.
+export interface Bookmark {
+  jid: string
+  kind: 'conference' | 'contact'
+  name?: string | undefined
+  autojoin?: boolean | undefined
+  nick?: string | undefined
+  password?: string | undefined
 }
 
 // XEP-0363 slot granted by an upload service: PUT the file to putUrl,
@@ -494,6 +555,28 @@ function moderatedBy(moderated: Element | null): string | undefined {
   )
 }
 
+// XEP-0115 c element on a presence stanza. Returns null when absent or
+// missing the attributes needed to address a disco query.
+export function parseCaps(stanza: Element): CapsRef | null {
+  const c = firstNsTag(stanza, NS.CAPS, 'c')
+  if (!c) return null
+  const node = c.getAttribute('node')
+  const hash = c.getAttribute('hash')
+  const ver = c.getAttribute('ver')
+  return node && hash && ver ? { node, hash, ver } : null
+}
+
+// XEP-0153 vcard-temp:x:update photo hash. Returns undefined when the
+// presence carries no update element (keep the cached avatar), the empty
+// string when the photo element is empty (explicitly no avatar), or the
+// sha1 hex of the photo bytes.
+export function parseAvatarHash(stanza: Element): string | undefined {
+  const x = firstNsTag(stanza, NS.VCARD_UPDATE, 'x')
+  if (!x) return undefined
+  const photo = firstNsTag(x, NS.VCARD_UPDATE, 'photo')
+  return photo ? (photo.textContent?.trim() ?? '') : ''
+}
+
 // Parse a <presence> stanza. Returns one of three shapes: an occupant update
 // for MUC, a subscription request, or a plain presence update.
 export function parsePresence(
@@ -507,6 +590,8 @@ export function parsePresence(
   const from = stanza.getAttribute('from')
   if (!from) return null
   const type = stanza.getAttribute('type')
+  const caps = parseCaps(stanza)
+  const avatarHash = parseAvatarHash(stanza)
 
   const mucUser = firstNsTag(stanza, NS.MUC_USER, 'x')
   if (mucUser) {
@@ -533,6 +618,8 @@ export function parsePresence(
     if (reason) occupant.reason = reason
     const occupantId = firstNsTag(stanza, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
     if (occupantId) occupant.occupantId = occupantId
+    if (caps) occupant.caps = caps
+    occupant.avatarHash = avatarHash
     return { kind: 'occupant', occupant }
   }
 
@@ -570,20 +657,55 @@ export function parsePresence(
       from: bareJid(from),
       show: type === 'unavailable' ? 'offline' : (firstTagText(stanza, 'show') ?? 'online'),
       status: firstTagText(stanza, 'status') ?? '',
-      type: type ?? undefined
+      type: type ?? undefined,
+      caps: caps ?? undefined,
+      avatarHash
     }
   }
 }
 
-// disco#items result: the jids of the server's components, used to
-// hunt for an upload service.
-export function parseDiscoItemJids(stanza: Element): string[] {
-  const jids: string[] = []
-  for (const item of allNsTags(stanza, NS.DISCO_ITEMS, 'item')) {
-    const jid = item.getAttribute('jid')
-    if (jid) jids.push(jid)
+// XEP-0030 disco#info result. Reads identities, feature vars and any
+// XEP-0128 extension forms; tolerates missing query or empty results.
+export function parseDiscoInfo(stanza: Element): DiscoInfo {
+  const identities: DiscoIdentity[] = []
+  for (const el of allNsTags(stanza, NS.DISCO_INFO, 'identity')) {
+    identities.push({
+      category: el.getAttribute('category') ?? '',
+      type: el.getAttribute('type') ?? '',
+      name: el.getAttribute('name') ?? undefined,
+      lang: el.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'lang') ?? undefined
+    })
   }
-  return jids
+  const features = allNsTags(stanza, NS.DISCO_INFO, 'feature')
+    .map((f) => f.getAttribute('var') ?? '')
+    .filter((v) => v.length > 0)
+  const forms: DiscoForm[] = []
+  for (const x of allNsTags(stanza, NS.FORMS, 'x')) {
+    if (x.getAttribute('type') !== 'result') continue
+    const fields: DiscoField[] = allNsTags(x, NS.FORMS, 'field').map((f) => ({
+      var: f.getAttribute('var') ?? '',
+      values: allNsTags(f, NS.FORMS, 'value').map((v) => v.textContent ?? '')
+    }))
+    const formType = fields.find((f) => f.var === 'FORM_TYPE')?.values[0]
+    if (formType === undefined) continue
+    forms.push({ formType, fields: fields.filter((f) => f.var !== 'FORM_TYPE') })
+  }
+  return { identities, features, forms }
+}
+
+// XEP-0030 disco#items result.
+export function parseDiscoItems(stanza: Element): DiscoItem[] {
+  const items: DiscoItem[] = []
+  for (const el of allNsTags(stanza, NS.DISCO_ITEMS, 'item')) {
+    const jid = el.getAttribute('jid')
+    if (!jid) continue
+    items.push({
+      jid,
+      node: el.getAttribute('node') ?? undefined,
+      name: el.getAttribute('name') ?? undefined
+    })
+  }
+  return items
 }
 
 // Does a disco#info result advertise the given feature var.
@@ -614,6 +736,58 @@ export function parseVcardPhoto(stanza: Element): string | undefined {
   const type = photo ? firstTagText(photo, 'TYPE') : null
   const binval = photo ? firstTagText(photo, 'BINVAL') : null
   return type && binval ? `data:${type};base64,${binval.trim()}` : undefined
+}
+
+// A pubsub event notification (XEP-0163) on a message stanza: the node
+// that changed plus the published item elements and retracted item ids.
+export function parsePepEvent(
+  stanza: Element
+): { node: string; items: Element[]; retracted: string[] } | null {
+  const event = firstNsTag(stanza, NS.PUBSUB_EVENT, 'event')
+  const items = event ? firstNsTag(event, NS.PUBSUB_EVENT, 'items') : null
+  if (!items) return null
+  return {
+    node: items.getAttribute('node') ?? '',
+    items: allTags(items, 'item'),
+    retracted: allNsTags(items, NS.PUBSUB_EVENT, 'retract').map((r) => r.getAttribute('id') ?? '')
+  }
+}
+
+// One pubsub item element carrying a bookmark payload. The item id is the
+// bookmarked jid; the conference element may also carry a jid attribute
+// in older payloads so both are accepted.
+export function parseBookmark(item: Element): Bookmark | null {
+  const id = item.getAttribute('id') ?? ''
+  const conference = firstNsTag(item, NS.BOOKMARKS, 'conference')
+  if (conference) {
+    return {
+      jid: id || (conference.getAttribute('jid') ?? ''),
+      kind: 'conference',
+      name: conference.getAttribute('name') ?? undefined,
+      autojoin: conference.getAttribute('autojoin') === 'true',
+      nick: firstNsTag(conference, NS.BOOKMARKS, 'nick')?.textContent ?? undefined,
+      password: firstNsTag(conference, NS.BOOKMARKS, 'password')?.textContent ?? undefined
+    }
+  }
+  const contact = firstNsTag(item, NS.BOOKMARKS, 'contact')
+  if (contact) {
+    return {
+      jid: id || (contact.getAttribute('jid') ?? ''),
+      kind: 'contact',
+      name: contact.getAttribute('name') ?? undefined
+    }
+  }
+  return null
+}
+
+// All bookmark items under an items container (pubsub result or event).
+export function parseBookmarkItems(items: Element): Bookmark[] {
+  const out: Bookmark[] = []
+  for (const item of allTags(items, 'item')) {
+    const bookmark = parseBookmark(item)
+    if (bookmark?.jid) out.push(bookmark)
+  }
+  return out
 }
 
 // The iq result closing a MAM query carries a <fin> with the rsm set

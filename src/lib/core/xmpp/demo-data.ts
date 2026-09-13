@@ -13,7 +13,7 @@ import {
 } from '$lib/core/omemo'
 
 import type { ConnectionEvents } from './connection'
-import type { DataForm, IncomingMessage, MucOccupant, RosterItem } from './stanzas'
+import type { Bookmark, DataForm, IncomingMessage, MucOccupant, RosterItem } from './stanzas'
 
 type DemoEmitter = Emitter<ConnectionEvents>
 
@@ -295,6 +295,16 @@ function isRoomTarget(to: string, type: 'chat' | 'groupchat'): boolean {
 
 export function demoRosterItems(): RosterItem[] {
   return CONTACTS.map((c) => ({ jid: c.jid, name: c.name, subscription: 'both', groups: [] }))
+}
+
+// seeded PEP bookmarks: the lobby room autojoins, a second room sits in
+// the list waiting, and one contact bookmark shows the contact kind
+export function demoBookmarks(): Bookmark[] {
+  return [
+    { jid: ROOM, kind: 'conference', name: 'Badinage lobby', autojoin: true, nick: 'you' },
+    { jid: 'random@conference.badinage.local', kind: 'conference', name: 'Random' },
+    { jid: 'aria@badinage.local', kind: 'contact', name: 'Aria' }
+  ]
 }
 
 // the occupants a joined room pretends to have: our own self presence

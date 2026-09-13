@@ -95,9 +95,6 @@ export interface Conversation {
   peerState?: ChatState | undefined
   // muc only
   subject?: string | undefined
-  // room vCard photo as a data URI, fetched lazily when the room opens
-  avatar?: string | undefined
-  avatarFetched?: boolean | undefined
   occupants: SvelteMap<string, RoomOccupant>
   // muc: nicks currently composing, kept separate from peerState so
   // several members can show as typing at once

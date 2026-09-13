@@ -5,7 +5,6 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import type { Conversation, RoomOccupant } from '$lib/state/chats.svelte'
-  import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
   import { Input } from '$lib/ui/primitives/input'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
   import { cn } from '$lib/utils/cn'
@@ -13,6 +12,7 @@
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
+  import PeerAvatar from './peer-avatar.svelte'
 
   let { conversation }: { conversation: Conversation } = $props()
 
@@ -103,11 +103,11 @@
         {#each group.members as occupant (occupant.nick)}
           <li class="group hover:bg-accent flex items-center gap-2.5 rounded-md px-2 py-1.5">
             <span class="relative shrink-0">
-              <Avatar class="size-7">
-                <AvatarFallback class="text-[0.65rem]">
-                  {occupant.nick.slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
+              <PeerAvatar
+                jid={`${conversation.peerJid}/${occupant.nick}`}
+                fallback={occupant.nick.slice(0, 2)}
+                class="size-7 text-[0.65rem]"
+              />
               <PresenceDot
                 presence={occupant.presence}
                 class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"

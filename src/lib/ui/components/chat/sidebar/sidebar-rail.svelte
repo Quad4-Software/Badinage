@@ -5,10 +5,10 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
-  import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
   import { Button } from '$lib/ui/primitives/button'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
+  import PeerAvatar from '../peer-avatar.svelte'
   import PresenceDot from '../../presence/presence-dot.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
 
@@ -74,11 +74,12 @@
           onclick={() => open(conversation.peerJid)}
         >
           <span class="relative block">
-            <Avatar
+            <PeerAvatar
+              jid={conversation.peerJid}
+              fallback={name.slice(0, 2)}
+              force
               class={cn('size-9', app.activePeer === conversation.peerJid && 'ring-primary ring-2')}
-            >
-              <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>
-            </Avatar>
+            />
             {#if conversation.unread > 0}
               <span
                 class="bg-primary text-primary-foreground absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[0.6rem]"
@@ -98,12 +99,12 @@
           onclick={() => open(room.peerJid)}
         >
           <span class="relative block">
-            <Avatar class={cn('size-9', app.activePeer === room.peerJid && 'ring-primary ring-2')}>
-              {#if room.avatar}
-                <AvatarImage src={room.avatar} alt="" />
-              {/if}
-              <AvatarFallback>#{name.slice(0, 1)}</AvatarFallback>
-            </Avatar>
+            <PeerAvatar
+              jid={room.peerJid}
+              fallback={`#${name.slice(0, 1)}`}
+              force
+              class={cn('size-9', app.activePeer === room.peerJid && 'ring-primary ring-2')}
+            />
             {#if room.unread > 0}
               <span
                 class="bg-primary text-primary-foreground absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[0.6rem]"
@@ -123,9 +124,11 @@
           onclick={() => open(contact.jid)}
         >
           <span class="relative block">
-            <Avatar class={cn('size-9', app.activePeer === contact.jid && 'ring-primary ring-2')}>
-              <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>
-            </Avatar>
+            <PeerAvatar
+              jid={contact.jid}
+              fallback={name.slice(0, 2)}
+              class={cn('size-9', app.activePeer === contact.jid && 'ring-primary ring-2')}
+            />
             <PresenceDot
               presence={contact.presence}
               class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"

@@ -90,6 +90,15 @@
     return message.nick ?? parseJid(message.peerJid).local ?? message.peerJid
   }
 
+  // the address an avatar is fetched under: the occupant room/nick key in
+  // a room, the peer bare jid in a dm
+  function avatarJid(message: ChatMessage): string {
+    if (conversation.kind === 'muc') {
+      return message.nick ? `${conversation.peerJid}/${message.nick}` : ''
+    }
+    return conversation.peerJid
+  }
+
   function loadOlder() {
     const account = accounts.active
     if (!account || !viewport) return
@@ -177,6 +186,8 @@
           showNick={grouped}
           showAvatar={grouped}
           avatarName={avatarName(message)}
+          avatarJid={avatarJid(message)}
+          avatarForce={conversation.kind === 'dm'}
           selfJid={self}
           {senderLabel}
           {onQuoteClick}

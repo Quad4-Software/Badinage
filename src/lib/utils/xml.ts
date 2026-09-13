@@ -23,6 +23,14 @@ export function allNsTags(el: Element, ns: string, local: string): Element[] {
   return out
 }
 
+// all descendants matching a local name in any namespace
+export function allTags(el: Element, local: string): Element[] {
+  const found = el.getElementsByTagName(local)
+  const out: Element[] = []
+  for (let i = 0; i < found.length; i++) out.push(found.item(i) as Element)
+  return out
+}
+
 // text content of the first descendant matching a local name
 export function firstTagText(el: Element, local: string): string | null {
   return firstTag(el, local)?.textContent ?? null
@@ -39,6 +47,16 @@ export function childElements(el: Element): Element[] {
     if (node.nodeType === 1) out.push(node as Element)
   }
   return out
+}
+
+// escape a string for use as xml text content or a double-quoted
+// attribute value; used when serializing payloads to raw xml strings
+export function escapeXml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
 }
 
 // DOM Elements serialize via outerHTML; under xmldom toString does the
