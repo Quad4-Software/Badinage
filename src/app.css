@@ -72,22 +72,6 @@
   --auth-tile: color-mix(in oklab, var(--foreground) 7%, transparent);
 }
 
-:root[data-accent] {
-  --primary: oklch(0.55 0.19 var(--accent-h));
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.55 0.19 var(--accent-h));
-  --sidebar-primary: oklch(0.55 0.19 var(--accent-h));
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-}
-
-.dark[data-accent] {
-  --primary: oklch(0.74 0.15 var(--accent-h));
-  --primary-foreground: oklch(0.2 0.01 285.885);
-  --ring: oklch(0.74 0.15 var(--accent-h));
-  --sidebar-primary: oklch(0.74 0.15 var(--accent-h));
-  --sidebar-primary-foreground: oklch(0.2 0.01 285.885);
-}
-
 /* Density scale: comfortable is the default, :root[data-density='compact']
    tightens it. Spacing shrinks faster than type so compact stays readable
    and interactive rows keep their minimum target size. Multipliers are

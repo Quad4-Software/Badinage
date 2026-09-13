@@ -2,6 +2,7 @@ import { PersistedState } from 'runed'
 
 import { globalKey } from '$lib/core/storage/keys'
 import { setTelemetryEnabled } from '$lib/core/telemetry'
+import { buildBackup, parseBackup, type ParseResult } from '$lib/utils/backup/settings-backup'
 import type { Density } from '$lib/utils/density'
 import { bareJid } from '$lib/utils/jid'
 
@@ -83,6 +84,10 @@ interface Settings {
   // flip presence to away after IDLE_AWAY_MS without input, and back on
   // the next keystroke or pointer event
   autoAway: boolean
+  // named palette preset; 'default' keeps the stylesheet tokens
+  theme: string
+  // settings section ids the user collapsed; persists across sessions
+  collapsedSections: string[]
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -103,7 +108,9 @@ const DEFAULT_SETTINGS: Settings = {
   allowAttention: true,
   mapPreviews: false,
   xmppLinkHandler: false,
-  autoAway: true
+  autoAway: true,
+  theme: 'default',
+  collapsedSections: []
 }
 
 class SettingsStore {
@@ -151,6 +158,41 @@ class SettingsStore {
     this.persisted.current = { ...this.persisted.current, [key]: value }
     // keep the telemetry opt-out in sync with the toggle
     if (key === 'crashReporting') setTelemetryEnabled(value === true)
+  }
+
+  toggleCollapsed(id: string): void {
+    const list = this.current.collapsedSections
+    this.set('collapsedSections', list.includes(id) ? list.filter((s) => s !== id) : [...list, id])
+  }
+
+  resetToDefaults(): void {
+    // fresh nested objects so the defaults blob is never aliased
+    this.persisted.current = {
+      ...DEFAULT_SETTINGS,
+      keybindings: { ...DEFAULT_KEYBINDINGS },
+      accountOrder: [],
+      accountMeta: {},
+      collapsedSections: []
+    }
+    setTelemetryEnabled(DEFAULT_SETTINGS.crashReporting)
+  }
+
+  exportBackup(mode?: string): string {
+    return buildBackup({ ...this.current }, mode)
+  }
+
+  // applies a validated backup file; returns the parse result so the
+  // caller can toast success, partial imports, or failure
+  importBackup(text: string): ParseResult {
+    const defaults: Record<string, unknown> = { ...DEFAULT_SETTINGS }
+    const result = parseBackup(text, defaults, KEYBINDING_ACTIONS)
+    if (!result.ok) return result
+    const patch = result.backup.settings
+    this.persisted.current = { ...this.current, ...patch }
+    if (typeof patch.crashReporting === 'boolean') {
+      setTelemetryEnabled(patch.crashReporting)
+    }
+    return result
   }
 }
 

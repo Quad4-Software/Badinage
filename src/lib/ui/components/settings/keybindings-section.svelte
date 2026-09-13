@@ -77,7 +77,12 @@
 
 <svelte:window onkeydown={onCaptureKeydown} />
 
-<SettingSection id="keyboard" title={$LL.keyboard()} visible={items.length > 0}>
+<SettingSection
+  id="keyboard"
+  title={$LL.keyboard()}
+  forceOpen={q !== ''}
+  visible={items.length > 0}
+>
   <p class="text-muted-foreground text-xs">{$LL.keyboardHint()}</p>
   <ul class="flex flex-col">
     {#each items as action (action)}

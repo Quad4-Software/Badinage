@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ModeWatcher } from 'mode-watcher'
+  import { ModeWatcher, mode } from 'mode-watcher'
   import { onMount } from 'svelte'
   import { SvelteURL } from 'svelte/reactivity'
   import { toast } from 'svelte-sonner'
@@ -38,17 +38,20 @@
   import { watchIdleAway } from '$lib/ui/idle-away'
   import { normalizeDensity } from '$lib/utils/density'
   import { updatePageMeta } from '$lib/utils/meta'
+  import { MANAGED_VARS, themeVars } from '$lib/utils/themes/presets'
 
+  // theme presets and the custom accent hue resolve to concrete custom
+  // properties on the root element; clearing the managed set first stops
+  // stale preset tokens leaking into the default theme
   $effect(() => {
-    const hue = settings.current.accentHue
-    const root = document.documentElement
-    if (hue === null) {
-      root.removeAttribute('data-accent')
-      root.style.removeProperty('--accent-h')
-    } else {
-      root.dataset.accent = 'custom'
-      root.style.setProperty('--accent-h', String(hue))
-    }
+    const vars = themeVars(
+      settings.current.theme,
+      mode.current === 'dark' ? 'dark' : 'light',
+      settings.current.accentHue
+    )
+    const style = document.documentElement.style
+    for (const cssVar of Object.values(MANAGED_VARS)) style.removeProperty(cssVar)
+    for (const [cssVar, value] of Object.entries(vars)) style.setProperty(cssVar, value)
   })
 
   // density lands as an attribute so the css tokens in app.css can scale

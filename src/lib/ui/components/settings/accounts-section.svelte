@@ -10,6 +10,7 @@
   import { Switch } from '$lib/ui/primitives/switch'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
+  import PeerAvatar from '../chat/peer-avatar.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
   import { matchesQuery } from './match'
   import { settingsSearch } from './search-state.svelte'
@@ -46,19 +47,27 @@
   })
 </script>
 
-<SettingSection id="accounts" title={$LL.accounts()} visible={hits > 0}>
+<SettingSection id="accounts" title={$LL.accounts()} forceOpen={q !== ''} visible={hits > 0}>
   <ul class="flex flex-col">
     {#each list as account (account.jid)}
       {@const meta = settings.metaFor(account.jid)}
       <li class="flex items-center gap-2.5 py-1.5">
         <button
           type="button"
-          class="ring-primary ring-offset-background size-6 shrink-0 cursor-pointer rounded-full"
-          style={`background: oklch(0.65 0.17 ${effectiveHue(meta, account.jid)})`}
+          class="ring-offset-background shrink-0 cursor-pointer rounded-full ring-2 ring-offset-1"
+          style={`--tw-ring-color: oklch(0.65 0.17 ${effectiveHue(meta, account.jid)})`}
           aria-label={$LL.accountColor({ jid: account.jid })}
           title={$LL.accountColor({ jid: account.jid })}
           onclick={() => settings.setAccountMeta(account.jid, { hue: nextAccountHue(meta.hue) })}
-        ></button>
+        >
+          <PeerAvatar
+            {account}
+            jid={account.jid}
+            fallback={account.jid.slice(0, 2)}
+            force
+            class="size-6"
+          />
+        </button>
         <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
         <span class="min-w-0 flex-1">
           <span class="block truncate text-sm">{account.jid}</span>

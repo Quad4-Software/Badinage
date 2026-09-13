@@ -51,7 +51,7 @@
   }
 </script>
 
-<SettingSection id="blocked" title={$LL.blockedContacts()} {visible}>
+<SettingSection id="blocked" title={$LL.blockedContacts()} forceOpen={q !== ''} {visible}>
   {#if showForm}
     <form
       class="flex items-center gap-2"

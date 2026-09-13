@@ -374,13 +374,15 @@ type RootTranslation = {
 	 */
 	noSettingsResults: string
 	/**
-	 * E​x​p​a​n​d​ ​s​e​c​t​i​o​n
+	 * E​x​p​a​n​d​ ​{​t​i​t​l​e​}
+	 * @param {string} title
 	 */
-	expandSection: string
+	expandSection: RequiredParams<'title'>
 	/**
-	 * C​o​l​l​a​p​s​e​ ​s​e​c​t​i​o​n
+	 * C​o​l​l​a​p​s​e​ ​{​t​i​t​l​e​}
+	 * @param {string} title
 	 */
-	collapseSection: string
+	collapseSection: RequiredParams<'title'>
 	/**
 	 * R​e​p​l​y
 	 */
@@ -671,6 +673,67 @@ type RootTranslation = {
 	 * C​u​s​t​o​m​ ​h​u​e
 	 */
 	accentHue: string
+	/**
+	 * C​o​l​o​r​ ​s​c​h​e​m​e
+	 */
+	themePreset: string
+	/**
+	 * D​e​f​a​u​l​t
+	 */
+	presetDefault: string
+	/**
+	 * S​l​a​t​e
+	 */
+	presetSlate: string
+	/**
+	 * O​c​e​a​n
+	 */
+	presetOcean: string
+	/**
+	 * F​o​r​e​s​t
+	 */
+	presetForest: string
+	/**
+	 * S​u​n​s​e​t
+	 */
+	presetSunset: string
+	/**
+	 * R​o​s​e
+	 */
+	presetRose: string
+	/**
+	 * M​i​d​n​i​g​h​t
+	 */
+	presetMidnight: string
+	/**
+	 * B​a​c​k​u​p
+	 */
+	backupSettings: string
+	/**
+	 * E​x​p​o​r​t
+	 */
+	exportSettings: string
+	/**
+	 * I​m​p​o​r​t
+	 */
+	importSettings: string
+	/**
+	 * S​e​t​t​i​n​g​s​ ​e​x​p​o​r​t​e​d
+	 */
+	settingsExported: string
+	/**
+	 * S​e​t​t​i​n​g​s​ ​i​m​p​o​r​t​e​d
+	 */
+	settingsImported: string
+	/**
+	 * S​e​t​t​i​n​g​s​ ​i​m​p​o​r​t​e​d​,​ ​{​d​r​o​p​p​e​d​}​ ​i​n​v​a​l​i​d​ ​e​n​t​r​i​e​s​ ​s​k​i​p​p​e​d
+	 * @param {number} dropped
+	 */
+	settingsImportedPartial: RequiredParams<'dropped'>
+	/**
+	 * C​o​u​l​d​ ​n​o​t​ ​i​m​p​o​r​t​ ​t​h​a​t​ ​f​i​l​e
+	 */
+	settingsImportFailed: string
 	/**
 	 * D​e​n​s​i​t​y
 	 */
@@ -1300,6 +1363,22 @@ type RootTranslation = {
 	 */
 	dangerZone: string
 	/**
+	 * R​e​s​e​t​ ​s​e​t​t​i​n​g​s
+	 */
+	resetSettings: string
+	/**
+	 * R​e​s​t​o​r​e​ ​e​v​e​r​y​ ​p​r​e​f​e​r​e​n​c​e​ ​o​n​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​t​o​ ​i​t​s​ ​d​e​f​a​u​l​t
+	 */
+	resetSettingsHint: string
+	/**
+	 * R​e​s​e​t​ ​a​l​l​ ​s​e​t​t​i​n​g​s​?
+	 */
+	resetSettingsTitle: string
+	/**
+	 * T​h​e​m​e​,​ ​k​e​y​b​i​n​d​i​n​g​s​,​ ​n​o​t​i​f​i​c​a​t​i​o​n​s​ ​a​n​d​ ​e​v​e​r​y​ ​o​t​h​e​r​ ​p​r​e​f​e​r​e​n​c​e​ ​r​e​t​u​r​n​s​ ​t​o​ ​i​t​s​ ​d​e​f​a​u​l​t​.​ ​A​c​c​o​u​n​t​s​ ​a​n​d​ ​m​e​s​s​a​g​e​s​ ​a​r​e​ ​k​e​p​t​.
+	 */
+	resetSettingsDescription: string
+	/**
 	 * W​i​p​e​ ​l​o​c​a​l​ ​d​a​t​a
 	 */
 	wipeData: string
@@ -1917,13 +1996,13 @@ export type TranslationFunctions = {
 	 */
 	noSettingsResults: () => LocalizedString
 	/**
-	 * Expand section
+	 * Expand {title}
 	 */
-	expandSection: () => LocalizedString
+	expandSection: (arg: { title: string }) => LocalizedString
 	/**
-	 * Collapse section
+	 * Collapse {title}
 	 */
-	collapseSection: () => LocalizedString
+	collapseSection: (arg: { title: string }) => LocalizedString
 	/**
 	 * Reply
 	 */
@@ -2212,6 +2291,66 @@ export type TranslationFunctions = {
 	 * Custom hue
 	 */
 	accentHue: () => LocalizedString
+	/**
+	 * Color scheme
+	 */
+	themePreset: () => LocalizedString
+	/**
+	 * Default
+	 */
+	presetDefault: () => LocalizedString
+	/**
+	 * Slate
+	 */
+	presetSlate: () => LocalizedString
+	/**
+	 * Ocean
+	 */
+	presetOcean: () => LocalizedString
+	/**
+	 * Forest
+	 */
+	presetForest: () => LocalizedString
+	/**
+	 * Sunset
+	 */
+	presetSunset: () => LocalizedString
+	/**
+	 * Rose
+	 */
+	presetRose: () => LocalizedString
+	/**
+	 * Midnight
+	 */
+	presetMidnight: () => LocalizedString
+	/**
+	 * Backup
+	 */
+	backupSettings: () => LocalizedString
+	/**
+	 * Export
+	 */
+	exportSettings: () => LocalizedString
+	/**
+	 * Import
+	 */
+	importSettings: () => LocalizedString
+	/**
+	 * Settings exported
+	 */
+	settingsExported: () => LocalizedString
+	/**
+	 * Settings imported
+	 */
+	settingsImported: () => LocalizedString
+	/**
+	 * Settings imported, {dropped} invalid entries skipped
+	 */
+	settingsImportedPartial: (arg: { dropped: number }) => LocalizedString
+	/**
+	 * Could not import that file
+	 */
+	settingsImportFailed: () => LocalizedString
 	/**
 	 * Density
 	 */
@@ -2816,6 +2955,22 @@ export type TranslationFunctions = {
 	 * Danger zone
 	 */
 	dangerZone: () => LocalizedString
+	/**
+	 * Reset settings
+	 */
+	resetSettings: () => LocalizedString
+	/**
+	 * Restore every preference on this device to its default
+	 */
+	resetSettingsHint: () => LocalizedString
+	/**
+	 * Reset all settings?
+	 */
+	resetSettingsTitle: () => LocalizedString
+	/**
+	 * Theme, keybindings, notifications and every other preference returns to its default. Accounts and messages are kept.
+	 */
+	resetSettingsDescription: () => LocalizedString
 	/**
 	 * Wipe local data
 	 */

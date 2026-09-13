@@ -31,6 +31,9 @@
   const totalHits = $derived(Object.values(settingsSearch.hits).reduce((sum, n) => sum + n, 0))
 
   let viewport = $state<HTMLDivElement | null>(null)
+  // scrollspy: the nav highlights whichever section sits under the top
+  // edge; synced into the mobile select as its value
+  let activeId = $state('appearance')
 
   const navItems = $derived([
     { id: 'appearance', label: $LL.appearance() },
@@ -44,10 +47,37 @@
   ])
 
   function jump(id: string) {
+    activeId = id
     viewport
       ?.querySelector(`[data-section="${id}"]`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  // pick the last section whose top passed the viewport's top edge;
+  // raf-throttled so fast scrolls stay cheap
+  $effect(() => {
+    const el = viewport
+    if (!el) return
+    let frame = 0
+    const onScroll = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const sections = el.querySelectorAll('[data-section]')
+        let current = sections[0]?.getAttribute('data-section') ?? activeId
+        for (const section of sections) {
+          if (section.getBoundingClientRect().top - el.getBoundingClientRect().top <= 48) {
+            current = section.getAttribute('data-section') ?? current
+          }
+        }
+        activeId = current
+      })
+    }
+    el.addEventListener('scroll', onScroll)
+    return () => {
+      cancelAnimationFrame(frame)
+      el.removeEventListener('scroll', onScroll)
+    }
+  })
 
   // reset the search when the dialog reopens, and honor a deep link from
   // the command palette by scrolling to the requested section
@@ -87,6 +117,7 @@
       <select
         class="bg-background w-full rounded-md border px-2 py-1.5 text-sm"
         aria-label={$LL.settingsSections()}
+        value={activeId}
         onchange={(e) => jump((e.target as HTMLSelectElement).value)}
       >
         {#each navItems as item (item.id)}
@@ -101,9 +132,13 @@
         aria-label={$LL.settings()}
       >
         {#each navItems as item (item.id)}
+          {@const active = activeId === item.id}
           <button
             type="button"
-            class="hover:bg-accent cursor-pointer rounded-md px-2 py-1.5 text-left text-sm"
+            class="hover:bg-accent cursor-pointer rounded-md px-2 py-1.5 text-left text-sm {active
+              ? 'bg-accent font-medium'
+              : ''}"
+            aria-current={active ? 'true' : undefined}
             onclick={() => jump(item.id)}
           >
             {item.label}

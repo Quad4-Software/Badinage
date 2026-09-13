@@ -52,7 +52,7 @@
   })
 </script>
 
-<SettingSection id="privacy" title={$LL.privacy()} {visible}>
+<SettingSection id="privacy" title={$LL.privacy()} forceOpen={q !== ''} {visible}>
   {#each items as [key, label] (key)}
     <label class="flex items-center justify-between gap-4 text-sm">
       {label}

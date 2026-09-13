@@ -106,7 +106,7 @@
           : 'text-muted-foreground'
 </script>
 
-<SettingSection id="encryption" title={$LL.encryption()} {visible}>
+<SettingSection id="encryption" title={$LL.encryption()} forceOpen={q !== ''} {visible}>
   {#if account?.omemoError}
     <p role="alert" class="text-destructive text-xs">{account.omemoError}</p>
   {/if}

@@ -1,10 +1,11 @@
 <script lang="ts">
   import { MonitorCog, Moon, Sun } from '@lucide/svelte'
-  import { setMode, userPrefersMode } from 'mode-watcher'
+  import { mode, setMode, userPrefersMode } from 'mode-watcher'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { settings } from '$lib/state/settings.svelte'
   import { normalizeDensity, type Density } from '$lib/utils/density'
+  import { THEMES } from '$lib/utils/themes/palettes'
 
   import { matchesQuery } from './match'
   import { settingsSearch } from './search-state.svelte'
@@ -29,12 +30,48 @@
 
   let customHue = $state(settings.current.accentHue ?? 264)
 
-  type Row = 'theme' | 'accent' | 'density'
+  type Row = 'theme' | 'preset' | 'accent' | 'density'
+
+  // swatch dots preview background, primary and accent per current mode
+  const presets = $derived.by(() => {
+    const dark = mode.current === 'dark'
+    const named = THEMES.map((t) => {
+      const tokens = dark ? t.dark : t.light
+      return { id: t.id, swatches: [tokens.background, tokens.primary, tokens.accent] }
+    })
+    return [{ id: 'default', swatches: [] as string[] }, ...named]
+  })
+
+  const presetLabel = (id: string): string => {
+    switch (id) {
+      case 'slate':
+        return $LL.presetSlate()
+      case 'ocean':
+        return $LL.presetOcean()
+      case 'forest':
+        return $LL.presetForest()
+      case 'sunset':
+        return $LL.presetSunset()
+      case 'rose':
+        return $LL.presetRose()
+      case 'midnight':
+        return $LL.presetMidnight()
+      default:
+        return $LL.presetDefault()
+    }
+  }
 
   const rows = $derived(
     (
       [
         ['theme', $LL.theme(), 'light dark system mode color'],
+        [
+          'preset',
+          $LL.themePreset(),
+          'preset palette scheme colors colours',
+          $LL.presetDefault(),
+          ...THEMES.map((t) => presetLabel(t.id))
+        ],
         ['accent', $LL.accentColor(), 'color colour hue tint', $LL.accentHue()],
         ['density', $LL.density(), 'compact comfortable spacing size', $LL.densityCompact()]
       ] as [Row, string, ...string[]][]
@@ -49,7 +86,12 @@
   })
 </script>
 
-<SettingSection id="appearance" title={$LL.appearance()} visible={rows.length > 0}>
+<SettingSection
+  id="appearance"
+  title={$LL.appearance()}
+  forceOpen={q !== ''}
+  visible={rows.length > 0}
+>
   {#each rows as [row] (row)}
     {#if row === 'theme'}
       <div class="flex items-center justify-between gap-4 text-sm">
@@ -67,6 +109,34 @@
             >
               <Icon class="size-3.5" />
               {label}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {:else if row === 'preset'}
+      {@const activeTheme = settings.current.theme}
+      <div class="flex flex-col gap-2 text-sm">
+        <span>{$LL.themePreset()}</span>
+        <div role="radiogroup" aria-label={$LL.themePreset()} class="flex flex-wrap gap-1.5">
+          {#each presets as p (p.id)}
+            {@const selected = activeTheme === p.id}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              class="ring-offset-background flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs {selected
+                ? 'ring-primary ring-2 ring-offset-1'
+                : 'hover:bg-accent'}"
+              onclick={() => settings.set('theme', p.id)}
+            >
+              {#each p.swatches as swatch, i (i)}
+                <span
+                  class="size-3 rounded-full border border-black/10"
+                  style={`background: ${swatch}`}
+                  aria-hidden="true"
+                ></span>
+              {/each}
+              {presetLabel(p.id)}
             </button>
           {/each}
         </div>

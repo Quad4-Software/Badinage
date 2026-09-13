@@ -1,7 +1,11 @@
 <script lang="ts">
+  import { userPrefersMode } from 'mode-watcher'
+
   import LL from '$lib/i18n/i18n-svelte'
   import { settings } from '$lib/state/settings.svelte'
   import { notifyPermission, requestNotifyPermission } from '$lib/ui/notify'
+  import { Button } from '$lib/ui/primitives/button'
+  import { toast } from '$lib/ui/primitives/sonner'
   import { Switch } from '$lib/ui/primitives/switch'
 
   import { matchesQuery } from './match'
@@ -14,6 +18,11 @@
 
   // tracked so the denied hint appears the moment the browser refuses
   let permission = $state(notifyPermission())
+  let importEl = $state<HTMLInputElement | null>(null)
+
+  const showBackup = $derived(
+    matchesQuery(q, $LL.backupSettings(), $LL.exportSettings(), $LL.importSettings(), 'json file')
+  )
 
   const items = $derived(
     (
@@ -27,7 +36,7 @@
   )
 
   $effect(() => {
-    settingsSearch.hits.general = items.length
+    settingsSearch.hits.general = items.length + (showBackup ? 1 : 0)
     return () => {
       delete settingsSearch.hits.general
     }
@@ -54,9 +63,47 @@
       }
     }
   }
+
+  function exportSettings() {
+    const blob = new Blob([settings.exportBackup(userPrefersMode.current)], {
+      type: 'application/json'
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'badinage-settings.json'
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success($LL.settingsExported())
+  }
+
+  async function importSettings(file: File | undefined) {
+    if (!file) return
+    // a settings file is a few kilobytes; anything bigger is not ours
+    if (file.size > 256 * 1024) {
+      toast.error($LL.settingsImportFailed())
+      return
+    }
+    const result = settings.importBackup(await file.text())
+    if (!result.ok) {
+      toast.error($LL.settingsImportFailed())
+      return
+    }
+    if (result.backup.mode) userPrefersMode.current = result.backup.mode
+    toast.success(
+      result.backup.dropped > 0
+        ? $LL.settingsImportedPartial({ dropped: result.backup.dropped })
+        : $LL.settingsImported()
+    )
+  }
 </script>
 
-<SettingSection id="general" title={$LL.general()} visible={items.length > 0}>
+<SettingSection
+  id="general"
+  title={$LL.general()}
+  forceOpen={q !== ''}
+  visible={items.length > 0 || showBackup}
+>
   {#each items as [key, label] (key)}
     <div>
       <label class="flex items-center justify-between gap-4 text-sm">
@@ -68,4 +115,29 @@
       {/if}
     </div>
   {/each}
+  {#if showBackup}
+    <div class="flex items-center justify-between gap-4 text-sm">
+      <span>{$LL.backupSettings()}</span>
+      <span class="flex gap-1.5">
+        <Button variant="outline" size="sm" onclick={exportSettings}>
+          {$LL.exportSettings()}
+        </Button>
+        <Button variant="outline" size="sm" onclick={() => importEl?.click()}>
+          {$LL.importSettings()}
+        </Button>
+      </span>
+      <input
+        bind:this={importEl}
+        type="file"
+        accept="application/json,.json"
+        class="hidden"
+        aria-label={$LL.importSettings()}
+        onchange={(e) => {
+          const input = e.currentTarget
+          void importSettings(input.files?.[0])
+          input.value = ''
+        }}
+      />
+    </div>
+  {/if}
 </SettingSection>

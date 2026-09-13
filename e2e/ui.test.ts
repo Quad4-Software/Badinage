@@ -93,4 +93,83 @@ test.describe('settings dialog', () => {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toBeHidden()
   })
+
+  test('theme preset applies root tokens and persists', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('radio', { name: 'Ocean' }).click()
+    const primary = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue('--primary')
+    )
+    expect(primary).toContain('oklch')
+
+    await page.reload()
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--primary')))
+      .toContain('oklch')
+  })
+
+  test('a collapsed section hides its rows and stays collapsed', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Color scheme')).toBeVisible()
+    await dialog.getByRole('button', { name: 'Collapse Appearance' }).click()
+    await expect(dialog.getByText('Color scheme')).toBeHidden()
+
+    await page.reload()
+    await page.keyboard.press('Control+,')
+    await expect(page.getByRole('dialog').getByText('Color scheme')).toBeHidden()
+    // reset for the next test
+    await page.getByRole('dialog').getByRole('button', { name: 'Expand Appearance' }).click()
+  })
+
+  test('reset settings restores defaults', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('radio', { name: 'Ocean' }).click()
+    await dialog.getByRole('button', { name: 'Reset settings' }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Reset settings' }).click()
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--primary')))
+      .toBe('')
+  })
+
+  test('backup export and import round-trips settings', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('radio', { name: 'Ocean' }).click()
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      dialog.getByRole('button', { name: 'Export' }).click()
+    ])
+    const path = await download.path()
+    expect(path).toBeTruthy()
+
+    await dialog.getByRole('radio', { name: 'Default', exact: true }).click()
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--primary')))
+      .toBe('')
+
+    await dialog.locator('input[type="file"]').setInputFiles(path ?? '')
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--primary')))
+      .toContain('oklch')
+  })
+
+  test('import rejects a file that is not a backup', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Control+,')
+    const dialog = page.getByRole('dialog')
+    await dialog.locator('input[type="file"]').setInputFiles({
+      name: 'junk.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{"not":"ours"}')
+    })
+    await expect(page.getByText('Could not import that file')).toBeVisible()
+  })
 })
