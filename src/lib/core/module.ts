@@ -1,7 +1,16 @@
-import type { Account } from '$lib/state/accounts.svelte'
+import type { ChatConnection } from '$lib/core/xmpp/connection'
+
+// The surface a module sees of its owning account. core/ must not import
+// the state-layer Account class (dependencies point inward only), so
+// modules program against this minimal interface instead. Account in
+// src/lib/state/accounts.svelte.ts satisfies it structurally.
+interface ModuleAccount {
+  initOmemo(): Promise<void>
+}
 
 export interface ModuleContext {
-  account: Account
+  account: ModuleAccount
+  connection: ChatConnection
 }
 
 export interface Module {
