@@ -55,6 +55,25 @@
     submitting = false
   }
 
+  // XEP-0493: probe the server for OAUTHBEARER, then hand the browser
+  // to the authorization endpoint. The callback resumes in App.svelte.
+  async function startSso() {
+    error = ''
+    submitting = true
+    const result = await accounts.startOAuth(jid, {
+      websocketUrl: isWebSocketUrl(server) ? server : undefined,
+      redirectUri: `${window.location.origin}/`,
+      remember,
+      untrusted
+    })
+    if (result.ok) {
+      window.location.assign(result.url)
+      return
+    }
+    submitting = false
+    error = result.reason === 'unsupported' ? $LL.oauthUnsupported() : $LL.oauthFailed()
+  }
+
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     error = ''
@@ -226,6 +245,23 @@
     >
       {mode === 'login' ? $LL.createAccount() : $LL.signIn()}
     </Button>
+
+    {#if mode === 'login'}
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full"
+        disabled={submitting || !jidValid || cooldownLeft > 0}
+        onclick={startSso}
+      >
+        {#if submitting}
+          <LoaderCircle class="size-4 animate-spin" />
+          {$LL.ssoWorking()}
+        {:else}
+          {$LL.signInSso()}
+        {/if}
+      </Button>
+    {/if}
 
     {#if !embedded}
       <div class="border-t pt-4">

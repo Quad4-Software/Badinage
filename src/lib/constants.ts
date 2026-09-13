@@ -111,3 +111,12 @@ export const OMEMO_RETRY_QUEUE_MAX = 50
 export const AESGCM_KEY_BYTES = 32
 export const AESGCM_IV_BYTES = 12
 export const AESGCM_TAG_BYTES = 16
+
+// XEP-0493 oauth client login: bounds on the empty-token sasl probe and
+// on the http round trips to the authorization server
+export const OAUTH_PROBE_TIMEOUT_MS = 15_000
+export const OAUTH_HTTP_TIMEOUT_MS = 15_000
+// PKCE verifier length in bytes (43 chars base64url after encoding)
+export const OAUTH_PKCE_BYTES = 32
+// oauth 'state' nonce length in bytes
+export const OAUTH_STATE_BYTES = 16

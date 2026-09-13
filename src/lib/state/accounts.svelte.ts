@@ -1,6 +1,26 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
 import { DEFAULT_RESOURCE } from '$lib/constants'
+import {
+  buildAuthorizeUrl,
+  exchangeCode,
+  fetchOAuthMetadata,
+  OAuthError,
+  pickScopes,
+  registerOAuthClient,
+  refreshAccessToken
+} from '$lib/core/oauth/client'
+import { oauthState, pkcePair } from '$lib/core/oauth/pkce'
+import {
+  clearOAuthTokens,
+  loadOAuthClientId,
+  loadOAuthTokens,
+  saveOAuthClientId,
+  saveOAuthTokens,
+  savePendingFlow,
+  takePendingFlow
+} from '$lib/core/oauth/session'
+import { probeOauthSupport } from '$lib/core/xmpp/features/oauth'
 import { InMemoryOmemoStore, omemoModule, OmemoService } from '$lib/core/omemo'
 import { InMemoryTrustStore } from '$lib/core/omemo/trust'
 import { ModuleRegistry } from '$lib/core/module'
@@ -90,12 +110,17 @@ export class Account {
   private avatarRequested = new Set<string>()
   // eslint-disable-next-line svelte/prefer-svelte-reactivity
   private autoJoined = new Set<string>()
+  // set once an expired oauth token has been refreshed this session so a
+  // bad token cannot loop authfail -> refresh -> authfail
+  oauthRefreshed = false
 
   constructor(readonly options: AccountOptions) {
     this.jid = options.jid
     this.connection = options.demo
       ? new DemoConnection()
-      : new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '')
+      : new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '', undefined, {
+          oauth: options.oauth
+        })
     this.registry.register(omemoModule)
     this.bind()
   }
@@ -364,6 +389,12 @@ export class Account {
         this.lastError = status
         // every failure escalates the session-scoped login backoff
         recordLoginFailure(this.jid)
+        // an expired oauth access token looks like authfail; one refresh
+        // attempt per session keeps the user off the redirect treadmill
+        if (status === 'authfail' && this.options.oauth && !this.oauthRefreshed) {
+          this.oauthRefreshed = true
+          void accounts.refreshOAuth(this)
+        }
       } else if (status === 'connecting' || status === 'connected') {
         this.lastError = null
       }
@@ -514,6 +545,127 @@ class AccountsStore {
     }
   }
 
+  // XEP-0493 oauth login, phase one: probe the xmpp server for the
+  // OAUTHBEARER mechanism, harvest the authorization server discovery
+  // url from the rfc 7628 error reply, register the client if needed and
+  // hand back the authorize url for the ui to redirect to. The pending
+  // flow is stashed in sessionStorage so the callback can pick it up.
+  async startOAuth(
+    jid: string,
+    options: {
+      websocketUrl?: string | undefined
+      redirectUri: string
+      remember?: boolean | undefined
+      untrusted?: boolean | undefined
+    }
+  ): Promise<{ ok: true; url: string } | { ok: false; reason: string }> {
+    try {
+      let websocketUrl = options.websocketUrl
+      if (!websocketUrl) {
+        websocketUrl = (await discoverEndpoints(jidDomain(jid))).websocket
+      }
+      if (!websocketUrl) return { ok: false, reason: 'unreachable' }
+      const probe = await probeOauthSupport(websocketUrl, jid)
+      if (!probe.supported) return { ok: false, reason: 'unsupported' }
+      if (!probe.discoveryUrl) return { ok: false, reason: 'no-discovery' }
+      const metadata = await fetchOAuthMetadata(probe.discoveryUrl)
+      let clientId = loadOAuthClientId(metadata.issuer)
+      if (!clientId) {
+        clientId = await registerOAuthClient(metadata, options.redirectUri, 'Badinage')
+        if (!clientId) return { ok: false, reason: 'registration' }
+        saveOAuthClientId(metadata.issuer, clientId)
+      }
+      const { verifier, challenge } = await pkcePair()
+      const state = oauthState()
+      savePendingFlow({
+        jid: bareJid(jid),
+        websocketUrl,
+        discoveryUrl: probe.discoveryUrl,
+        issuer: metadata.issuer,
+        clientId,
+        state,
+        verifier,
+        redirectUri: options.redirectUri,
+        remember: options.remember,
+        untrusted: options.untrusted
+      })
+      const url = buildAuthorizeUrl(metadata, {
+        clientId,
+        redirectUri: options.redirectUri,
+        state,
+        challenge,
+        scopes: pickScopes(metadata),
+        loginHint: jid
+      })
+      return { ok: true, url }
+    } catch (err) {
+      return { ok: false, reason: err instanceof OAuthError ? err.code : 'error' }
+    }
+  }
+
+  // XEP-0493 oauth login, phase two: the provider redirected back with a
+  // code. Verify the state nonce, swap the code for tokens at the
+  // recorded endpoints, then connect with the access token pinned to
+  // the OAUTHBEARER mechanism.
+  async completeOAuth(
+    code: string,
+    state: string
+  ): Promise<{ ok: true; account: Account } | { ok: false; reason: string }> {
+    const flow = takePendingFlow()
+    if (!flow || flow.state !== state) return { ok: false, reason: 'state' }
+    try {
+      const metadata = await fetchOAuthMetadata(flow.discoveryUrl)
+      const tokens = await exchangeCode(metadata, {
+        code,
+        verifier: flow.verifier,
+        clientId: flow.clientId,
+        redirectUri: flow.redirectUri
+      })
+      const account = await this.add({
+        jid: flow.jid,
+        password: tokens.accessToken,
+        websocketUrl: flow.websocketUrl,
+        oauth: true,
+        remember: flow.remember,
+        untrusted: flow.untrusted
+      })
+      saveOAuthTokens(flow.jid, {
+        ...tokens,
+        discoveryUrl: flow.discoveryUrl,
+        clientId: flow.clientId
+      })
+      return { ok: true, account }
+    } catch (err) {
+      return { ok: false, reason: err instanceof OAuthError ? err.code : 'error' }
+    }
+  }
+
+  // oauth accounts fail auth the day the access token expires; with a
+  // refresh token we mint a new one and reconnect once without sending
+  // the user back through the browser flow
+  async refreshOAuth(account: Account): Promise<boolean> {
+    const stored = loadOAuthTokens(account.jid)
+    if (!stored?.refreshToken || !account.options.oauth) return false
+    try {
+      const metadata = await fetchOAuthMetadata(stored.discoveryUrl)
+      const tokens = await refreshAccessToken(metadata, {
+        refreshToken: stored.refreshToken,
+        clientId: stored.clientId
+      })
+      saveOAuthTokens(account.jid, {
+        ...tokens,
+        discoveryUrl: stored.discoveryUrl,
+        clientId: stored.clientId
+      })
+      account.options.password = tokens.accessToken
+      account.connection.connect(account.jid, tokens.accessToken)
+      return true
+    } catch {
+      clearOAuthTokens(account.jid)
+      return false
+    }
+  }
+
   remove(jid: string): void {
     const account = this.list.find((a) => a.jid === jid)
     if (!account) return
@@ -530,6 +682,7 @@ class AccountsStore {
       account.disconnect()
       this.list = this.list.filter((a) => a !== account)
       clearSession(account.jid)
+      clearOAuthTokens(account.jid)
       if (this.activeJid === account.jid) this.activeJid = this.list[0]?.jid ?? null
       const order = settings.current.accountOrder
       if (order.includes(account.jid)) {

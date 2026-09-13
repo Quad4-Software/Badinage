@@ -6,7 +6,7 @@ Status: done | partial | planned | deferred
 | ------------- | -------------------------- | -------- | -------------------------------------------------------------- |
 | RFC 6120/6121 | Core, roster, presence     | done     | connect, roster fetch/push, presence broadcast + subscription  |
 | RFC 7395      | WebSocket transport        | done     | via strophe.js                                                 |
-| RFC 7628      | SASL OAUTHBEARER           | planned  | token login for OAuth/OIDC (PocketID, Keycloak) servers        |
+| RFC 7628      | SASL OAUTHBEARER           | done     | token login for OAuth/OIDC (PocketID, Keycloak) servers        |
 | XEP-0124/0206 | BOSH                       | partial  | supported via strophe.js, untested                             |
 | XEP-0156      | Alt connection discovery   | partial  | host-meta XML fetch                                            |
 | XEP-0487      | host-meta.json             | partial  | discovery.ts reads JRD first                                   |
@@ -53,4 +53,4 @@ Status: done | partial | planned | deferred
 | XEP-0454      | OMEMO media sharing        | done     | aesgcm upload + decrypt                                        |
 | XEP-0461      | Replies                    | done     | quote block + fallback strip, jump                             |
 | XEP-0484      | FAST auth                  | deferred | needs SASL2 first                                              |
-| XEP-0493      | OAuth client login         | planned  | empty-token probe, discovery, PKCE, OAUTHBEARER                |
+| XEP-0493      | OAuth client login         | done     | empty-token probe, discovery, registration, PKCE, OAUTHBEARER  |

@@ -18,6 +18,9 @@ export interface SessionOptions {
   // IndexedDB writes, OMEMO keys in memory only. The flag wins over
   // remember so a shared device never keeps a session behind.
   untrusted?: boolean | undefined
+  // the password slot carries an oauth access token and sasl is pinned to
+  // OAUTHBEARER; set by the XEP-0493 flow
+  oauth?: boolean | undefined
 }
 
 export function saveSession(options: SessionOptions): void {

@@ -53,8 +53,28 @@
   onMount(() => {
     loadLocale('en')
     setLocale('en')
-    for (const options of restoreSessions()) {
-      void accounts.add(options)
+
+    // XEP-0493 callback: the authorization server redirected back here
+    // with ?code&state; finish the flow before any session restore so a
+    // remembered password login cannot steal the slot
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    const state = params.get('state')
+    const oauthError = params.get('error')
+    if (code || state || oauthError) {
+      // strip the query so a reload cannot replay a spent code
+      window.history.replaceState(null, '', window.location.pathname)
+      if (code && state) {
+        void accounts.completeOAuth(code, state).then((result) => {
+          if (!result.ok) toast.error($LL.oauthFailed())
+        })
+      } else {
+        toast.error($LL.oauthFailed())
+      }
+    } else {
+      for (const options of restoreSessions()) {
+        void accounts.add(options)
+      }
     }
     // demo deployments (github pages) drop visitors straight into demo mode
     if (import.meta.env.VITE_DEMO === '1' && accounts.list.length === 0) {

@@ -119,6 +119,22 @@ type RootTranslation = {
 	 */
 	registerUnsupported: string
 	/**
+	 * S​i​g​n​ ​i​n​ ​w​i​t​h​ ​S​S​O
+	 */
+	signInSso: string
+	/**
+	 * C​o​n​t​a​c​t​i​n​g​ ​i​d​e​n​t​i​t​y​ ​p​r​o​v​i​d​e​r
+	 */
+	ssoWorking: string
+	/**
+	 * T​h​i​s​ ​s​e​r​v​e​r​ ​d​o​e​s​ ​n​o​t​ ​o​f​f​e​r​ ​s​i​n​g​l​e​ ​s​i​g​n​-​o​n
+	 */
+	oauthUnsupported: string
+	/**
+	 * S​i​n​g​l​e​ ​s​i​g​n​-​o​n​ ​f​a​i​l​e​d
+	 */
+	oauthFailed: string
+	/**
 	 * {​m​s​}​ ​m​s
 	 * @param {number} ms
 	 */
@@ -1338,6 +1354,22 @@ export type TranslationFunctions = {
 	 * This server does not support account registration
 	 */
 	registerUnsupported: () => LocalizedString
+	/**
+	 * Sign in with SSO
+	 */
+	signInSso: () => LocalizedString
+	/**
+	 * Contacting identity provider
+	 */
+	ssoWorking: () => LocalizedString
+	/**
+	 * This server does not offer single sign-on
+	 */
+	oauthUnsupported: () => LocalizedString
+	/**
+	 * Single sign-on failed
+	 */
+	oauthFailed: () => LocalizedString
 	/**
 	 * {ms} ms
 	 */

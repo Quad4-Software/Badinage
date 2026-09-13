@@ -72,6 +72,19 @@ Keep it that way. Do not add configDependencies.
 
 - Prefer wss:// endpoints, fall back to BOSH https://.
 - SCRAM-SHA-256 minimum for password auth where the server offers it.
+- LDAP-backed hosts (prosody mod_auth_ldap2 and friends) only offer SASL
+  PLAIN; strophe picks it automatically when it is all the server
+  advertises. PLAIN means the password reaches the server in cleartext
+  inside TLS, so it must never run over ws:// or http:// transports.
+- OAuth/OIDC login follows XEP-0493: the client probes OAUTHBEARER with
+  an empty token, reads the authorization server discovery url from the
+  RFC 7628 error document, registers dynamically per RFC 7591, runs the
+  authorization code flow with PKCE and a state nonce, then connects
+  with the access token pinned to the OAUTHBEARER mechanism so it can
+  never be reinterpreted as a password.
+- OAuth tokens and the pending-flow stash (pkce verifier, state) live in
+  sessionStorage only, under the badinage namespace. Dynamic client ids
+  are public app credentials and may live in localStorage.
 - XEP-0198 resumption state is per-account, namespaced, and cleared on
   logout.
 - MUC OMEMO is only safe in members-only non-anonymous rooms. Enforce in

@@ -107,11 +107,17 @@ export class XmppConnection implements ChatConnection {
 
   constructor(
     private readonly service: string,
-    conn?: StropheConnection
+    conn?: StropheConnection,
+    opts?: { oauth?: boolean | undefined }
   ) {
     // XEP-0198 stream management is negotiated by strophe itself when the
-    // option is set; a test-supplied connection keeps its own options
-    this.conn = conn ?? new Strophe.Connection(service, smConnectionOptions())
+    // option is set; a test-supplied connection keeps its own options.
+    // oauth logins restrict the mechanism list to OAUTHBEARER so a token
+    // in the password slot cannot be misread as a scram credential on
+    // servers that offer both
+    const options = { ...smConnectionOptions() }
+    if (opts?.oauth) options.mechanisms = [Strophe.SASLOAuthBearer]
+    this.conn = conn ?? new Strophe.Connection(service, options)
     conn = this.conn
     this.transport = {
       sendIq: (stanza, onResult, onError) => this.sendIq(stanza, onResult, onError),

@@ -20,7 +20,10 @@ const ALLOWED = ['src/lib/core/storage/']
 const ALLOWED_FILES = new Set<string>([
   // asserts the ScopedSmStorage adapter writes the real sessionStorage
   // key layout, which requires reading the store it wraps
-  'src/lib/core/xmpp/features/sm.test.ts'
+  'src/lib/core/xmpp/features/sm.test.ts',
+  // injects malformed json into the pending-flow slot to prove the
+  // reader drops it; the public api cannot write malformed data
+  'src/lib/core/oauth/session.test.ts'
 ])
 
 const RAW_USE =

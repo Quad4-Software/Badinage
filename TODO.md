@@ -93,6 +93,10 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       CSP + dependency audit, untrusted device mode
 - [x] e2e hardening: CSI/SM/carbons sends gated on stream features, axe
       pass restored (landmarks, combobox aria-controls, contrast)
+- [x] XEP-0493 OAuth client login: OAUTHBEARER probe, RFC 8414
+      discovery, RFC 7591 dynamic registration, PKCE redirect flow,
+      sessionStorage-only tokens. Covers OIDC-backed servers (PocketID,
+      Keycloak) and LDAP-backed hosts via SASL PLAIN
 
 ## Decisions to make
 
@@ -102,10 +106,6 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Protocol core
 
-- [ ] XEP-0493 OAuth client login: OAUTHBEARER probe, RFC 8414 discovery,
-      RFC 7591 dynamic registration, PKCE redirect flow, token storage.
-      Also covers OIDC-backed servers (PocketID, Keycloak) and makes
-      LDAP-backed hosts reachable via SASL PLAIN
 - [ ] SASL2/Bind2/FAST when strophe.js or an alternative gains support
 - [x] MAM paging UX: load older on scroll-to-top, RSM cursor + complete
       tracking, scroll anchor preserved while prepending

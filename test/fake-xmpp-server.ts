@@ -46,6 +46,10 @@ export interface FakeXmppServerOptions {
   sm?: SmOptions
   // advertise XEP-0077 pre-auth and answer register iqs
   registration?: RegisterOptions
+  // advertise OAUTHBEARER and answer per RFC 7628: an empty bearer gets
+  // the json error doc carrying openid-configuration, a bearer equal to
+  // token authenticates, anything else fails
+  oauth?: { discoveryUrl: string; token?: string }
   // custom iq responder, consulted after binding; return xml to send, or
   // null to fall through to the default handling
   respond?: (stanza: string) => string | null
@@ -143,6 +147,9 @@ export class FakeXmppServer {
     let authed = false
     let domain = 'example.net'
     let bareJid = ''
+    // RFC 7628 empty-token exchange in progress: the next <response/>
+    // must be answered with a <failure/>
+    let oauthChallengeSent = false
     // XEP-0198: whether an sm session is live on this stream. The flag is
     // per socket; the counters and sm id live on the server so a resumed
     // stream continues where the dropped one left off
@@ -168,9 +175,29 @@ export class FakeXmppServer {
           socket.close()
           return
         }
+        if (raw.includes('OAUTHBEARER')) {
+          const outcome = this.onOauthAuth(raw, socket, domain)
+          if (outcome.kind === 'challenge') {
+            oauthChallengeSent = true
+            return
+          }
+          if (outcome.kind !== 'ok') return
+          bareJid = outcome.jid
+          authed = true
+          socket.send(`<success xmlns='${NS_SASL}'/>`)
+          return
+        }
         bareJid = this.decodePlainAuth(raw, domain)
         authed = true
         socket.send(`<success xmlns='${NS_SASL}'/>`)
+        return
+      }
+
+      // RFC 7628: after the json error challenge the client sends an
+      // empty response and only then does the server close with failure
+      if (oauthChallengeSent && raw.startsWith('<response')) {
+        oauthChallengeSent = false
+        socket.send(`<failure xmlns='${NS_SASL}'><not-authorized/></failure>`)
         return
       }
 
@@ -198,7 +225,9 @@ export class FakeXmppServer {
   private saslFeatures(): string {
     return (
       `<stream:features xmlns:stream='${NS_STREAM}'>` +
-      `<mechanisms xmlns='${NS_SASL}'><mechanism>PLAIN</mechanism></mechanisms>` +
+      `<mechanisms xmlns='${NS_SASL}'><mechanism>PLAIN</mechanism>` +
+      (this.opts.oauth ? `<mechanism>OAUTHBEARER</mechanism>` : '') +
+      `</mechanisms>` +
       (this.opts.registration ? `<register xmlns='${NS_REGISTER_FEATURE}'/>` : '') +
       `</stream:features>`
     )
@@ -242,6 +271,33 @@ export class FakeXmppServer {
     }
     // <a/> needs no reply
     return raw.startsWith('<a ') || raw.startsWith('<a/')
+  }
+
+  // RFC 7628 OAUTHBEARER. An empty bearer earns the json error document
+  // with the openid-configuration url as a challenge (the client must
+  // still send its empty response before the server closes with a
+  // failure). A bearer matching opts.oauth.token authenticates as the
+  // authzid or falls back to the localpart in the connect jid.
+  private onOauthAuth(
+    raw: string,
+    socket: WebSocket,
+    domain: string
+  ): { kind: 'challenge' } | { kind: 'ok'; jid: string } | { kind: 'fail' } {
+    const payload = /<auth[^>]*>([^<]*)<\/auth>/.exec(raw)?.[1] ?? ''
+    const decoded = atob(payload)
+    const bearer = decoded.split('auth=Bearer ')[1]?.split('\u0001')[0] ?? ''
+    if (!bearer) {
+      const doc = JSON.stringify({ 'openid-configuration': this.opts.oauth?.discoveryUrl })
+      socket.send(`<challenge xmlns='${NS_SASL}'>${btoa(doc)}</challenge>`)
+      return { kind: 'challenge' }
+    }
+    if (bearer !== this.opts.oauth?.token) {
+      socket.send(`<failure xmlns='${NS_SASL}'><not-authorized/></failure>`)
+      return { kind: 'fail' }
+    }
+    // the authzid, when present, selects the account like a bare jid
+    const authzid = decoded.split(',a=')[1]?.split(',')[0]?.split('\u0001')[0]
+    return { kind: 'ok', jid: authzid || `oauth@${domain}` }
   }
 
   // SASL PLAIN payload is base64 of authzid NUL authcid NUL password
