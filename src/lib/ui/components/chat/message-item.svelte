@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Copy, Lock, Pencil, Reply, Smile } from '@lucide/svelte'
+  import { Copy, Lock, Pencil, Reply, Smile, SmilePlus } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
   import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
   import { cn } from '$lib/utils/cn'
+  import { isEmojiOnly } from '$lib/utils/emoji'
 
   import MessageAttachments from './message-attachments.svelte'
   import MessageMeta from './message-meta.svelte'
@@ -37,6 +38,7 @@
   }: Props = $props()
 
   let pickerOpen = $state(false)
+  let pickerAnchor = $state<'top' | 'bottom'>('top')
 
   const URL_RE = /(https?:\/\/\S+)/g
   const isUrl = (part: string) => /^https?:\/\/\S+$/.test(part)
@@ -48,6 +50,7 @@
   )
   const bodyParts = $derived(bodyIsAttachmentUrl ? [] : message.body.split(URL_RE))
   const reactionEntries = $derived(Object.entries(message.reactions))
+  const jumbo = $derived(isEmojiOnly(message.body))
   const initials = $derived((avatarName || message.nick || '?').slice(0, 2))
 
   const actionClass =
@@ -55,6 +58,13 @@
 
   function copyBody() {
     void navigator.clipboard?.writeText(message.body).catch(() => undefined)
+  }
+
+  // anchor follows the trigger: the action bar sits above the bubble, the
+  // quick-react buttons below it
+  function openPicker(anchor: 'top' | 'bottom') {
+    pickerAnchor = anchor
+    pickerOpen = !pickerOpen
   }
 </script>
 
@@ -128,7 +138,7 @@
             {$LL.couldNotDecrypt()}
           </p>
         {:else if message.body && !bodyIsAttachmentUrl}
-          <p class="break-words whitespace-pre-wrap">
+          <p class={cn('break-words whitespace-pre-wrap', jumbo && 'text-4xl leading-tight')}>
             {#each bodyParts as part, i (i)}
               {#if isUrl(part)}
                 <a
@@ -147,7 +157,7 @@
 
       <div
         class={cn(
-          'bg-popover absolute -top-3 right-1 z-10 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm transition-opacity',
+          'bg-popover absolute right-1 bottom-full z-10 mb-0.5 flex items-center gap-0.5 rounded-md border p-0.5 shadow-sm transition-opacity',
           pickerOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
         )}
       >
@@ -164,7 +174,7 @@
           class={actionClass}
           aria-label={$LL.react()}
           aria-expanded={pickerOpen}
-          onclick={() => (pickerOpen = !pickerOpen)}
+          onclick={() => openPicker('top')}
         >
           <Smile class="size-3.5" />
         </button>
@@ -184,9 +194,30 @@
       </div>
 
       {#if pickerOpen}
-        <div class="absolute right-0 bottom-full z-30 mb-1">
+        <div
+          class={cn(
+            'absolute z-30',
+            pickerAnchor === 'top'
+              ? 'right-0 bottom-full mb-1'
+              : cn('top-full mt-1', message.outgoing ? 'right-0' : 'left-0')
+          )}
+        >
           <EmojiPicker onPick={(emoji) => onReact?.(emoji)} onClose={() => (pickerOpen = false)} />
         </div>
+      {/if}
+
+      {#if reactionEntries.length === 0}
+        <button
+          type="button"
+          class={cn(
+            'bg-popover text-muted-foreground hover:text-accent-foreground absolute -bottom-3 z-10 flex size-6 items-center justify-center rounded-full border opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
+            message.outgoing ? 'right-1' : 'left-1'
+          )}
+          aria-label={$LL.react()}
+          onclick={() => openPicker('bottom')}
+        >
+          <SmilePlus class="size-3.5" />
+        </button>
       {/if}
     </div>
 
@@ -210,6 +241,14 @@
             <span class="tabular-nums">{senders.length}</span>
           </button>
         {/each}
+        <button
+          type="button"
+          class="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          aria-label={$LL.react()}
+          onclick={() => openPicker('bottom')}
+        >
+          <SmilePlus class="size-3.5" />
+        </button>
       </div>
     {/if}
   </div>

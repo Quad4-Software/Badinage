@@ -1,5 +1,37 @@
+<script module lang="ts">
+  import { hexcodeToEmoji } from '$lib/utils/emoji'
+
+  interface EmojiItem {
+    emoji: string
+    label: string
+    tags: string[]
+    order: number
+  }
+
+  // the dataset is a lazy chunk; cache the built list so reopening is instant
+  let datasetPromise: Promise<EmojiItem[]> | null = null
+
+  function loadDataset(): Promise<EmojiItem[]> {
+    datasetPromise ??= import('emojibase-data/en/compact.json').then((mod) =>
+      mod.default
+        .map((entry) => ({
+          emoji: hexcodeToEmoji(entry.hexcode),
+          label: entry.label,
+          tags: entry.tags ?? [],
+          order: entry.order ?? Number.MAX_SAFE_INTEGER
+        }))
+        .sort((a, b) => a.order - b.order)
+    )
+    return datasetPromise
+  }
+</script>
+
 <script lang="ts">
+  import { onMount } from 'svelte'
+
   import LL from '$lib/i18n/i18n-svelte'
+  import { Input } from '$lib/ui/primitives/input'
+  import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
   let { onPick, onClose }: { onPick: (emoji: string) => void; onClose: () => void } = $props()
 
@@ -30,6 +62,49 @@
     '✨'
   ]
 
+  const MAX_RESULTS = 200
+
+  let all = $state<EmojiItem[]>([])
+  let loading = $state(true)
+  let query = $state('')
+  let searchRef = $state<HTMLInputElement | null>(null)
+
+  const favorites = $derived(
+    EMOJIS.map(
+      (emoji) =>
+        all.find((item) => item.emoji === emoji) ?? { emoji, label: emoji, tags: [], order: -1 }
+    )
+  )
+
+  const results = $derived.by(() => {
+    const q = query.trim().toLowerCase()
+    if (q === '') return all
+    const out: EmojiItem[] = []
+    for (const item of all) {
+      if (
+        item.label.toLowerCase().includes(q) ||
+        item.tags.some((tag) => tag.toLowerCase().includes(q))
+      ) {
+        out.push(item)
+        if (out.length >= MAX_RESULTS) break
+      }
+    }
+    return out
+  })
+
+  onMount(() => {
+    searchRef?.focus()
+    void loadDataset()
+      .then((items) => {
+        all = items
+        loading = false
+      })
+      // drop the cached promise so the next open retries the fetch
+      .catch(() => {
+        datasetPromise = null
+      })
+  })
+
   function onKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') onClose()
   }
@@ -54,15 +129,45 @@
 <div
   role="dialog"
   aria-label={$LL.addReactionEmoji()}
-  class="bg-popover relative z-50 grid w-56 grid-cols-6 gap-0.5 rounded-lg border p-2 shadow-md"
+  class="bg-popover relative z-50 w-72 rounded-lg border p-2 shadow-md"
 >
-  {#each EMOJIS as emoji (emoji)}
-    <button
-      type="button"
-      class="hover:bg-accent flex size-8 items-center justify-center rounded-md text-lg"
-      onclick={() => pick(emoji)}
-    >
-      {emoji}
-    </button>
-  {/each}
+  <Input
+    bind:ref={searchRef}
+    bind:value={query}
+    placeholder={$LL.searchEmoji()}
+    aria-label={$LL.searchEmoji()}
+    class="h-8 text-sm"
+  />
+  <ScrollArea class="mt-2 h-56">
+    {#if loading}
+      <p class="text-muted-foreground flex h-full items-center justify-center text-sm">
+        {$LL.loading()}
+      </p>
+    {:else}
+      <div class="grid grid-cols-8">
+        {#if query.trim() === ''}
+          {#each favorites as item (item.emoji)}
+            <button
+              type="button"
+              title={item.label}
+              class="hover:bg-accent flex size-7 items-center justify-center rounded-md text-lg"
+              onclick={() => pick(item.emoji)}
+            >
+              {item.emoji}
+            </button>
+          {/each}
+        {/if}
+        {#each results as item (item.emoji)}
+          <button
+            type="button"
+            title={item.label}
+            class="hover:bg-accent flex size-7 items-center justify-center rounded-md text-lg"
+            onclick={() => pick(item.emoji)}
+          >
+            {item.emoji}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </ScrollArea>
 </div>
