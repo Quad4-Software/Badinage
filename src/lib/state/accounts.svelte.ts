@@ -36,7 +36,24 @@ import { DemoConnection } from '$lib/core/xmpp/demo'
 import { RegisterError, registerAccount } from '$lib/core/xmpp/register'
 import type { MucDecline, MucInvite, RosterItem } from '$lib/core/xmpp/stanzas'
 import { discoverEndpoints } from '$lib/core/xmpp/discovery'
-import { bareJid, jidDomain, parseJid } from '$lib/utils/jid'
+import { bareJid, jidDomain } from '$lib/utils/jid'
+
+import {
+  addBookmark,
+  applyBookmarks,
+  refreshBookmarks,
+  removeBookmark,
+  setBookmarkNotify
+} from './accounts/bookmarks'
+import { avatarHint, ensureAvatar, noteAvatarHash } from './accounts/avatars'
+import {
+  acceptSubscription,
+  addContact,
+  denySubscription,
+  removeContact
+} from './accounts/contacts'
+import { block, unblock, unblockAll } from './accounts/blocking'
+import { setInvisible, setPresence } from './accounts/presence'
 import { settings } from '$lib/state/settings.svelte'
 import { deleteAccountData } from '$lib/state/storage'
 
@@ -79,6 +96,15 @@ export class Account {
   // our own advertised presence, re-sent after every reconnect
   presence = $state('online')
   presenceStatus = $state('')
+  // XEP-0186: invisibility via a deny-presence-out privacy list.
+  // Persisted per account and reapplied on every connect. Caveat the ui
+  // surfaces: presence-out also carries MUC joins, so rooms cannot be
+  // entered while invisible.
+  invisible = $state(false)
+
+  setInvisible(on: boolean): void {
+    setInvisible(this, on)
+  }
   // XEP-0191 blocklist, kept in sync by server pushes
   blocked = new SvelteSet<string>()
   // OMEMO service, created by omemoModule after connect; undefined in
@@ -160,36 +186,25 @@ export class Account {
   // ---- contacts -------------------------------------------------------------
 
   addContact(jid: string, name = ''): void {
-    this.connection.rosterSet(bareJid(jid), name)
-    this.connection.sendDirectedPresence(bareJid(jid), 'subscribe')
+    addContact(this, jid, name)
   }
 
   removeContact(jid: string): void {
-    this.connection.rosterRemove(bareJid(jid))
+    removeContact(this, jid)
   }
 
   acceptSubscription(from: string): void {
-    this.connection.sendDirectedPresence(from, 'subscribed')
-    // ask for their presence back if not already subscribed
-    this.connection.sendDirectedPresence(from, 'subscribe')
-    this.subscriptions = this.subscriptions.filter((s) => s.from !== from)
+    acceptSubscription(this, from)
   }
 
   denySubscription(from: string): void {
-    this.connection.sendDirectedPresence(from, 'unsubscribed')
-    this.subscriptions = this.subscriptions.filter((s) => s.from !== from)
+    denySubscription(this, from)
   }
 
   // ---- presence -------------------------------------------------------------
 
   setPresence(show: string, status?: string): void {
-    this.presence = show
-    if (status !== undefined) this.presenceStatus = status
-    if (this.status !== 'connected') return
-    this.connection.sendPresence(
-      show === 'online' ? undefined : show,
-      this.presenceStatus || undefined
-    )
+    setPresence(this, show, status)
   }
 
   // ---- blocking (XEP-0191) ----------------------------------------------------
@@ -199,22 +214,15 @@ export class Account {
   }
 
   block(jid: string): void {
-    const bare = bareJid(jid)
-    if (!bare) return
-    // optimistic add; the server push confirms it for other resources
-    this.blocked.add(bare)
-    this.connection.blockJids([bare])
+    block(this, jid)
   }
 
   unblock(jid: string): void {
-    const bare = bareJid(jid)
-    this.blocked.delete(bare)
-    this.connection.unblockJids([bare])
+    unblock(this, jid)
   }
 
   unblockAll(): void {
-    this.blocked.clear()
-    this.connection.unblockJids([])
+    unblockAll(this)
   }
 
   // ---- OMEMO ----------------------------------------------------------------
@@ -296,39 +304,31 @@ export class Account {
   // Rows that only want an avatar when one provably exists gate on this so
   // a roster render never fans out into vcard queries.
   avatarHint(jid: string): boolean {
-    return (this.avatarHashes.get(jid) ?? '') !== ''
+    return avatarHint(this.avatarHashes, jid)
   }
 
   // Lazily resolve an avatar into the avatars map. Without force the fetch
   // only runs when presence hinted at a photo; forced callers (open
-  // conversation, own account, room) fetch regardless. In-flight and
-  // failed lookups are deduped for the session by the transport layer and
-  // this requested set.
+  // conversation, own account, room) fetch regardless.
   ensureAvatar(jid: string, force = false): void {
-    const hash = this.avatarHashes.get(jid)
-    if (hash === '') return
-    if (hash === undefined && !force) return
-    if (this.avatars.has(jid) || this.avatarRequested.has(jid)) return
-    if (this.status !== 'connected') return
-    this.avatarRequested.add(jid)
-    this.connection.fetchAvatar(jid, (uri) => {
-      if (uri) this.avatars.set(jid, uri)
-    })
+    ensureAvatar(
+      {
+        hashes: this.avatarHashes,
+        avatars: this.avatars,
+        requested: this.avatarRequested,
+        connection: this.connection,
+        connected: this.status === 'connected'
+      },
+      jid,
+      force
+    )
   }
 
   // Called when presence or occupant updates carry a vcard-temp:x:update
   // photo hash: a changed hash drops the cached image so mounted rows
   // refetch, an empty hash pins the jid to no-avatar.
   noteAvatarHash(jid: string, hash: string | undefined): void {
-    if (hash === undefined) return
-    if (this.avatarHashes.get(jid) === hash) return
-    this.avatarHashes.set(jid, hash)
-    this.avatars.delete(jid)
-    if (hash === '') {
-      this.avatarRequested.add(jid)
-    } else {
-      this.avatarRequested.delete(jid)
-    }
+    noteAvatarHash(this.avatarHashes, this.avatars, this.avatarRequested, jid, hash)
   }
 
   // ---- bookmarks (XEP-0402) --------------------------------------------------
@@ -338,45 +338,32 @@ export class Account {
   }
 
   addBookmark(bookmark: Bookmark): void {
-    const stored = { ...bookmark, jid: bareJid(bookmark.jid) }
-    // optimistic: the server push resyncs every resource anyway, and a
-    // failed publish triggers a refetch that restores server truth
-    this.bookmarks.set(stored.jid, stored)
-    this.connection.addBookmark(stored, (ok) => {
-      if (!ok) this.refreshBookmarks()
-    })
+    addBookmark(this, this.autoJoined, bookmark)
   }
 
   removeBookmark(jid: string): void {
-    this.bookmarks.delete(bareJid(jid))
-    this.connection.removeBookmark(bareJid(jid), (ok) => {
-      if (!ok) this.refreshBookmarks()
-    })
+    removeBookmark(this, this.autoJoined, jid)
   }
 
   // The notification payload is deliberately not trusted: races between
   // resources are resolved by refetching the whole node, last write wins.
   private refreshBookmarks(): void {
-    if (this.status !== 'connected') return
-    this.connection.fetchBookmarks((bookmarks) => this.applyBookmarks(bookmarks))
+    refreshBookmarks(this, this.autoJoined)
   }
 
+  // XEP-0492: sync a notification override onto the bookmark carrying
+  // the conversation, preserving any extensions we did not author. Only
+  // bookmarked chats sync; unbookmarked dms keep a local-only setting.
+  setBookmarkNotify(jid: string, notify: Bookmark['notify']): void {
+    setBookmarkNotify(this, this.autoJoined, jid, notify)
+  }
+
+  // set by the app layer so a fetched bookmark can flow its notify
+  // override into the conversation store (account cannot reach it)
+  onBookmarksApplied: ((bookmarks: Bookmark[]) => void) | undefined
+
   private applyBookmarks(bookmarks: Bookmark[] | null): void {
-    // null means the server has no PEP: stay a graceful no-op
-    if (bookmarks === null) return
-    this.bookmarks.clear()
-    for (const bookmark of bookmarks) {
-      this.bookmarks.set(bareJid(bookmark.jid), bookmark)
-    }
-    for (const bookmark of bookmarks) {
-      if (bookmark.kind !== 'conference' || !bookmark.autojoin) continue
-      const room = bareJid(bookmark.jid)
-      // once per session per room: a notify refetch must not rejoin a
-      // room the user deliberately left
-      if (this.autoJoined.has(room)) continue
-      this.autoJoined.add(room)
-      this.joinRoom(room, bookmark.nick || parseJid(this.jid).local || 'me', bookmark.password)
-    }
+    applyBookmarks(this, this.autoJoined, bookmarks)
   }
 
   private bind(): void {
@@ -402,8 +389,19 @@ export class Account {
       if (status === 'connected') {
         clearLoginBackoff(this.jid)
         void this.registry.initAll({ account: this, connection: this.connection })
+        // XEP-0186: activate the persisted invisible flag BEFORE the
+        // presence broadcast. The privacy list denies presence-out, so
+        // sending presence first would leak a moment of online status to
+        // every subscribed contact.
+        const meta = settings.metaFor(this.jid)
+        if (meta.invisible === true) {
+          this.invisible = true
+          this.connection.setInvisible(true, () => undefined)
+        }
         // re-advertise our chosen presence; the transport only sends a
-        // bare online presence on connect
+        // bare online presence on connect. While the invisible list is
+        // active the server drops this outbound presence, which is the
+        // intended behavior.
         this.connection.sendPresence(
           this.presence === 'online' ? undefined : this.presence,
           this.presenceStatus || undefined

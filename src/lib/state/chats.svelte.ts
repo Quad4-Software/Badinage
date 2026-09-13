@@ -6,10 +6,10 @@
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
-import { MESSAGE_PAGE_SIZE } from '$lib/constants'
+import { EPHEMERAL_SWEEP_MS, MESSAGE_PAGE_SIZE } from '$lib/constants'
 import type { ChatConnection, MamPageResult } from '$lib/core/xmpp/connection'
 import { SELF_BANNED_CODE, SELF_KICKED_CODE, SELF_RENAMED_CODE } from '$lib/core/xmpp/features/muc'
-import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
+import type { Attachment, IncomingMessage, NotifySetting } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 import { isLiveIncoming } from '$lib/utils/notify'
 
@@ -21,6 +21,26 @@ import {
   type ConversationKind,
   type RoomOccupant
 } from './conversation.svelte'
+import {
+  applyContentSignals,
+  applyDeliverySignals,
+  applyRetractionSignal,
+  applyRoomRetraction,
+  dropTombstone,
+  findTombstone,
+  mentionsSelf,
+  mergeSelfEcho,
+  routeMessage
+} from './chats/signals'
+import {
+  canBuzz,
+  hydrateConversation,
+  isDuplicate,
+  markDisplayedRemote,
+  noteBuzz,
+  saveMeta,
+  sweepExpired
+} from './chats/meta'
 import { applyCorrection, applyReactions, applyRetraction } from './messages'
 import { ConversationPersistence } from './persistence.svelte'
 import { TypingTracker } from './typing'
@@ -32,8 +52,6 @@ export type {
   ConversationKind,
   RoomOccupant
 } from './conversation.svelte'
-
-const DEDUP_CAP = 500
 
 export class ChatStore {
   conversations = new SvelteMap<string, Conversation>()
@@ -48,7 +66,7 @@ export class ChatStore {
   private typing = new TypingTracker()
   // fired once per live incoming message appended; set by the app store,
   // consumed by the ui layer for notifications and aria-live announces
-  onLive: ((peer: string, message: IncomingMessage) => void) | undefined
+  onLive: ((peer: string, message: IncomingMessage, stored?: ChatMessage) => void) | undefined
 
   // options.persist=false is the untrusted-device path: conversations
   // stay in memory and never reach IndexedDB
@@ -57,6 +75,17 @@ export class ChatStore {
     options?: { persist?: boolean }
   ) {
     this.persistence = new ConversationPersistence(accountJid, options?.persist ?? true)
+    // one interval services both periodic jobs: dropping expired
+    // ephemeral messages and clearing stale real-time text buffers
+    this.sweep = setInterval(() => this.sweepExpired(), EPHEMERAL_SWEEP_MS)
+  }
+
+  private readonly sweep: ReturnType<typeof setInterval>
+
+  // called when the account is released; flush() already ran at that
+  // point so the interval can simply stop
+  dispose(): void {
+    clearInterval(this.sweep)
   }
 
   open(peerJid: string, kind: ConversationKind = 'dm'): Conversation {
@@ -70,6 +99,11 @@ export class ChatStore {
     if (!this.loaded[bare]) {
       this.loaded[bare] = true
       void this.hydrate(conversation)
+      void this.persistence.loadMeta(bare).then((meta) => {
+        if (!meta) return
+        if (meta.ephemeral !== undefined) conversation.ephemeralTimer = meta.ephemeral
+        if (meta.notify !== undefined) conversation.notify = meta.notify
+      })
     }
     return conversation
   }
@@ -90,12 +124,21 @@ export class ChatStore {
   push(peerJid: string, message: ChatMessage, active = false, seenIds: string[] = []): boolean {
     const bare = bareJid(peerJid)
     const conversation = this.open(bare)
-    if (this.isDuplicate(bare, [message.id, ...seenIds])) return false
+    if (isDuplicate(this.seen, bare, [message.id, ...seenIds])) return false
     // keep messages ordered by timestamp so archive pages and delayed
     // stanzas land in the right place instead of at the tail
     let at = conversation.messages.length
     while (at > 0 && (conversation.messages[at - 1]?.timestamp ?? 0) > message.timestamp) at--
     conversation.messages.splice(at, 0, message)
+    // locally pushed messages (outgoing sends) pick up the negotiated
+    // ephemeral timer too so they self-destruct like their wire copies
+    if (
+      message.expiresAt === undefined &&
+      conversation.ephemeralTimer !== undefined &&
+      conversation.ephemeralTimer > 0
+    ) {
+      message.expiresAt = message.timestamp + conversation.ephemeralTimer * 1000
+    }
     if (!message.outgoing && !active) conversation.unread += 1
     this.persistence.schedule(conversation)
     return true
@@ -151,23 +194,7 @@ export class ChatStore {
 
   // Work out which conversation a stanza belongs to and whether it is ours.
   private routeMessage(message: IncomingMessage): { peer: string; outgoing: boolean } {
-    if (message.carbon === 'sent') {
-      return { peer: bareJid(message.to), outgoing: true }
-    }
-    if (message.type === 'groupchat') {
-      const peer = bareJid(message.from)
-      const room = this.conversations.get(peer)
-      // nicks we held earlier still count as ours so a self-echo sent
-      // before a rename still merges after it lands
-      const outgoing =
-        message.nick !== undefined &&
-        (message.nick === room?.ourNick || (room?.ourNicks.has(message.nick) ?? false))
-      return { peer, outgoing }
-    }
-    if (bareJid(message.from) === this.accountJid) {
-      return { peer: bareJid(message.to), outgoing: true }
-    }
-    return { peer: bareJid(message.from), outgoing: false }
+    return routeMessage(this.conversations, this.accountJid, message)
   }
 
   // Returns the stored message when the stanza produced one, undefined for
@@ -177,6 +204,12 @@ export class ChatStore {
 
     const conversation = this.open(peer)
     if (message.type === 'groupchat') conversation.kind = 'muc'
+    // remember the peer's resource so feature probes (disco#info for
+    // rtt and friends) target the client that is actually talking, not
+    // the bare account
+    if (!outgoing && message.type === 'chat' && message.from.includes('/')) {
+      conversation.peerFullJid = message.from
+    }
 
     const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
     // XEP-0421: the stable occupant id keys reactions when the room
@@ -186,90 +219,46 @@ export class ChatStore {
     // XEP-0425: the room itself (never an occupant) announces that a
     // stanza-id was retracted. Tombstone the stored copy and drop the
     // notice so it never renders as a message.
-    if (message.retraction) {
-      if (message.type === 'groupchat' && !message.nick) {
-        const target = this.findMessage(peer, message.retraction.id)
-        if (target) {
-          target.retracted = true
-          target.retractReason = message.retraction.reason
-          target.body = ''
-          target.attachments = undefined
-          target.reactions = {}
-          this.persistence.schedule(conversation)
-        }
-      }
+    if (
+      applyRoomRetraction(
+        conversation,
+        (p, r) => this.findMessage(p, r),
+        this.persistence,
+        peer,
+        message
+      )
+    ) {
       return
     }
 
     // stanza-level metadata first so empty stanzas still update state
-    if (message.receiptFor) {
-      this.markDelivered(peer, message.receiptFor)
-    }
-    const marker = message.marker
-    if (marker) {
-      const target = this.findMessage(peer, marker.id)
-      if (target) {
-        if (marker.type === 'received' || marker.type === 'acknowledged') {
-          target.delivered = true
-        }
-        if (marker.type === 'displayed') {
-          target.delivered = true
-          target.read = true
-        }
-      }
-    }
-    // XEP-0424: a retraction names the message id to remove (the stanza
-    // id attribute in a dm, the room stanza-id in a muc). The fallback
-    // body must never render, even when no target matches.
-    if (message.retractId !== undefined) {
-      const target =
-        message.retractId === '' ? undefined : this.findMessage(peer, message.retractId)
-      if (target) {
-        // business rules: only the original author may retract. In a dm
-        // that means the same side of the conversation; in a muc the
-        // same nick, which stands in for the full jid in non-anonymous
-        // rooms (occupant-id verification is not implemented).
-        const sameSender =
-          conversation.kind === 'muc' ? target.nick === sender : target.outgoing === outgoing
-        if (sameSender) {
-          applyRetraction(target)
-          this.persistence.schedule(conversation)
-        }
-      }
+    applyDeliverySignals(
+      peer,
+      message,
+      (p, id) => this.markDelivered(p, id),
+      (p, r) => this.findMessage(p, r)
+    )
+    // XEP-0424 retraction and archive-tombstone handling; a consumed
+    // stanza produces no row
+    if (
+      applyRetractionSignal(
+        conversation,
+        (p, r) => this.findMessage(p, r),
+        this.persistence,
+        peer,
+        message,
+        sender,
+        outgoing
+      ) === 'drop'
+    ) {
       return
-    }
-    // an archive tombstone is the original stanza with its contents
-    // swapped for a retracted marker, so its own ids name the message it
-    // replaced. Unknown targets are dropped without a row.
-    if (message.retracted) {
-      for (const ref of [message.stanzaId, message.id, message.originId]) {
-        if (!ref) continue
-        const target = this.findMessage(peer, ref)
-        if (target) {
-          applyRetraction(target)
-          this.persistence.schedule(conversation)
-          return
-        }
-      }
-      // no stored copy of the original: fall through and keep the
-      // tombstone itself as a placeholder row
     }
     if (message.reactionTo) {
       this.applyReaction(peer, reactionSender, message.reactionTo.id, message.reactionTo.emojis)
     }
-    if (message.chatState !== undefined && !outgoing) {
-      // muc typers are tracked per nick in the typing tracker; peerState
-      // is the dm signal
-      if (message.type !== 'groupchat') conversation.peerState = message.chatState
-      this.typing.note(conversation, sender, message.chatState)
-    }
-    // a content stanza implies the sender stopped composing
-    if (!outgoing && message.body) {
-      this.typing.clear(conversation, message.type === 'groupchat' ? sender : '')
-    }
-    if (message.subject !== undefined) {
-      conversation.subject = message.subject || undefined
-    }
+    applyContentSignals(this.typing, conversation, message, sender, outgoing, (c) =>
+      this.saveMeta(c)
+    )
     // corrections replace an existing message instead of appending
     if (message.replaceId && message.body) {
       if (
@@ -292,30 +281,19 @@ export class ChatStore {
       !message.attachments?.length &&
       !message.undecryptable &&
       !message.retracted
-    )
+    ) {
+      // a bodiless buzz produced no row but still wants a notification
+      if (message.attention && isLiveIncoming(message, outgoing)) {
+        this.onLive?.(peer, message, undefined)
+      }
       return undefined
+    }
 
     // MUC self-echo: the room reflects our own message back with a fresh
     // stanza id. Merge it into the locally pushed copy (mark delivered,
     // adopt the stanza id) instead of showing the message twice.
-    if (outgoing && message.type === 'groupchat' && !message.carbon) {
-      for (let i = conversation.messages.length - 1; i >= 0; i--) {
-        const recent = conversation.messages[i]
-        if (!recent || Date.now() - recent.timestamp > 60_000) break
-        // the nick check pins the merge to the nick the message was
-        // sent under, so echoes of older sends cannot misfire on a
-        // same-body message sent after a rename
-        if (
-          recent.outgoing &&
-          !recent.delivered &&
-          recent.body === message.body &&
-          recent.nick === message.nick
-        ) {
-          recent.delivered = true
-          if (message.stanzaId) recent.id = message.stanzaId
-          return undefined
-        }
-      }
+    if (outgoing && mergeSelfEcho(conversation, message)) {
+      return undefined
     }
 
     const fallbackId = `${peer}:${message.delay ?? ''}:${message.body}`
@@ -348,12 +326,79 @@ export class ChatStore {
     if (message.encrypted) stored.encrypted = true
     if (message.undecryptable) stored.undecryptable = true
     if (message.untrustedDevice) stored.untrustedDevice = true
+    if (message.geoloc) stored.geoloc = message.geoloc
+    if (
+      message.type === 'groupchat' &&
+      !outgoing &&
+      mentionsSelf(conversation, message, message.body)
+    ) {
+      stored.mentionsMe = true
+    }
+    // XEP-0466: the effective timer is the stanza's own if present, else
+    // the negotiated conversation timer
+    const timer = message.ephemeralTimer ?? conversation.ephemeralTimer
+    if (timer !== undefined && timer > 0) stored.expiresAt = stored.timestamp + timer * 1000
     const appended = this.push(peer, stored, activePeer === peer, seenIds)
     // dedup drops return false; only a truly appended live incoming
     // stanza notifies, so mam pages, delayed deliveries and our own
     // carbons never reach listeners
-    if (appended && isLiveIncoming(message, outgoing)) this.onLive?.(peer, message)
+    if (appended && isLiveIncoming(message, outgoing)) {
+      this.onLive?.(peer, message, stored)
+    }
     return appended ? stored : undefined
+  }
+
+  private sweepExpired(): void {
+    sweepExpired(this.conversations, this.persistence)
+  }
+
+  // XEP-0224 outgoing rate limit: one buzz per peer per window so a
+  // tap-happy user cannot spam the stanza. Internal bookkeeping only,
+  // never read by the ui - a plain map is fine.
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  private buzzedAt = new Map<string, number>()
+
+  canBuzz(peer: string): boolean {
+    return canBuzz(this.buzzedAt, peer)
+  }
+
+  noteBuzz(peer: string): void {
+    noteBuzz(this.buzzedAt, peer)
+  }
+
+  // XEP-0466: change the local ephemeral timer and persist it. A timer
+  // of 0 clears ephemeral mode.
+  setEphemeral(peer: string, seconds: number): void {
+    const conversation = this.open(peer)
+    conversation.ephemeralTimer = seconds > 0 ? seconds : undefined
+    this.saveMeta(conversation)
+  }
+
+  // XEP-0492: local notification override for a conversation.
+  setNotify(peer: string, level: NotifySetting | undefined): void {
+    const conversation = this.open(peer)
+    conversation.notify = level
+    this.saveMeta(conversation)
+  }
+
+  // XEP-0492: a bookmark sync carries the shared override. Unlike
+  // setNotify this never opens a conversation: a bookmarked jid we have
+  // no local history for must not materialize a sidebar row.
+  applyRemoteNotify(peer: string, level: NotifySetting): void {
+    const conversation = this.conversations.get(bareJid(peer))
+    if (!conversation) return
+    conversation.notify = level
+    this.saveMeta(conversation)
+  }
+
+  private saveMeta(conversation: Conversation): void {
+    saveMeta(this.persistence, conversation)
+  }
+
+  // XEP-0490: another of our resources displayed up to stanzaId in this
+  // conversation, so nothing before it counts as unread here anymore.
+  markDisplayedRemote(peer: string, stanzaId: string): void {
+    markDisplayedRemote(this.conversations, this.persistence, peer, stanzaId)
   }
 
   // A stanza that failed to decrypt on arrival succeeded on retry: patch
@@ -365,17 +410,7 @@ export class ChatStore {
     const conversation = this.conversations.get(peer)
     if (!conversation) return false
 
-    // the tombstone was stored with an empty body, so its fallback id had
-    // an empty body component too
-    const tombstoneFallback = `${peer}:${message.delay ?? ''}:`
-    const stored = conversation.messages.find(
-      (m) =>
-        m.undecryptable === true &&
-        ((message.stanzaId !== undefined && m.id === message.stanzaId) ||
-          (message.originId !== undefined && m.id === message.originId) ||
-          (message.id !== undefined && m.wireId === message.id) ||
-          m.id === tombstoneFallback)
-    )
+    const stored = findTombstone(conversation, message, peer)
     if (!stored) return false
 
     const sender = message.type === 'groupchat' ? (message.nick ?? '') : bareJid(message.from)
@@ -406,11 +441,7 @@ export class ChatStore {
   }
 
   private dropTombstone(conversation: Conversation, stored: ChatMessage): void {
-    const at = conversation.messages.indexOf(stored)
-    if (at < 0) return
-    conversation.messages.splice(at, 1)
-    if (!stored.outgoing && conversation.unread > 0) conversation.unread -= 1
-    this.persistence.schedule(conversation)
+    dropTombstone(this.persistence, conversation, stored)
   }
 
   // Remove one stored message by its display id. The UI uses this to
@@ -513,41 +544,7 @@ export class ChatStore {
     if (occupant.occupantId) conversation.ourOccupantId = occupant.occupantId
   }
 
-  private isDuplicate(peer: string, ids: string[]): boolean {
-    let set = this.seen.get(peer)
-    if (!set) {
-      // eslint-disable-next-line svelte/prefer-svelte-reactivity
-      set = new Set()
-      this.seen.set(peer, set)
-    }
-    if (ids.some((id) => set.has(id))) return true
-    for (const id of ids) set.add(id)
-    if (set.size > DEDUP_CAP) {
-      // drop the oldest entries; Set iterates in insertion order
-      for (const old of set) {
-        if (set.size <= DEDUP_CAP) break
-        set.delete(old)
-      }
-    }
-    return false
-  }
-
   private async hydrate(conversation: Conversation): Promise<void> {
-    const stored = await this.persistence.load(conversation.peerJid)
-    if (!stored || conversation.messages.length > 0) return
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const seen = this.seen.get(conversation.peerJid) ?? new Set<string>()
-    this.seen.set(conversation.peerJid, seen)
-    const batch: ChatMessage[] = []
-    for (const raw of stored) {
-      // older caches lack newer fields
-      raw.reactions ??= {}
-      // a still-pending upload left no wire trace, drop the zombie row
-      if (raw.pending) continue
-      batch.push(raw)
-      if (seen.size < DEDUP_CAP) seen.add(raw.id)
-    }
-    // one splice so reactivity notifies once for the whole batch
-    conversation.messages.splice(0, 0, ...batch)
+    await hydrateConversation(this.persistence, this.seen, conversation)
   }
 }

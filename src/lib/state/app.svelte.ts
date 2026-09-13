@@ -1,26 +1,19 @@
-import { OMEMO_RETRY_QUEUE_MAX } from '$lib/constants'
-import type { Attachment, IncomingMessage } from '$lib/core/xmpp/stanzas'
+import { NS } from '$lib/core/xmpp/ns'
+import { parseMdsItem, type IncomingMessage } from '$lib/core/xmpp/stanzas'
+import { childElements } from '$lib/utils/xml'
 import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
 import { accounts, type Account } from './accounts.svelte'
-import { ChatStore } from './chats.svelte'
+import type { DeepLink } from './links'
+import type { SharePayload } from '$lib/core/storage/share'
+import { ChatStore, type ChatMessage } from './chats.svelte'
 import { ComposerStore, type ComposerContext } from './composer.svelte'
 import { RoomSessions } from './muc-session'
+import { messageHandler } from './app/messages'
+import { buildLiveEvent, publishDisplayed, type LiveMessage } from './app/live'
 
-// one live incoming message, resolved for ui consumers (notifications,
-// aria-live). sender is already display-ready and encrypted is precomputed
-// so listeners never need to look up roster or conversation state.
-export interface LiveMessage {
-  accountJid: string
-  peer: string
-  sender: string
-  // true when the stanza or conversation is omemo-encrypted: listeners
-  // must show a generic label instead of the body
-  encrypted: boolean
-  body: string
-  attachment?: Attachment | undefined
-}
+export type { LiveMessage }
 
 class AppStore {
   chats = new Map<string, ChatStore>()
@@ -37,6 +30,12 @@ class AppStore {
   paletteOpen = $state(false)
   // deep-link target consumed by the settings dialog on open
   pendingSettingsSection = $state<string | null>(null)
+  // an xmpp: uri handed to us by the protocol handler or a pasted link;
+  // the shell resolves it into a dialog or draft
+  pendingLink = $state<DeepLink | null>(null)
+  // a share_target payload dropped by the service worker, consumed by
+  // the share dialog
+  sharePayload = $state<SharePayload | null>(null)
   // drafts, reply/edit context and focus callbacks live in the composer
   // store; the methods below delegate, keyed per account:peer
   private composer = new ComposerStore()
@@ -54,7 +53,7 @@ class AppStore {
       // untrusted logins keep conversations in memory only
       const untrusted = accounts.list.find((a) => a.jid === accountJid)?.options.untrusted === true
       store = new ChatStore(accountJid, { persist: !untrusted })
-      store.onLive = (peer, message) => this.emitLive(accountJid, peer, message)
+      store.onLive = (peer, message, stored) => this.emitLive(accountJid, peer, message, stored)
       this.chats.set(accountJid, store)
     }
     this.bindAccount(accountJid)
@@ -70,21 +69,34 @@ class AppStore {
     return () => this.liveListeners.delete(fn)
   }
 
-  private emitLive(accountJid: string, peer: string, message: IncomingMessage): void {
+  private emitLive(
+    accountJid: string,
+    peer: string,
+    message: IncomingMessage,
+    stored?: ChatMessage
+  ): void {
     if (this.liveListeners.size === 0) return
-    const account = accounts.list.find((a) => a.jid === accountJid)
-    const conversation = this.chats.get(accountJid)?.conversations.get(peer)
-    const rosterName = account?.roster.find((c) => c.jid === bareJid(message.from))?.name
-    const event: LiveMessage = {
-      accountJid,
-      peer,
-      sender:
-        message.type === 'groupchat' ? (message.nick ?? peer) : rosterName || bareJid(message.from),
-      encrypted: Boolean(message.encrypted || message.undecryptable || conversation?.encrypted),
-      body: message.body,
-      attachment: message.attachments?.[0]
+    const account = accounts.list.find((a) => a.jid === accountJid) ?? null
+    const event = buildLiveEvent(accounts.list, this.chats, accountJid, peer, message, stored)
+    // XEP-0490: while this conversation is open, advance the displayed
+    // marker so our other devices can drop their unread counters
+    if (peer === this.activePeer && message.stanzaId && !event.attention) {
+      publishDisplayed(this.mdsPublished, account, peer, message.stanzaId, message.stanzaBy)
     }
     for (const listener of this.liveListeners) listener(event)
+  }
+
+  // last stanza-id published per account:peer so we do not republish the
+  // same marker on every selectPeer/live message
+  private mdsPublished = new Map<string, string>()
+
+  private publishDisplayed(
+    account: Account | null,
+    peer: string,
+    stanzaId: string,
+    by?: string | undefined
+  ): void {
+    publishDisplayed(this.mdsPublished, account, peer, stanzaId, by)
   }
 
   registerAction(id: string, handler: () => void): () => void {
@@ -177,18 +189,29 @@ class AppStore {
       store.mamDone.add(conversation.peerJid)
       store.loadOlder(conversation, account.connection)
     }
-    // tell the sender the latest incoming message was displayed
+    // tell the sender the latest unread incoming message was displayed,
+    // and our other resources via the MDS marker on the newest incoming
+    let lastIncoming: ChatMessage | undefined
+    let lastUnread: ChatMessage | undefined
+    for (let i = conversation.messages.length - 1; i >= 0; i--) {
+      const message = conversation.messages[i]
+      if (!message || message.outgoing) break
+      lastIncoming = message
+      if (!message.read) {
+        lastUnread = message
+        break
+      }
+    }
+    if (lastIncoming?.id) {
+      this.publishDisplayed(account, conversation.peerJid, lastIncoming.id)
+    }
     if (!settings.current.sendReadMarkers) return
-    const messages = conversation.messages
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i]
-      if (!message || message.outgoing || message.read) continue
-      message.read = true
-      const ref = message.wireId ?? message.id
+    if (lastUnread) {
+      lastUnread.read = true
+      const ref = lastUnread.wireId ?? lastUnread.id
       if (conversation.kind === 'dm' && ref) {
         account.connection.sendMarker(peer, ref, 'displayed')
       }
-      break
     }
   }
 
@@ -197,112 +220,48 @@ class AppStore {
     if (!account || this.bound.get(accountJid) === account) return
     this.bound.set(accountJid, account)
     const store = this.chatsFor(accountJid)
+    // XEP-0492: bookmark notify overrides are shared state, so a fetch
+    // overwrites the local preference for bookmarked conversations
+    account.onBookmarksApplied = (bookmarks) => {
+      for (const bookmark of bookmarks) {
+        if (bookmark.notify === undefined) continue
+        store.applyRemoteNotify(bookmark.jid, bookmark.notify)
+      }
+    }
     this.roomSessions.get(accountJid)?.dispose()
     const sessions = new RoomSessions(account.connection, store)
     this.roomSessions.set(accountJid, sessions)
 
-    // undecryptable omemo stanzas waiting on a session repair, keyed by
-    // namespace + sender + sending device. Retried exactly once when a
-    // later stanza from the same device decrypts, then dropped. Internal
-    // bookkeeping only - no reactivity needed.
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const undecryptable = new Map<string, IncomingMessage[]>()
-    const queueKey = (ns: string, from: string, sid: number) => `${ns}:${bareJid(from)}/${sid}`
-
     account.connection.events.on('status', (status) => {
       sessions.noteStatus(status)
       if (status === 'disconnected') void store.flush()
+      if (status === 'connected') {
+        // XEP-0490: pull the displayed markers our other resources
+        // published while we were offline
+        account.connection.pepGet(NS.MDS, undefined, (items) => {
+          if (!items) return
+          for (const item of childElements(items)) {
+            const entry = parseMdsItem(item)
+            if (entry) store.markDisplayedRemote(entry.peer, entry.stanzaId)
+          }
+        })
+      }
+    })
+
+    // XEP-0490 push: our MDS node fans out when another resource
+    // advances a displayed marker mid-session
+    account.connection.events.on('mds', (items) => {
+      for (const entry of items) store.markDisplayedRemote(entry.peer, entry.stanzaId)
     })
 
     account.connection.events.on('presenceError', (error) => {
       sessions.noteJoinError(error)
     })
 
-    account.connection.events.on('message', (message) => {
-      // locally ignored peers never reach the store, even when the
-      // server has no XEP-0191 support to filter them for us
-      if (account.blocked.has(bareJid(message.from))) return
-
-      // omemo stanzas carry their real body inside the envelope; decrypt
-      // first, then run the normal ingest and receipt path
-      if (message.encryptedXml) {
-        const omemo = account.omemo
-        if (!omemo) {
-          message.encrypted = true
-          message.undecryptable = true
-          message.body = ''
-          store.ingest(message, this.activePeer)
-          return
-        }
-        void omemo.decryptInto(message).then((report) => {
-          if (account.blocked.has(bareJid(message.from))) return
-          const stored = store.ingest(message, this.activePeer)
-          if (
-            settings.current.sendReceipts &&
-            message.receiptRequest &&
-            message.body &&
-            message.type === 'chat' &&
-            message.id
-          ) {
-            account.connection.sendReceipt(bareJid(message.from), message.id)
-          }
-          if (
-            report.status === 'failed' &&
-            report.sid !== undefined &&
-            report.namespace !== undefined &&
-            message.type === 'chat'
-          ) {
-            const key = queueKey(report.namespace, message.from, report.sid)
-            const list = undecryptable.get(key) ?? []
-            list.push(message)
-            if (list.length > OMEMO_RETRY_QUEUE_MAX) list.shift()
-            undecryptable.set(key, list)
-            void omemo.sendKeyTransport(message.from, report.sid, report.namespace).then((sent) => {
-              if (sent && stored) stored.keyRequested = true
-            })
-            return
-          }
-          if (
-            (report.status === 'decrypted' || report.status === 'empty') &&
-            message.type === 'chat'
-          ) {
-            // the session with this device now works; give each queued
-            // stanza from it one retry, then drop it for good
-            const key = queueKey(report.namespace ?? '', message.from, report.sid ?? 0)
-            const queued = undecryptable.get(key)
-            if (!queued?.length) return
-            undecryptable.delete(key)
-            for (const stale of queued) {
-              void omemo.decryptInto(stale).then((retry) => {
-                // 'decrypted' patches the payload in; 'empty' carried no
-                // payload and 'duplicate' means a resend already landed,
-                // so the tombstone is stale either way
-                if (
-                  retry.status === 'decrypted' ||
-                  retry.status === 'empty' ||
-                  retry.status === 'duplicate'
-                ) {
-                  store.resolveDecrypted(stale)
-                }
-              })
-            }
-          }
-        })
-        return
-      }
-
-      store.ingest(message, this.activePeer)
-      // auto-receipt for chat messages that asked for one
-      if (
-        settings.current.sendReceipts &&
-        message.receiptRequest &&
-        message.body &&
-        message.type === 'chat' &&
-        message.id
-      ) {
-        account.connection.sendReceipt(bareJid(message.from), message.id)
-      }
-    })
+    account.connection.events.on(
+      'message',
+      messageHandler(account, store, () => this.activePeer)
+    )
     account.connection.events.on('occupant', (occupant) => {
       sessions.noteOccupant(occupant)
       // occupant avatars resolve under the room/nick address their
@@ -333,6 +292,7 @@ class AppStore {
     this.roomSessions.delete(jid)
     const store = this.chats.get(jid)
     const flushed = store?.flush() ?? Promise.resolve()
+    store?.dispose()
     this.chats.delete(jid)
     if (accounts.active?.jid === jid) {
       this.activePeer = null

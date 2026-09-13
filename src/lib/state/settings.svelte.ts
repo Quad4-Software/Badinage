@@ -43,6 +43,8 @@ interface AccountMeta {
   hue?: number | undefined
   // per-account desktop notifications; unset follows the global toggle
   notify?: boolean | undefined
+  // XEP-0186: the account is in invisible mode; reapplied on connect
+  invisible?: boolean | undefined
 }
 
 interface Settings {
@@ -67,6 +69,17 @@ interface Settings {
   // their arrival order at the end
   accountOrder: string[]
   accountMeta: Record<string, AccountMeta>
+  // XEP-0301: stream the dm draft to the peer while typing. Opt-in: it
+  // shares keystroke-level timing, so the default stays off.
+  sendRealTimeText: boolean
+  // XEP-0224: allow contacts to nudge us with an attention request
+  allowAttention: boolean
+  // XEP-0080: fetch map tiles for shared locations; off keeps the
+  // location card link-only so nothing off-origin is requested
+  mapPreviews: boolean
+  // register the web+xmpp protocol handler at runtime (the manifest
+  // entry covers installed PWAs regardless of this toggle)
+  xmppLinkHandler: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -82,7 +95,11 @@ const DEFAULT_SETTINGS: Settings = {
   accentHue: null,
   density: 'comfortable',
   accountOrder: [],
-  accountMeta: {}
+  accountMeta: {},
+  sendRealTimeText: false,
+  allowAttention: true,
+  mapPreviews: false,
+  xmppLinkHandler: false
 }
 
 class SettingsStore {

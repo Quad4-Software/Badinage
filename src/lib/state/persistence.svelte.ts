@@ -23,7 +23,17 @@ import { idb } from '$lib/core/storage/idb'
 import { scopedKey } from '$lib/core/storage/keys'
 import { bareJid } from '$lib/utils/jid'
 
+import type { NotifySetting } from '$lib/core/xmpp/stanzas'
+
 import type { ChatMessage, Conversation } from './conversation.svelte'
+
+// per-conversation preferences too small to be messages: the ephemeral
+// timer and the notification override. Stored in kv unencrypted - they
+// leak only that a conversation exists, which the store keys do anyway.
+export interface ConversationMeta {
+  ephemeral?: number | undefined
+  notify?: NotifySetting | undefined
+}
 
 const RETAINED_MESSAGES = MESSAGE_PAGE_SIZE * 4
 
@@ -96,6 +106,19 @@ export class ConversationPersistence {
 
   private key(peerJid: string): string {
     return scopedKey(this.accountJid, 'msgs', bareJid(peerJid))
+  }
+
+  private metaKey(peerJid: string): string {
+    return scopedKey(this.accountJid, 'meta', bareJid(peerJid))
+  }
+
+  async loadMeta(peerJid: string): Promise<ConversationMeta | undefined> {
+    return idb.get<ConversationMeta>('kv', this.metaKey(peerJid)).catch(() => undefined)
+  }
+
+  saveMeta(peerJid: string, meta: ConversationMeta): void {
+    if (!this.persist) return
+    void idb.set('kv', this.metaKey(peerJid), meta).catch(() => undefined)
   }
 
   private wrapKey(): Promise<CryptoKey | undefined> {

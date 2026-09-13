@@ -4,7 +4,7 @@
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
-import type { Attachment, ChatState } from '$lib/core/xmpp/stanzas'
+import type { Attachment, ChatState, Geoloc, NotifySetting } from '$lib/core/xmpp/stanzas'
 
 export type ConversationKind = 'dm' | 'muc'
 
@@ -61,6 +61,14 @@ export interface ChatMessage {
   uploadProgress?: number | undefined
   // file name shown on the pending upload row
   pendingName?: string | undefined
+  // XEP-0466: epoch ms when this message self-destructs; computed at
+  // ingest from the conversation's ephemeral timer
+  expiresAt?: number | undefined
+  // XEP-0080 location payload carried by the stanza
+  geoloc?: Geoloc | undefined
+  // XEP-0372/0492: this muc message names us via a mention reference or
+  // a bare nick hit; drives highlight and on-mention notifications
+  mentionsMe?: boolean | undefined
 }
 
 export interface RoomOccupant {
@@ -127,6 +135,22 @@ export interface Conversation {
   // first uid to page before
   historyComplete?: boolean | undefined
   historyLoading?: boolean | undefined
+  // XEP-0466: ephemeral timer in seconds negotiated for this
+  // conversation; 0/undefined means messages persist
+  ephemeralTimer?: number | undefined
+  // XEP-0492 notification setting for this conversation; undefined
+  // falls back to the default (always for dm, on-mention for muc)
+  notify?: NotifySetting | undefined
+  // XEP-0301: real-time text buffers per composing sender (bare jid for
+  // dm, nick for muc), cleared on message arrival or ttl expiry. seq is
+  // the last applied rtt sequence number, used to drop out-of-order edits.
+  liveText: SvelteMap<string, { text: string; at: number; seq?: number | undefined }>
+  // XEP-0224: timestamp of the last attention request that got through
+  // the rate limit; the header flashes while it is fresh
+  attentionAt?: number | undefined
+  // full jid of the peer resource we last heard from; feature probes
+  // (disco for rtt etc.) target this, not the bare account
+  peerFullJid?: string | undefined
 }
 
 export function emptyMessage(peerJid: string): ChatMessage {
@@ -152,7 +176,8 @@ export function createConversation(peerJid: string, kind: ConversationKind): Con
     unread: 0,
     occupants: new SvelteMap(),
     typers: new SvelteSet(),
-    ourNicks: new SvelteSet()
+    ourNicks: new SvelteSet(),
+    liveText: new SvelteMap()
   })
   return conversation
 }
