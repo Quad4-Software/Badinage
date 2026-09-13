@@ -19,6 +19,9 @@ export default defineConfig({
     tailwindcss(),
     svelte(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
@@ -40,11 +43,26 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'maskable'
           }
-        ]
+        ],
+        // OS-level web+xmpp: links land on ?uri=; the app parses them
+        // through parseDeepLink in lib/state/deeplink.ts
+        protocol_handlers: [{ protocol: 'web+xmpp', url: './?uri=%s' }],
+        // POSTs here are answered by the service worker, which parks
+        // the payload in IndexedDB and redirects back to the app
+        share_target: {
+          action: './share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [{ name: 'files', accept: ['*/*'] }]
+          }
+        }
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: `${base}index.html`
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}']
       }
     })
   ],
