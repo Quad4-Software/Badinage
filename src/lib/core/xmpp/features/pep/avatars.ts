@@ -14,11 +14,11 @@ import { AVATAR_FETCH_CONCURRENCY, AVATAR_MAX_BYTES, AVATAR_TIMEOUT_MS } from '$
 import { idb } from '$lib/core/storage/idb'
 import { globalKey, scopedKey } from '$lib/core/storage/keys'
 import { bareJid } from '$lib/utils/jid'
-import { base64ToBytes, bytesToBase64, sha1Hex } from '$lib/utils/sha1'
+import { base64ToBytes, bytesToBase64, sha1Hex } from '$lib/utils/protocol/sha1'
 
-import { NS } from '../ns'
-import { parseVcardPhoto } from '../stanzas'
-import type { XmppTransport } from './transport'
+import { NS } from '../../ns'
+import { parseVcardPhoto } from '../../stanzas'
+import type { XmppTransport } from '../transport'
 
 // the cache is only reachable when indexedDB exists (unit tests run
 // without it and simply skip persistence)

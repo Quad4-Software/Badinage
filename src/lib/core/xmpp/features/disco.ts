@@ -12,91 +12,12 @@ import { $iq } from 'strophe.js'
 import { CAPS_NODE, DISCO_NEGATIVE_TTL_MS, DISCO_TIMEOUT_MS } from '$lib/constants'
 import { idb } from '$lib/core/storage/idb'
 import { globalKey } from '$lib/core/storage/keys'
-import { sha1Base64Utf8 } from '$lib/utils/sha1'
 import { firstNsTag } from '$lib/utils/xml'
 
 import { NS } from '../ns'
-import {
-  parseDiscoInfo,
-  parseDiscoItems,
-  type CapsRef,
-  type DiscoForm,
-  type DiscoIdentity,
-  type DiscoInfo,
-  type DiscoItem
-} from '../stanzas'
+import { DISCO_FEATURES, DISCO_IDENTITY, ownCaps } from './caps'
+import { parseDiscoInfo, parseDiscoItems, type DiscoInfo, type DiscoItem } from '../stanzas'
 import type { XmppTransport } from './transport'
-
-export const DISCO_IDENTITY: DiscoIdentity = {
-  category: 'client',
-  type: 'web',
-  name: 'Badinage'
-}
-
-export const DISCO_FEATURES: readonly string[] = [
-  NS.DISCO_INFO,
-  NS.DISCO_ITEMS,
-  NS.CAPS,
-  NS.MUC,
-  NS.MAM,
-  NS.CARBONS,
-  NS.CHAT_STATES,
-  NS.RECEIPTS,
-  NS.MARKERS,
-  NS.REPLY,
-  NS.REACTIONS,
-  NS.CORRECT,
-  NS.STANZA_IDS,
-  NS.BLOCKING,
-  NS.VCARD_TEMP,
-  NS.VCARD_UPDATE,
-  NS.HTTP_UPLOAD,
-  NS.EME,
-  NS.BOOKMARKS,
-  // PEP auto-subscription: advertising +notify makes the server send us
-  // bookmark changes made by our other clients
-  `${NS.BOOKMARKS}+notify`
-]
-
-// i;octet collation (RFC 4790 9.3): code point order, which utf-16
-// string comparison matches for everything involved here
-function byOctet(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0
-}
-
-// XEP-0115 verification string: sorted identity category/type/lang/name,
-// sorted feature vars, then sorted extension forms (form type, then each
-// field var with sorted values), everything delimited by '<' and hashed
-// with sha1 in base64.
-export function capsVerificationString(
-  identities: DiscoIdentity[],
-  features: readonly string[],
-  forms: DiscoForm[] = []
-): string {
-  let s = ''
-  const ids = identities
-    .map((i) => `${i.category}/${i.type}/${i.lang ?? ''}/${i.name ?? ''}`)
-    .sort(byOctet)
-  for (const id of ids) s += `${id}<`
-  for (const feature of [...features].sort(byOctet)) s += `${feature}<`
-  for (const form of [...forms].sort((a, b) => byOctet(a.formType, b.formType))) {
-    s += `${form.formType}<`
-    for (const field of [...form.fields].sort((a, b) => byOctet(a.var, b.var))) {
-      s += `${field.var}<`
-      for (const value of [...field.values].sort(byOctet)) s += `${value}<`
-    }
-  }
-  return sha1Base64Utf8(s)
-}
-
-let ownVer: string | undefined
-
-// Our own caps descriptor for outgoing presence. The ver is computed
-// once because the advertised set is static for the session.
-export function ownCaps(): CapsRef {
-  ownVer ??= capsVerificationString([DISCO_IDENTITY], DISCO_FEATURES)
-  return { node: CAPS_NODE, hash: 'sha-1', ver: ownVer }
-}
 
 // ---- query cache --------------------------------------------------------
 

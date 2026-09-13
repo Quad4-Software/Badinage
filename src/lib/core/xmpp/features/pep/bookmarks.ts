@@ -7,10 +7,10 @@ import { $iq } from 'strophe.js'
 
 import { escapeXml } from '$lib/utils/xml'
 
-import { NS } from '../ns'
-import { parseBookmarkItems, type Bookmark } from '../stanzas'
+import { NS } from '../../ns'
+import { parseBookmarkItems, type Bookmark } from '../../stanzas'
 import { pepGet, pepPublish, type PepPublishOptions } from './pep'
-import type { XmppTransport } from './transport'
+import type { XmppTransport } from '../transport'
 
 // XEP-0402 section 3.3: publish-options must keep the node persistent
 // and private; whitelist keeps bookmarks invisible to contacts

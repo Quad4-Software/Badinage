@@ -9,29 +9,23 @@ import { $iq, Strophe } from 'strophe.js'
 import { RECONNECT_DELAY_MAX_MS, RECONNECT_DELAY_MS } from '$lib/constants'
 import { Emitter } from '$lib/core/events'
 
-import { fetchAvatar } from './features/avatars'
+import { fetchAvatar } from './features/pep/avatars'
 import { blockJids, fetchBlocklist, unblockJids } from './features/blocking'
-import { fetchBookmarks, publishBookmark, retractBookmark } from './features/bookmarks'
+import { fetchBookmarks, publishBookmark, retractBookmark } from './features/pep/bookmarks'
 import { sendClientState } from './features/csi'
 import { discoInfo, discoItems } from './features/disco'
-import {
-  handleBlockPush,
-  handleDiscoInfoGet,
-  handleDiscoItemsGet,
-  handleMessage,
-  handlePing,
-  handlePresence,
-  handleRosterPush
-} from './features/handlers'
+import { registerStanzaHandlers } from './connection-handlers'
 import { queryArchive } from './features/mam'
 import {
   sendAttachment,
+  sendAttention,
   sendChatMessage,
   sendChatState,
   sendMarker,
   sendReaction,
   sendReceipt,
-  sendRetraction
+  sendRetraction,
+  sendRtt
 } from './features/messaging'
 import {
   banOccupant,
@@ -53,16 +47,23 @@ import {
   sendEncryptedMessage,
   sendEncryptedNotification,
   type PepPublishOptions
-} from './features/pep'
+} from './features/pep/pep'
 import { PingManager } from './features/ping'
 import { sendDirectedPresence, sendPresence } from './features/presence'
+import { publishDisplayed } from './features/pep/mds'
+import { setInvisible } from './features/privacy'
 import { fetchRoster, rosterRemove, rosterSet } from './features/roster'
+import { channelSearch, channelSearchForm } from './features/search'
 import { smConnectionOptions } from './features/sm'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
 import { discoverUploadService, requestUploadSlot, uploadFile } from './features/upload'
 import { NS } from './ns'
+import type { RttEvent, RttOp } from '$lib/utils/protocol/rtt'
+import { bareJid } from '$lib/utils/jid'
+
 import type {
   Bookmark,
+  ChannelSearchItem,
   ChatState,
   DataForm,
   DiscoInfo,
@@ -76,7 +77,7 @@ import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptio
 // The public contract lives in types.ts and the parsed result shapes in
 // stanzas.ts; re-exported here so importers of this module keep working.
 export type { Bookmark, DiscoInfo, DiscoItem, MamPageResult, UploadSlot } from './stanzas'
-export type { PepPublishOptions } from './features/pep'
+export type { PepPublishOptions } from './features/pep/pep'
 export type {
   AttachmentMeta,
   ChatConnection,
@@ -100,9 +101,8 @@ export class XmppConnection implements ChatConnection {
   private csiActive: boolean | null = null
   private csiSent: boolean | null = null
   // namespaces advertised in stream:features. Nonzas a server does not
-  // know are fatal on strict stacks (prosody closes the stream with
-  // unsupported-stanza-type), so carbons and csi only go out when the
-  // stream advertised them
+  // know are fatal on strict stacks, so carbons and csi only go out when
+  // the stream advertised them
   private streamFeatures = new Set<string>()
 
   constructor(
@@ -220,6 +220,14 @@ export class XmppConnection implements ChatConnection {
     sendRetraction(this.transport, to, targetId, type)
   }
 
+  sendAttention(to: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    sendAttention(this.transport, to, type)
+  }
+
+  sendRtt(to: string, seq: number, event: RttEvent, ops: RttOp[]): void {
+    sendRtt(this.transport, to, seq, event, ops)
+  }
+
   // ---- HTTP upload, implemented in features/upload.ts -----------------------
 
   discoverUploadService(onDone: (serviceJid: string | null) => void): void {
@@ -245,7 +253,7 @@ export class XmppConnection implements ChatConnection {
     return uploadFile(putUrl, file, headers, onProgress, signal)
   }
 
-  // ---- PEP / OMEMO, implemented in features/pep.ts ---------------------------
+  // ---- PEP / OMEMO, implemented in features/pep/pep.ts ---------------------------
 
   pepGet(node: string, jid: string | undefined, onDone: (items: Element | null) => void): void {
     pepGet(this.transport, node, jid, onDone)
@@ -410,7 +418,7 @@ export class XmppConnection implements ChatConnection {
     discoItems(this.transport, jid, onDone)
   }
 
-  // ---- bookmarks (XEP-0402), implemented in features/bookmarks.ts --------------
+  // ---- bookmarks (XEP-0402), implemented in features/pep/bookmarks.ts --------------
 
   fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void {
     fetchBookmarks(this.transport, onDone)
@@ -422,6 +430,38 @@ export class XmppConnection implements ChatConnection {
 
   removeBookmark(jid: string, onDone?: (ok: boolean) => void): void {
     retractBookmark(this.transport, jid, onDone)
+  }
+
+  // ---- invisibility (XEP-0186) and channel search (XEP-0433) ---------
+  setInvisible(enabled: boolean, onDone: (ok: boolean) => void): void {
+    setInvisible(this.transport, enabled, onDone)
+  }
+
+  publishDisplayed(
+    peer: string,
+    stanzaId: string,
+    by?: string,
+    onDone?: (ok: boolean) => void
+  ): void {
+    publishDisplayed(this.transport, peer, stanzaId, by, onDone)
+  }
+
+  rttSupported(jid: string, onDone: (supported: boolean) => void): void {
+    this.discoInfo(jid, undefined, (info) => {
+      onDone(info?.features.includes(NS.RTT) === true)
+    })
+  }
+
+  channelSearchForm(service: string, onDone: (form: DataForm | null) => void): void {
+    channelSearchForm(this.transport, service, onDone)
+  }
+
+  channelSearch(
+    service: string,
+    form: DataForm,
+    onDone: (items: ChannelSearchItem[] | null) => void
+  ): void {
+    channelSearch(this.transport, service, form, onDone)
   }
 
   // ---- internals -----------------------------------------------------------------
@@ -472,47 +512,7 @@ export class XmppConnection implements ChatConnection {
 
   private onConnected(): void {
     this.noteStreamFeatures()
-    this.conn.addHandler((stanza) => handleMessage(stanza, this.events), null, 'message', null)
-    this.conn.addHandler(
-      (stanza) => handlePresence(stanza, this.events, this.transport),
-      null,
-      'presence',
-      null
-    )
-    this.conn.addHandler(
-      (stanza) => handleRosterPush(stanza, this.events, this.transport),
-      NS.ROSTER,
-      'iq',
-      'set'
-    )
-    this.conn.addHandler(
-      (stanza) => handleBlockPush(stanza, this.events, this.transport),
-      NS.BLOCKING,
-      'iq',
-      'set'
-    )
-    // XEP-0199: answer pings; MUC self-ping relies on the room routing
-    // our own ping back at us
-    this.conn.addHandler(
-      (stanza) => handlePing(stanza, this.events, this.transport),
-      NS.PING,
-      'iq',
-      'get'
-    )
-    // XEP-0030/0115: peers disco us to resolve the caps ver we advertise
-    // in presence into a feature list
-    this.conn.addHandler(
-      (stanza) => handleDiscoInfoGet(stanza, this.transport),
-      NS.DISCO_INFO,
-      'iq',
-      'get'
-    )
-    this.conn.addHandler(
-      (stanza) => handleDiscoItemsGet(stanza, this.transport),
-      NS.DISCO_ITEMS,
-      'iq',
-      'get'
-    )
+    registerStanzaHandlers(this.conn, this.transport, this.events, () => bareJid(this.jid))
     this.enableCarbons()
     this.sendPresence()
     this.fetchRoster()

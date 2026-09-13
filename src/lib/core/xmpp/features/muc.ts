@@ -10,7 +10,7 @@ import { childElements } from '$lib/utils/xml'
 import { NS } from '../ns'
 import { parseDataForm, type DataForm } from '../stanzas'
 import { appendSubmitForm } from './dataforms'
-import { ownCaps } from './disco'
+import { ownCaps } from './caps'
 import { noop, type XmppTransport } from './transport'
 
 const JOIN_HISTORY_STANZAS = '100'

@@ -6,8 +6,8 @@ import { $iq, $msg } from 'strophe.js'
 import { OMEMO_FALLBACK_BODY } from '$lib/constants'
 import { firstNsTag } from '$lib/utils/xml'
 
-import { NS } from '../ns'
-import type { XmppTransport } from './transport'
+import { NS } from '../../ns'
+import type { XmppTransport } from '../transport'
 
 function domFromXml(xml: string): Element | null {
   return new DOMParser().parseFromString(xml, 'text/xml').documentElement

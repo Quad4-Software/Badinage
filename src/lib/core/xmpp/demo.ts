@@ -20,7 +20,6 @@ import type {
 import {
   DemoOmemoPeers,
   demoBookmarks,
-  demoRoomConfig,
   demoRosterItems,
   emitArchivePage,
   emitContactPresence,
@@ -32,12 +31,20 @@ import {
   emitSubscriptionAccept,
   emitTypingEcho,
   ROOM,
-  ROOM_SUBJECT,
-  roomOccupants,
   scheduleLiveEvents
 } from './demo-data'
-import { DISCO_FEATURES, DISCO_IDENTITY } from './features/disco'
-import type { ChatState, DataForm, MarkerType } from './stanzas'
+import {
+  demoBanOccupant,
+  demoChangeRoomNick,
+  demoFetchRoomConfig,
+  demoJoinRoom,
+  demoKickOccupant,
+  demoLeaveRoom,
+  demoModerateMessage,
+  demoSetRoomSubject
+} from './demo-muc'
+import { DISCO_FEATURES, DISCO_IDENTITY } from './features/caps'
+import type { ChannelSearchItem, ChatState, DataForm, MarkerType } from './stanzas'
 
 const DEMO_CONNECT_DELAY_MS = 400
 const DEMO_REPLY_DELAY_MS = 1200
@@ -242,6 +249,55 @@ export class DemoConnection implements ChatConnection {
     void type
   }
 
+  sendAttention(to: string, type: 'chat' | 'groupchat' = 'chat'): void {
+    void to
+    void type
+  }
+
+  sendRtt(to: string, seq: number, event: string, ops: unknown[]): void {
+    void to
+    void seq
+    void event
+    void ops
+  }
+
+  setInvisible(enabled: boolean, onDone: (ok: boolean) => void): void {
+    void enabled
+    onDone(false)
+  }
+
+  publishDisplayed(
+    peer: string,
+    stanzaId: string,
+    by?: string,
+    onDone?: (ok: boolean) => void
+  ): void {
+    void peer
+    void stanzaId
+    void by
+    onDone?.(false)
+  }
+
+  rttSupported(jid: string, onDone: (supported: boolean) => void): void {
+    void jid
+    onDone(false)
+  }
+
+  channelSearchForm(service: string, onDone: (form: DataForm | null) => void): void {
+    void service
+    onDone(null)
+  }
+
+  channelSearch(
+    service: string,
+    form: DataForm,
+    onDone: (items: ChannelSearchItem[] | null) => void
+  ): void {
+    void service
+    void form
+    onDone([])
+  }
+
   sendPresence(): void {
     // demo presence is already seeded in connect()
   }
@@ -288,70 +344,20 @@ export class DemoConnection implements ChatConnection {
 
   joinRoom(room: string, nick: string, password?: string): void {
     void password
-    for (const occupant of roomOccupants(room, nick, this.jid)) {
-      this.events.emit('occupant', occupant)
-    }
-    this.events.emit('message', {
-      from: room,
-      to: this.jid,
-      body: '',
-      type: 'groupchat',
-      subject: ROOM_SUBJECT
-    })
+    demoJoinRoom(this.events, this.jid, room, nick)
   }
 
   leaveRoom(room: string, nick: string): void {
-    this.events.emit('occupant', {
-      room,
-      nick,
-      presence: 'offline',
-      affiliation: 'member',
-      role: 'none',
-      self: true,
-      codes: ['110']
-    })
+    demoLeaveRoom(this.events, room, nick)
   }
 
   setRoomSubject(room: string, subject: string): void {
-    // echo the subject back as a room message so the header updates
-    this.events.emit('message', {
-      from: room,
-      to: this.jid,
-      body: '',
-      type: 'groupchat',
-      subject
-    })
+    demoSetRoomSubject(this.events, this.jid, room, subject)
   }
 
   changeRoomNick(room: string, oldNick: string, newNick: string, password?: string): void {
     void password
-    // the real flow is unavailable-with-303 for the old nick followed by
-    // available presence for the new one
-    this.events.emit('occupant', {
-      room,
-      nick: oldNick,
-      presence: 'offline',
-      affiliation: 'owner',
-      role: 'none',
-      self: true,
-      codes: ['110', '303'],
-      newNick
-    })
-    this.timers.push(
-      setTimeout(() => {
-        this.events.emit('occupant', {
-          room,
-          nick: newNick,
-          presence: 'online',
-          affiliation: 'owner',
-          role: 'moderator',
-          self: true,
-          codes: ['110'],
-          jid: this.jid,
-          occupantId: 'occ-self'
-        })
-      }, 300)
-    )
+    demoChangeRoomNick(this.events, this.timers, this.jid, room, oldNick, newNick)
   }
 
   inviteToRoom(room: string, to: string, opts?: { reason?: string; password?: string }): void {
@@ -367,47 +373,20 @@ export class DemoConnection implements ChatConnection {
   }
 
   kickOccupant(room: string, nick: string, reason?: string): void {
-    this.events.emit('occupant', {
-      room,
-      nick,
-      presence: 'offline',
-      affiliation: 'member',
-      role: 'none',
-      self: false,
-      codes: ['307'],
-      reason
-    })
+    demoKickOccupant(this.events, room, nick, reason)
   }
 
   banOccupant(room: string, jid: string, reason?: string): void {
-    // the ban iq names a jid; the room then drops the matching occupant
-    const nick = jid.split('@')[0] ?? jid
-    this.events.emit('occupant', {
-      room,
-      nick,
-      presence: 'offline',
-      affiliation: 'none',
-      role: 'none',
-      self: false,
-      codes: ['301'],
-      reason
-    })
+    demoBanOccupant(this.events, room, jid, reason)
   }
 
   moderateMessage(room: string, stanzaId: string, reason?: string): void {
-    // the room broadcasts a retraction notice addressed at nobody
-    this.events.emit('message', {
-      from: room,
-      to: this.jid,
-      body: '',
-      type: 'groupchat',
-      retraction: { id: stanzaId, reason }
-    })
+    demoModerateMessage(this.events, this.jid, room, stanzaId, reason)
   }
 
   fetchRoomConfig(room: string, onDone: (form: DataForm | null) => void): void {
     void room
-    this.timers.push(setTimeout(() => onDone(demoRoomConfig()), DEMO_MAM_PAGE_DELAY_MS))
+    demoFetchRoomConfig(this.timers, onDone)
   }
 
   submitRoomConfig(room: string, form: DataForm): void {

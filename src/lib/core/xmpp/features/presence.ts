@@ -4,7 +4,7 @@
 import { $pres } from 'strophe.js'
 
 import { NS } from '../ns'
-import { ownCaps } from './disco'
+import { ownCaps } from './caps'
 import type { StanzaBuilder, XmppTransport } from './transport'
 
 // XEP-0115: append the caps element to an available-presence stanza. The

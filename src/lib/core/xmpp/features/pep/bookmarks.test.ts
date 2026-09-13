@@ -1,10 +1,10 @@
 import { DOMParser } from '@xmldom/xmldom'
 import { describe, expect, it, vi } from 'vitest'
 
-import { NS } from '../ns'
-import { parseBookmark, type Bookmark } from '../stanzas'
+import { NS } from '../../ns'
+import { parseBookmark, type Bookmark } from '../../stanzas'
 import { bookmarkPayload, fetchBookmarks, publishBookmark, retractBookmark } from './bookmarks'
-import type { StanzaBuilder, XmppTransport } from './transport'
+import type { StanzaBuilder, XmppTransport } from '../transport'
 
 const parser = new DOMParser()
 

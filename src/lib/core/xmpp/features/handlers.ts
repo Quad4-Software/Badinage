@@ -5,35 +5,56 @@
 import { $iq } from 'strophe.js'
 
 import type { Emitter } from '$lib/core/events'
+import { bareJid } from '$lib/utils/jid'
 
 import { NS } from '../ns'
 import {
   parseBlockPush,
   parseBookmark,
+  parseMdsItem,
   parseMessage,
   parsePepEvent,
   parsePresence,
   parseRoomDecline,
   parseRoomInvite,
   parseRosterItems,
-  type Bookmark
+  type Bookmark,
+  type MdsDisplayed
 } from '../stanzas'
 import type { ConnectionEvents } from '../types'
-import { noteAvatarHash } from './avatars'
+import { noteAvatarHash } from './pep/avatars'
 import { answerDiscoInfo, answerDiscoItems } from './disco'
 import { acceptInstantRoom, ROOM_CREATED_CODE } from './muc'
 import type { XmppTransport } from './transport'
 
-export function handleMessage(stanza: Element, events: Emitter<ConnectionEvents>): boolean {
+export function handleMessage(
+  stanza: Element,
+  events: Emitter<ConnectionEvents>,
+  ownBareJid: string
+): boolean {
   // PEP event notifications arrive as (usually bodiless) headline
-  // messages; the bookmark node fan-outs signal that another resource
-  // changed our bookmarks
+  // messages. They are only trustworthy when they come from our own
+  // account (or carry no from at all, meaning our server): a foreign
+  // sender must never be able to fake a bookmark change or clear our
+  // unread state through a forged MDS item.
+  const from = stanza.getAttribute('from')
+  const ownPep = from === null || bareJid(from) === ownBareJid
   const pep = parsePepEvent(stanza)
-  if (pep?.node === NS.BOOKMARKS) {
+  // the bookmark node fan-outs signal that another resource
+  // changed our bookmarks
+  if (ownPep && pep?.node === NS.BOOKMARKS) {
     const updated = pep.items
       .map((item) => parseBookmark(item))
       .filter((b): b is Bookmark => b !== null && b.jid !== '')
     events.emit('bookmarks', { updated, retracted: pep.retracted })
+  }
+  // XEP-0490: our own MDS node fans out when another resource advanced
+  // a displayed marker; each item carries peer, stanza-id and by
+  if (ownPep && pep?.node === NS.MDS) {
+    const items = pep.items
+      .map((item) => parseMdsItem(item))
+      .filter((entry): entry is MdsDisplayed => entry !== null)
+    if (items.length > 0) events.emit('mds', items)
   }
   // invites and declines ride in message stanzas too; emit them as
   // their own events whether or not the stanza also parses as a message

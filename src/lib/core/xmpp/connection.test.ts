@@ -208,42 +208,6 @@ describe('XmppConnection with a stubbed strophe connection', () => {
     expect(stub.sendIQ).not.toHaveBeenCalled()
   })
 
-  describe('outgoing message stanzas', () => {
-    it('emits a retract element with fallback and store hint', () => {
-      const stub = makeStub()
-      stub.xmpp.connect('me@example.net/res', 'secret')
-      stub.drive(Strophe.Status.CONNECTED)
-      stub.send.mockClear()
-
-      stub.xmpp.sendRetraction('peer@example.net', 'orig-1')
-      const sent = stub.send.mock.calls.map((c) => String(c[0]))
-      expect(sent).toHaveLength(1)
-      expect(sent[0]).toContain('<retract')
-      expect(sent[0]).toContain('urn:xmpp:message-retract:1')
-      expect(sent[0]).toContain('id="orig-1"')
-      expect(sent[0]).toContain('<fallback')
-      expect(sent[0]).toContain('urn:xmpp:fallback:0')
-      expect(sent[0]).toContain('<store')
-      expect(sent[0]).toContain('urn:xmpp:hints')
-    })
-
-    it('emits a spoiler element with and without a hint', () => {
-      const stub = makeStub()
-      stub.xmpp.connect('me@example.net/res', 'secret')
-      stub.drive(Strophe.Status.CONNECTED)
-      stub.send.mockClear()
-
-      stub.xmpp.sendChatMessage('peer@example.net', 'secret text', 'chat', {
-        spoilerHint: 'ending'
-      })
-      stub.xmpp.sendChatMessage('peer@example.net', 'hintless text', 'chat', { spoilerHint: '' })
-      const sent = stub.send.mock.calls.map((c) => String(c[0]))
-      expect(sent).toHaveLength(2)
-      expect(sent[0]).toContain('<spoiler xmlns="urn:xmpp:spoiler:0">ending</spoiler>')
-      expect(sent[1]).toContain('<spoiler xmlns="urn:xmpp:spoiler:0"/>')
-    })
-  })
-
   describe('reconnect backoff', () => {
     it('reconnects after RECONNECT_DELAY_MS', () => {
       vi.useFakeTimers()

@@ -4,6 +4,8 @@
 
 import { $msg } from 'strophe.js'
 
+import type { RttEvent, RttOp } from '$lib/utils/protocol/rtt'
+
 import { NS } from '../ns'
 import type { ChatState, MarkerType } from '../stanzas'
 import type { AttachmentMeta, SendMessageOptions } from '../types'
@@ -39,9 +41,76 @@ export function sendChatMessage(
     stanza.up()
   }
   // a correction is already acked by the round trip it replies to
-  if (!opts?.replaceId) stanza.c('request', { xmlns: NS.RECEIPTS })
+  if (!opts?.replaceId) stanza.c('request', { xmlns: NS.RECEIPTS }).up()
+  // XEP-0466: announce the conversation's ephemeral timer so both sides
+  // agree on when messages self-destruct; timer 0 turns the mode off and
+  // must go out on the wire too
+  if (opts?.ephemeral !== undefined) {
+    stanza.c('ephemeral', { xmlns: NS.EPHEMERAL, timer: String(opts.ephemeral) }).up()
+  }
+  for (const ref of opts?.references ?? []) {
+    const attrs: Record<string, string> = { xmlns: NS.REFERENCE, type: ref.type }
+    if (ref.begin !== undefined) attrs.begin = String(ref.begin)
+    if (ref.end !== undefined) attrs.end = String(ref.end)
+    if (ref.uri) attrs.uri = ref.uri
+    if (ref.anchor) attrs.anchor = ref.anchor
+    stanza.c('reference', attrs).up()
+  }
+  // XEP-0080: coordinates plus a geo uri body fallback for clients that
+  // only render bodies
+  if (opts?.geoloc) {
+    const geo = stanza.c('geoloc', { xmlns: NS.GEOLOC })
+    geo.c('lat').t(String(opts.geoloc.lat)).up()
+    geo.c('lon').t(String(opts.geoloc.lon)).up()
+    if (opts.geoloc.accuracy !== undefined) {
+      geo.c('accuracy').t(String(opts.geoloc.accuracy)).up()
+    }
+  }
   conn.send(stanza)
   return id
+}
+
+// XEP-0224: a bare attention signal. No body, no store hint - it is a
+// live nudge, not archivable content.
+export function sendAttention(
+  conn: XmppTransport,
+  to: string,
+  type: 'chat' | 'groupchat' = 'chat'
+): void {
+  conn.send(
+    $msg({ to, type, id: conn.uniqueId('attention') }).c('attention', { xmlns: NS.ATTENTION })
+  )
+}
+
+// XEP-0301: one real-time text update for the message being composed.
+// The stanza carries no body; receivers rebuild the buffer from ops.
+export function sendRtt(
+  conn: XmppTransport,
+  to: string,
+  seq: number,
+  event: RttEvent,
+  ops: RttOp[]
+): void {
+  const stanza = $msg({ to, type: 'chat', id: conn.uniqueId('rtt') }).c('rtt', {
+    xmlns: NS.RTT,
+    seq: String(seq),
+    event
+  })
+  for (const op of ops) {
+    if (op.type === 't') {
+      const attrs: Record<string, string> = {}
+      if (op.p !== undefined) attrs.p = String(op.p)
+      stanza.c('t', attrs).t(op.text).up()
+    } else if (op.type === 'e' || op.type === 'd') {
+      const attrs: Record<string, string> = {}
+      if (op.p !== undefined) attrs.p = String(op.p)
+      if (op.n !== undefined) attrs.n = String(op.n)
+      stanza.c(op.type, attrs).up()
+    } else if (op.type === 'w' && op.n !== undefined) {
+      stanza.c('w', { n: String(op.n) }).up()
+    }
+  }
+  conn.send(stanza)
 }
 
 // XEP-0444. An empty emojis list sends a bare reactions element, which

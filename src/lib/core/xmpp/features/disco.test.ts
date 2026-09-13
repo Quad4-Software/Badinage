@@ -4,14 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CAPS_NODE, DISCO_NEGATIVE_TTL_MS, DISCO_TIMEOUT_MS } from '$lib/constants'
 
 import { NS } from '../ns'
-import {
-  answerDiscoInfo,
-  answerDiscoItems,
-  capsVerificationString,
-  discoInfo,
-  discoItems,
-  ownCaps
-} from './disco'
+import { capsVerificationString, ownCaps } from './caps'
+import { answerDiscoInfo, answerDiscoItems, discoInfo, discoItems } from './disco'
 import type { StanzaBuilder, XmppTransport } from './transport'
 
 const parser = new DOMParser()
