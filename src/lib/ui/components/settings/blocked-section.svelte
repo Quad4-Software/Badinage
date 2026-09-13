@@ -8,6 +8,7 @@
   import { Input } from '$lib/ui/primitives/input'
 
   import { matchesQuery } from './match'
+  import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
 
   let { q }: { q: string } = $props()
@@ -22,11 +23,25 @@
   // the section doubles as the place to add new blocks, so it stays
   // visible while searching only when it has matching rows or the add
   // form itself matches
-  const visible = $derived(
-    !q ||
-      list.length > 0 ||
-      matchesQuery(q, $LL.blockedContacts(), $LL.blockUser(), $LL.unblockUser())
+  const showForm = $derived(
+    matchesQuery(
+      q,
+      $LL.blockedContacts(),
+      $LL.blockUser(),
+      $LL.unblockUser(),
+      $LL.block(),
+      'blocklist blacklist ignore'
+    )
   )
+  const hits = $derived(list.length + (showForm ? 1 : 0))
+  const visible = $derived(hits > 0)
+
+  $effect(() => {
+    settingsSearch.hits.blocked = hits
+    return () => {
+      delete settingsSearch.hits.blocked
+    }
+  })
 
   function add() {
     const jid = bareJid(newJid.trim())
@@ -37,24 +52,26 @@
 </script>
 
 <SettingSection id="blocked" title={$LL.blockedContacts()} {visible}>
-  <form
-    class="flex items-center gap-2"
-    onsubmit={(event) => {
-      event.preventDefault()
-      add()
-    }}
-  >
-    <Input
-      bind:value={newJid}
-      placeholder={$LL.blockJidPlaceholder()}
-      aria-label={$LL.blockJidPlaceholder()}
-      class="h-8 min-w-0 flex-1 text-sm"
-    />
-    <Button type="submit" variant="outline" size="sm" disabled={!newJid.trim()}>
-      <Plus class="size-3.5" />
-      {$LL.block()}
-    </Button>
-  </form>
+  {#if showForm}
+    <form
+      class="flex items-center gap-2"
+      onsubmit={(event) => {
+        event.preventDefault()
+        add()
+      }}
+    >
+      <Input
+        bind:value={newJid}
+        placeholder={$LL.blockJidPlaceholder()}
+        aria-label={$LL.blockJidPlaceholder()}
+        class="h-8 min-w-0 flex-1 text-sm"
+      />
+      <Button type="submit" variant="outline" size="sm" disabled={!newJid.trim()}>
+        <Plus class="size-3.5" />
+        {$LL.block()}
+      </Button>
+    </form>
+  {/if}
 
   {#if list.length > 0}
     <ul class="flex flex-col">

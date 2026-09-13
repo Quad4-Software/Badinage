@@ -4,6 +4,7 @@
   import { Switch } from '$lib/ui/primitives/switch'
 
   import { matchesQuery } from './match'
+  import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
 
   let { q }: { q: string } = $props()
@@ -13,12 +14,19 @@
   const items = $derived(
     (
       [
-        ['sendWithEnter', $LL.sendWithEnter()],
-        ['notifications', $LL.notifications()],
-        ['sounds', $LL.sounds()]
-      ] as [Flag, string][]
-    ).filter(([, label]) => matchesQuery(q, label, $LL.general()))
+        ['sendWithEnter', $LL.sendWithEnter(), 'return key newline'],
+        ['notifications', $LL.notifications(), 'alerts desktop notify'],
+        ['sounds', $LL.sounds(), 'audio mute beep']
+      ] as [Flag, string, string][]
+    ).filter(([, label, keywords]) => matchesQuery(q, label, keywords, $LL.general()))
   )
+
+  $effect(() => {
+    settingsSearch.hits.general = items.length
+    return () => {
+      delete settingsSearch.hits.general
+    }
+  })
 </script>
 
 <SettingSection id="general" title={$LL.general()} visible={items.length > 0}>

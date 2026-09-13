@@ -11,6 +11,7 @@
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import { matchesQuery } from './match'
+  import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
 
   let { q }: { q: string } = $props()
@@ -40,13 +41,31 @@
 
   const contacts = $derived(
     (account?.roster ?? []).filter((c) =>
-      matchesQuery(q, c.name, c.jid, $LL.encryption(), $LL.fingerprint())
+      matchesQuery(q, c.name, c.jid, $LL.encryption(), $LL.fingerprint(), 'omemo security verify')
     )
   )
 
-  const visible = $derived(
-    !q || contacts.length > 0 || matchesQuery(q, $LL.encryption(), $LL.omemoBlindTrust())
+  const showDevice = $derived(
+    matchesQuery(q, $LL.yourDevice(), $LL.fingerprint(), 'omemo security verify', $LL.encryption())
   )
+  const showBlindTrust = $derived(
+    matchesQuery(
+      q,
+      $LL.omemoBlindTrust(),
+      $LL.omemoBlindTrustHint(),
+      'btbv trust on first use tofu',
+      $LL.encryption()
+    )
+  )
+  const hits = $derived((showDevice ? 1 : 0) + (showBlindTrust ? 1 : 0) + contacts.length)
+  const visible = $derived(hits > 0)
+
+  $effect(() => {
+    settingsSearch.hits.encryption = hits
+    return () => {
+      delete settingsSearch.hits.encryption
+    }
+  })
 
   async function toggleContact(jid: string) {
     expanded[jid] = !expanded[jid]
@@ -90,34 +109,38 @@
         {$LL.omemoInsecureStorage()}
       </p>
     {/if}
-    <div class="flex flex-col gap-1">
-      <span class="text-xs font-medium">{$LL.yourDevice()}</span>
-      <div class="flex items-center gap-2">
-        <code class="text-muted-foreground flex-1 font-mono text-xs break-all select-all">
-          {ownFingerprint || '…'}
-        </code>
-        <Button
-          variant="ghost"
-          size="icon"
-          class="size-7 shrink-0"
-          aria-label={$LL.copyFingerprint()}
-          onclick={() => void navigator.clipboard.writeText(ownFingerprint)}
-        >
-          <Copy class="size-3.5" />
-        </Button>
+    {#if showDevice}
+      <div class="flex flex-col gap-1">
+        <span class="text-xs font-medium">{$LL.yourDevice()}</span>
+        <div class="flex items-center gap-2">
+          <code class="text-muted-foreground flex-1 font-mono text-xs break-all select-all">
+            {ownFingerprint || '…'}
+          </code>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-7 shrink-0"
+            aria-label={$LL.copyFingerprint()}
+            onclick={() => void navigator.clipboard.writeText(ownFingerprint)}
+          >
+            <Copy class="size-3.5" />
+          </Button>
+        </div>
       </div>
-    </div>
+    {/if}
 
-    <div class="flex flex-col gap-1">
-      <label class="flex items-center justify-between gap-4 text-sm">
-        {$LL.omemoBlindTrust()}
-        <Switch
-          checked={settings.current.omemoBlindTrust}
-          onCheckedChange={(v) => account?.setOmemoBlindTrust(v)}
-        />
-      </label>
-      <p class="text-muted-foreground text-xs">{$LL.omemoBlindTrustHint()}</p>
-    </div>
+    {#if showBlindTrust}
+      <div class="flex flex-col gap-1">
+        <label class="flex items-center justify-between gap-4 text-sm">
+          {$LL.omemoBlindTrust()}
+          <Switch
+            checked={settings.current.omemoBlindTrust}
+            onCheckedChange={(v) => account?.setOmemoBlindTrust(v)}
+          />
+        </label>
+        <p class="text-muted-foreground text-xs">{$LL.omemoBlindTrustHint()}</p>
+      </div>
+    {/if}
 
     <ul class="flex flex-col">
       {#each contacts as contact (contact.jid)}

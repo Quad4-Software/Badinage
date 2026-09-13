@@ -9,12 +9,10 @@
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
   import { matchesQuery } from './match'
+  import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
 
   let { q }: { q: string } = $props()
-
-  const list = $derived(accounts.list.filter((a) => matchesQuery(q, a.jid)))
-  let confirmRemove = $state<string | null>(null)
 
   const statusLabel = (status: string) =>
     status === 'connected'
@@ -22,13 +20,26 @@
       : status === 'connecting'
         ? $LL.connecting()
         : $LL.offline()
+
+  const list = $derived(
+    accounts.list.filter((a) => matchesQuery(q, a.jid, statusLabel(a.status), $LL.accounts()))
+  )
+  let confirmRemove = $state<string | null>(null)
+
+  const showAdd = $derived(
+    matchesQuery(q, $LL.accounts(), $LL.addAccount(), $LL.removeAccount(), 'sign in login logout')
+  )
+  const hits = $derived(list.length + (showAdd ? 1 : 0))
+
+  $effect(() => {
+    settingsSearch.hits.accounts = hits
+    return () => {
+      delete settingsSearch.hits.accounts
+    }
+  })
 </script>
 
-<SettingSection
-  id="accounts"
-  title={$LL.accounts()}
-  visible={list.length > 0 || matchesQuery(q, $LL.accounts())}
->
+<SettingSection id="accounts" title={$LL.accounts()} visible={hits > 0}>
   <ul class="flex flex-col">
     {#each list as account (account.jid)}
       <li class="flex items-center gap-2.5 py-1.5">
@@ -50,10 +61,12 @@
       </li>
     {/each}
   </ul>
-  <Button variant="outline" size="sm" class="w-fit" onclick={() => (app.loginOpen = true)}>
-    <UserPlus class="size-3.5" />
-    {$LL.addAccount()}
-  </Button>
+  {#if showAdd}
+    <Button variant="outline" size="sm" class="w-fit" onclick={() => (app.loginOpen = true)}>
+      <UserPlus class="size-3.5" />
+      {$LL.addAccount()}
+    </Button>
+  {/if}
 </SettingSection>
 
 <ConfirmDialog

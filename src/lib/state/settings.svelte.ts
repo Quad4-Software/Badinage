@@ -11,6 +11,7 @@ export const KEYBINDING_ACTIONS = [
   'nav.closeConversation',
   'nav.toggleSidebar',
   'chat.focusComposer',
+  'app.commandPalette',
   'account.1',
   'account.2',
   'account.3'
@@ -26,6 +27,7 @@ export const DEFAULT_KEYBINDINGS: Record<KeybindingAction, string> = {
   'nav.closeConversation': 'escape',
   'nav.toggleSidebar': 'mod+b',
   'chat.focusComposer': 'alt+c',
+  'app.commandPalette': 'mod+k',
   'account.1': 'mod+1',
   'account.2': 'mod+2',
   'account.3': 'mod+3'
@@ -45,6 +47,8 @@ interface Settings {
   // crash reporting to a deployment-configured sentry-compatible
   // endpoint; inert when no DSN was baked in at build time
   crashReporting: boolean
+  // oklch hue for the accent color; null keeps the theme default
+  accentHue: number | null
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -56,7 +60,8 @@ const DEFAULT_SETTINGS: Settings = {
   sendReceipts: true,
   sendReadMarkers: true,
   omemoBlindTrust: true,
-  crashReporting: true
+  crashReporting: true,
+  accentHue: null
 }
 
 class SettingsStore {

@@ -13,6 +13,7 @@
   import { Kbd } from '$lib/ui/primitives/kbd'
 
   import { matchesQuery } from './match'
+  import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
 
   let { q }: { q: string } = $props()
@@ -29,14 +30,30 @@
     'nav.closeConversation': () => $LL.kbCloseConversation(),
     'nav.toggleSidebar': () => $LL.kbToggleSidebar(),
     'chat.focusComposer': () => $LL.kbFocusComposer(),
+    'app.commandPalette': () => $LL.kbCommandPalette(),
     'account.1': () => $LL.kbAccount({ n: 1 }),
     'account.2': () => $LL.kbAccount({ n: 2 }),
     'account.3': () => $LL.kbAccount({ n: 3 })
   }
 
   const items = $derived(
-    KEYBINDING_ACTIONS.filter((action) => matchesQuery(q, ACTION_LABELS[action](), $LL.keyboard()))
+    KEYBINDING_ACTIONS.filter((action) =>
+      matchesQuery(
+        q,
+        ACTION_LABELS[action](),
+        $LL.keyboard(),
+        $LL.keyboardHint(),
+        'shortcuts hotkeys'
+      )
+    )
   )
+
+  $effect(() => {
+    settingsSearch.hits.keyboard = items.length
+    return () => {
+      delete settingsSearch.hits.keyboard
+    }
+  })
 
   function onCaptureKeydown(event: KeyboardEvent) {
     if (!capturing) return

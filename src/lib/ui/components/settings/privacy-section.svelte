@@ -4,6 +4,7 @@
   import { Switch } from '$lib/ui/primitives/switch'
 
   import { matchesQuery } from './match'
+  import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
 
   let { q }: { q: string } = $props()
@@ -13,15 +14,31 @@
   const items = $derived(
     (
       [
-        ['sendChatStates', $LL.sendTyping()],
-        ['sendReceipts', $LL.sendReceipts()],
-        ['sendReadMarkers', $LL.sendReadMarkers()]
-      ] as [Flag, string][]
-    ).filter(([, label]) => matchesQuery(q, label, $LL.privacy()))
+        ['sendChatStates', $LL.sendTyping(), 'typing indicators'],
+        ['sendReceipts', $LL.sendReceipts(), 'delivery receipts'],
+        ['sendReadMarkers', $LL.sendReadMarkers(), 'read seen markers']
+      ] as [Flag, string, string][]
+    ).filter(([, label, keywords]) => matchesQuery(q, label, keywords, $LL.privacy()))
   )
 
-  const showCrashReporting = $derived(matchesQuery(q, $LL.crashReporting(), $LL.privacy()))
-  const visible = $derived(items.length > 0 || showCrashReporting)
+  const showCrashReporting = $derived(
+    matchesQuery(
+      q,
+      $LL.crashReporting(),
+      $LL.crashReportingHint(),
+      'sentry error reports telemetry',
+      $LL.privacy()
+    )
+  )
+  const hits = $derived(items.length + (showCrashReporting ? 1 : 0))
+  const visible = $derived(hits > 0)
+
+  $effect(() => {
+    settingsSearch.hits.privacy = hits
+    return () => {
+      delete settingsSearch.hits.privacy
+    }
+  })
 </script>
 
 <SettingSection id="privacy" title={$LL.privacy()} {visible}>
