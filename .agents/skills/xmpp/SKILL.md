@@ -5,14 +5,22 @@ description: XMPP protocol layer conventions for this repo. Use when adding stan
 
 ## Where things live
 
-- core/xmpp/connection.ts wraps Strophe.Connection and emits typed events
-- core/xmpp/stanzas.ts parses Elements into typed events (pure, unit tested)
-- core/xmpp/demo.ts is the fake transport behind demo mode. It implements
-  the same ChatConnection interface as connection.ts
-- core/xmpp/ns.ts holds every XML namespace as a constant in NS
+- core/xmpp/connection.ts wraps Strophe.Connection and emits typed events;
+  it is a thin shell delegating to feature functions
+- core/xmpp/types.ts holds ChatConnection, ConnectionEvents and friends
+- core/xmpp/features/ has the per-XEP plumbing (messaging, presence,
+  roster, mam, upload, pep, blocking, muc, handlers), free functions over
+  an XmppTransport context
+- core/xmpp/stanzas.ts parses Elements into typed events (pure, unit
+  tested); Element traversal helpers live in utils/xml.ts
+- core/xmpp/demo.ts is the fake transport behind demo mode, implementing
+  the same ChatConnection; fixtures live in demo-data.ts
+- core/xmpp/ns.ts holds every XML namespace as a constant in NS plus
+  HOST_META_REL for discovery link relations
 - core/xmpp/discovery.ts resolves websocket and BOSH endpoints
-- One feature equals one Module folder under src/lib/core/, registered per
-  Account in state/accounts.svelte.ts
+- Account-scoped features that need a lifecycle plug in through Module
+  (core/module.ts), registered per Account in state/accounts.svelte.ts.
+  OMEMO is the only one today
 
 ## Rules
 

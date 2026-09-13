@@ -46,6 +46,21 @@ Keep it that way. Do not add configDependencies.
 - MUC OMEMO is only safe in members-only non-anonymous rooms. Enforce in
   the UI when that feature lands.
 
+## Crash reporting
+
+- Optional, off unless VITE_SENTRY_DSN is set at build time. Any
+  Sentry-envelope-compatible server works: sentry.io, GlitchTip, Bugsink.
+- Every event passes through scrubEvent in src/lib/core/telemetry.ts:
+  JIDs and addresses are replaced, request urls lose credentials and
+  query strings, stanza- or message-shaped breadcrumbs are dropped, user
+  context is never attached.
+- Users can opt out at runtime (settings > crashReporting), which drops
+  events in beforeSend before anything leaves the device.
+- sendDefaultPii stays false. Never add keys carrying stanza XML, message
+  bodies, or credentials to breadcrumbs or extras.
+- The browser DSN is public by design and rate-limitable on the server.
+  Do not put server-side auth tokens in env vars Vite can inline.
+
 ## Reporting and deps
 
 - Run `pnpm audit` before releases. Dependabot covers npm, actions, and

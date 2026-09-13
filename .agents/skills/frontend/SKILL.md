@@ -7,13 +7,14 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
 
 - ui/primitives/ holds shadcn-style Bits UI wrappers with index.ts barrels:
   avatar, alert-dialog, button, checkbox, dialog, input, kbd, label,
-  scroll-area, separator, skeleton, sonner, switch, tooltip
-- ui/components/ holds app components, one file each. Shared building
-  blocks: avatar (initials), presence-dot, unread-badge snippet in
-  chat-sidebar, emoji-picker (used by both composer and message reactions),
-  voice-player, message-attachments, chat-image, message-meta, load-older
+  scroll-area, separator, skeleton, sonner, switch
+- ui/components/ holds app components grouped by area: chat/, dialogs/,
+  media/, presence/, settings/, shell/. dialogs/confirm-dialog.svelte is
+  the shared destructive-action confirm, wrap it rather than re-rolling
+  AlertDialog boilerplate.
 - ui/ non-component helpers live next to them: voice.svelte.ts
-  (MediaRecorder wrapper), upload.ts (XEP-0363 pipeline)
+  (MediaRecorder wrapper). The XEP-0363 upload pipeline is
+  state/upload.ts, not a ui helper.
 - state/ holds runes stores in .svelte.ts files
 - app.css holds the theme tokens, Tailwind v4 CSS-first config
 
@@ -30,8 +31,9 @@ description: Svelte 5 + Tailwind 4 + shadcn-svelte conventions for this repo. Us
   match the existing wrappers.
 - Every string goes through $LL from the i18n store. Add the key to
   src/lib/i18n/en/index.ts and run `pnpm i18n`.
-- Destructive actions need an AlertDialog confirm. See account-switcher and
-  settings-dialog for the pattern.
+- Destructive actions need a confirm. Use
+  ui/components/dialogs/confirm-dialog.svelte, do not re-roll AlertDialog
+  boilerplate.
 - Feedback: toasts via `import { toast } from '$lib/ui/primitives/sonner'`,
   skeletons while loading, LoaderCircle in busy buttons.
 - Keyboard: register actions in keyboard.svelte, declare them in

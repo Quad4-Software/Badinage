@@ -26,6 +26,10 @@ License: 0BSD. Copyright Quad4 Software.
     pnpm lint         # eslint, typed rules enabled
     pnpm format       # prettier write
     pnpm test         # vitest unit tests
+    pnpm test:coverage # unit tests + v8 coverage thresholds
+    pnpm bench        # vitest benchmarks (stanzas, omemo crypto)
+    pnpm mutate       # stryker mutation testing (vitest runner, patched)
+    pnpm knip         # dead files, deps, exports (must stay clean)
     pnpm test:e2e     # playwright (needs browsers installed)
     pnpm i18n         # regenerate i18n types after editing src/lib/i18n/en
     pnpm icons        # regenerate PNG icons and og card from the mark

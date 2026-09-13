@@ -2,9 +2,27 @@
 
 ## Workflows
 
-- ci.yml: lint, svelte-check, vitest, build on node 22 and 24, plus a
-  Playwright e2e job (chromium). pnpm store is cached through setup-node.
+- ci.yml: lint, svelte-check, vitest with v8 coverage thresholds
+  (vite.config.ts test.coverage.thresholds), knip dead-code check, and
+  build on node 22 and 24, plus a Playwright e2e job (chromium) and a
+  benchmark smoke job (pnpm bench, output archived as an artifact).
+  The e2e job also brings up the dev prosody container
+  (docker/dev/compose.yaml), waits for the http port on 5280, seeds
+  e2e-alice and e2e-bob with prosodyctl register, and runs the suite
+  with E2E_PROSODY=1 so the server-backed specs in e2e/server.test.ts
+  execute; the container is torn down with compose down -v in an
+  always() step. Locally: docker compose -f docker/dev/compose.yaml
+  up -d prosody, register the two users the same way, then
+  E2E_PROSODY=1 pnpm test:e2e.
+  pnpm store is cached through setup-node.
   PR runs cancel in progress on new pushes, main never cancels.
+- mutation.yml: weekly cron plus manual dispatch. Runs stryker with the
+  vitest runner on root and packages/omemo, uploads the html/json report
+  as an artifact. The vitest runner is patched (pnpm-workspace.yaml
+  patchedDependencies) because vitest 5 changed testNamePattern matching
+  to leaf test names, which would silently skip every filtered mutant.
+  Local runs: pnpm mutate, pnpm --filter @quad4-software/omemo mutate.
+  Keep .stryker-tmp/ and reports/ out of lint and git.
 - codeql.yml: CodeQL javascript-typescript, security-and-quality queries,
   build-mode none, weekly cron. Actions pinned by SHA.
 - dependency-review.yml: fails PRs introducing high severity deps.

@@ -5,8 +5,11 @@
     ui (svelte)  ->  state (runes stores)  ->  core (xmpp, storage, modules)
     packages/omemo -> standalone crypto package, no app imports
 
-Dependencies point inward only. core/ is DOM-free and svelte-free so it can
-run in unit tests, a SharedWorker, or a future Tauri shell.
+Dependencies point inward only and eslint enforces them: core/ may not
+import svelte, ui/, or state/; state/ may not touch DOM or storage globals
+directly; ui/ may not import core/ except for types. core/ still uses
+DOMParser and XMLHttpRequest in places (pep.ts, discovery.ts, upload.ts),
+so a SharedWorker move needs those injected first.
 
 ## Accounts
 
@@ -20,21 +23,33 @@ follow the same scheme.
 
 ## Modules
 
-Module { id, init(ctx), destroy() } is the extension point. Protocol
-features (carbons, MAM, MUC, OMEMO, receipts) each live in a folder under
-src/lib/core/ and register as modules on the Account. init runs on first
-successful connect, destroy on logout.
+Module { id, init(ctx), destroy() } is the extension point for
+account-scoped features with a lifecycle. ctx is { account, connection }
+where account is the minimal ModuleAccount interface in core/module.ts, so
+core/ never imports the state-layer Account class. OMEMO is the only
+module today. init runs on first successful connect, destroy on logout.
 
 ModuleRegistry.initAll awaits each init in registration order. Modules must
 not depend on init order. Use the events emitter for cross-module signals.
+
+Transport-level XEPs that are just stanza plumbing (MAM, upload, blocking,
+MUC, PEP, messaging, presence, roster) do not need lifecycle and instead
+live as free functions over an XmppTransport in core/xmpp/features/. Add a
+Module only when a feature needs per-account state or connect/disconnect
+hooks.
 
 ## Connection
 
 XmppConnection wraps Strophe.Connection and emits typed events through
 Emitter: status, message, presence, roster, occupant, subscriptionRequest.
-All message-shape parsing lives in core/xmpp/stanzas.ts so transports and
-tests share one schema. core/xmpp/demo.ts implements the same
-ChatConnection interface with fake data for demo mode and screenshots.
+The ChatConnection interface and event types live in core/xmpp/types.ts.
+Feature implementations are free functions over an XmppTransport context
+in core/xmpp/features/ (messaging, presence, roster, mam, upload, pep,
+blocking, muc, handlers). All wire parsing lives in core/xmpp/stanzas.ts
+so transports and tests share one schema; shared Element traversal helpers
+are in utils/xml.ts. core/xmpp/demo.ts implements the same ChatConnection
+interface with fake data for demo mode and screenshots, fixtures in
+demo-data.ts.
 
 Endpoint resolution order:
 

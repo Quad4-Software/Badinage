@@ -21,7 +21,7 @@ Status: done | partial | planned | deferred
 | XEP-0085      | Chat states                | partial  | composing/paused sent for DMs, all states parsed               |
 | XEP-0153      | vCard avatars              | planned  |                                                                |
 | XEP-0184      | Message receipts           | done     | request on send, auto-answer, delivery ticks                   |
-| XEP-0191      | Blocking                   | planned  |                                                                |
+| XEP-0191      | Blocking                   | done     | blocklist fetch, block/unblock, push sync, local filtering     |
 | XEP-0198      | Stream management          | planned  | session resume, ack tracking                                   |
 | XEP-0199      | Ping                       | planned  | keepalive + latency display                                    |
 | XEP-0203      | Delayed delivery           | done     | parsed on live, carbon and MAM paths                           |
@@ -37,12 +37,12 @@ Status: done | partial | planned | deferred
 | XEP-0359      | Stanza IDs                 | done     | stanza-id/origin-id dedup in chat store                        |
 | XEP-0363      | HTTP file upload           | done     | disco + slot + PUT, data-uri fallback                          |
 | XEP-0382      | Spoilers                   | planned  |                                                                |
-| XEP-0384      | OMEMO                      | library  | own impl in packages/omemo, interop vectors vs python-omemo    |
+| XEP-0384      | OMEMO                      | partial  | 1:1 chat encrypt/decrypt, PEP devices + bundles, BTBV trust UI |
 | XEP-0385      | Stateless IM               | deferred |                                                                |
 | XEP-0388      | SASL2                      | deferred | strophe.js lacks support                                       |
 | XEP-0393      | Message styling            | planned  |                                                                |
 | XEP-0402      | PEP bookmarks              | planned  | replaces XEP-0048                                              |
-| XEP-0420      | Stanza content encryption  | library  | SCE envelope in packages/omemo                                 |
+| XEP-0420      | Stanza content encryption  | partial  | SCE envelope used for omemo2 message bodies                    |
 | XEP-0421      | Occupant IDs               | planned  | required for MUC OMEMO                                         |
 | XEP-0424      | Message retraction         | planned  |                                                                |
 | XEP-0425      | Message moderation         | planned  | MUC moderator removal                                          |

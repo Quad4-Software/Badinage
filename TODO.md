@@ -7,7 +7,7 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [x] Repo scaffold: pnpm 11, Vite 8, Svelte 5 runes, TS strict
 - [x] Tailwind 4 + shadcn-svelte primitives (avatar, alert-dialog, button,
       checkbox, dialog, input, kbd, label, scroll-area, separator, skeleton,
-      sonner, switch, tooltip)
+      sonner, switch)
 - [x] Supply chain defaults in pnpm-workspace.yaml
 - [x] ESLint flat config (typed) + Prettier + svelte-check
 - [x] typesafe-i18n wired, en locale
@@ -166,10 +166,16 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Testing
 
-- [ ] Unit coverage for jid, storage keys, stanza parsing, stores
+- [x] Unit coverage for jid, storage keys, stanza parsing, stores
+- [x] Connection layer: stubbed strophe suite plus a scripted fake
+      WebSocket XMPP server (test/fake-xmpp-server.ts) driving real
+      handshakes, drops and reconnects
+- [x] fast-check property tests for the stanza/xml/jid parsers
+      (src/lib/core/xmpp/stanzas.prop.test.ts, src/lib/utils/*.prop.test.ts,
+      generators in test/stanza-gen/)
 - [ ] Component tests once vitest svelte browser mode settles
-- [ ] e2e against the dev prosody container: register, roster, chat, MUC
-- [ ] axe e2e on every view
+- [x] e2e against the dev prosody container: register, roster, chat, MUC
+- [x] axe e2e on every view
 - [ ] Interop matrix vs prosody, ejabberd, openfire in CI later
 
 ## DevOps and release

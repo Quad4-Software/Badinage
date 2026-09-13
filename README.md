@@ -75,13 +75,6 @@ pnpm test:e2e  # playwright, needs browsers installed
 pnpm test:omemo # OMEMO library tests incl. interop vectors
 ```
 
-Regenerate icons and the README screenshot:
-
-```sh
-pnpm icons       # pixel-art logo, favicons, PWA icons, og image
-pnpm screenshot  # demo-mode screenshots to docs/screenshot{,-dark}.png
-```
-
 ## License
 
 0BSD, see [LICENSE](LICENSE).

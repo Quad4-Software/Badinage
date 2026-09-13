@@ -8,9 +8,14 @@
   public surface. Import through the index, not deep paths.
 - Barrel files only inside one feature boundary. No global barrel.
 - A file near 300 lines or a folder over ~10 files needs a split.
+- Test fixtures and harnesses that must not ship in src/ live in test/ at
+  the repo root (test/fake-xmpp-server.ts, test/stub-connection.ts,
+  test/stanza-gen/). They sit outside coverage and knip scope.
 - Constants go to src/lib/constants.ts (app-level) or a constants.ts inside
   the owning feature folder. No magic strings for namespaces, storage keys,
   timing, or sizes.
+- Dead files, deps and exports get removed, not kept. `pnpm knip` reports
+  them; keep the run clean.
 
 ## TypeScript
 
@@ -36,9 +41,10 @@
 - shadcn-svelte style: thin wrappers over Bits UI in ui/primitives/<name>/,
   each with an index.ts. Existing set: avatar, alert-dialog, button,
   checkbox, dialog, input, kbd, label, scroll-area, separator, skeleton,
-  sonner, switch, tooltip. Add new ones with `pnpm dlx shadcn-svelte add <name>`
+  sonner, switch. Add new ones with `pnpm dlx shadcn-svelte add <name>`
   and then trim to match house style.
-- App components live in ui/components/, flat files, one component each.
+- App components live in ui/components/, grouped by area: chat/, dialogs/,
+  media/, presence/, settings/, shell/. One component per file.
 - Toasts come from the Sonner primitive: `import { toast } from
 '$lib/ui/primitives/sonner'`.
 - Destructive actions always go through AlertDialog confirmation. The wipe
