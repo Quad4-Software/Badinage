@@ -208,6 +208,8 @@ export class FakeXmppServer {
     return (
       `<stream:features xmlns:stream='${NS_STREAM}'>` +
       `<bind xmlns='${NS_BIND}'/>` +
+      `<carbons xmlns='urn:xmpp:carbons:2'/>` +
+      `<csi xmlns='urn:xmpp:csi:0'/>` +
       (this.opts.sm ? `<sm xmlns='${NS_SM}'/>` : '') +
       `</stream:features>`
     )

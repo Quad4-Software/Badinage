@@ -99,6 +99,11 @@ export class XmppConnection implements ChatConnection {
   // told us, so nothing is sent
   private csiActive: boolean | null = null
   private csiSent: boolean | null = null
+  // namespaces advertised in stream:features. Nonzas a server does not
+  // know are fatal on strict stacks (prosody closes the stream with
+  // unsupported-stanza-type), so carbons and csi only go out when the
+  // stream advertised them
+  private streamFeatures = new Set<string>()
 
   constructor(
     private readonly service: string,
@@ -110,7 +115,11 @@ export class XmppConnection implements ChatConnection {
     conn = this.conn
     this.transport = {
       sendIq: (stanza, onResult, onError) => this.sendIq(stanza, onResult, onError),
-      send: (stanza) => conn.send(stanza),
+      // a send racing a teardown hits conn._proto === null inside strophe;
+      // drop the stanza, the stream is gone anyway
+      send: (stanza) => {
+        if (conn.connected) conn.send(stanza)
+      },
       uniqueId: (prefix) => conn.getUniqueId(prefix),
       get jid() {
         return conn.jid ?? ''
@@ -149,6 +158,14 @@ export class XmppConnection implements ChatConnection {
     onResult: (stanza: Element) => void,
     onError?: (stanza: Element | null) => void
   ): void {
+    if (!this.conn.connected) {
+      // queued iq work (omemo publish, disco) can race a teardown; report
+      // it as a failed send instead of throwing through strophe's dead
+      // transport
+      const fail = onError ?? noop
+      fail(null)
+      return
+    }
     this.conn.sendIQ(stanza, onResult, onError ?? noop)
   }
 
@@ -351,6 +368,7 @@ export class XmppConnection implements ChatConnection {
   }
 
   enableCarbons(): void {
+    if (!this.streamFeatures.has(NS.CARBONS)) return
     this.sendIq(
       $iq({ type: 'set', id: this.conn.getUniqueId('carbons') }).c('enable', {
         xmlns: NS.CARBONS
@@ -363,7 +381,7 @@ export class XmppConnection implements ChatConnection {
 
   setClientActive(active: boolean): void {
     this.csiActive = active
-    if (!this.conn.connected || this.csiSent === active) return
+    if (!this.conn.connected || this.csiSent === active || !this.streamFeatures.has(NS.CSI)) return
     this.csiSent = active
     sendClientState(this.transport, active)
   }
@@ -434,7 +452,20 @@ export class XmppConnection implements ChatConnection {
     }
   }
 
+  private noteStreamFeatures(): void {
+    this.streamFeatures.clear()
+    // strophe stashes the last stream:features element on the connection
+    const features = this.conn.features
+    if (!features) return
+    for (const child of features.childNodes) {
+      if (child.nodeType !== 1) continue
+      const xmlns = (child as Element).getAttribute('xmlns')
+      if (xmlns) this.streamFeatures.add(xmlns)
+    }
+  }
+
   private onConnected(): void {
+    this.noteStreamFeatures()
     this.conn.addHandler((stanza) => handleMessage(stanza, this.events), null, 'message', null)
     this.conn.addHandler(
       (stanza) => handlePresence(stanza, this.events, this.transport),

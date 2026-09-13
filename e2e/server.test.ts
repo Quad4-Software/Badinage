@@ -139,7 +139,9 @@ test.describe('against the dev prosody container', () => {
     await page.getByLabel('Password', { exact: true }).fill(ALICE.password)
     await page.getByLabel('Server').fill(BAD_WS_URL)
     await page.getByRole('button', { name: 'Connect' }).click()
-    await expect(page.getByRole('alert')).toHaveText('Could not reach the server', {
+    // two alerts can stack: the connection error and the authfail
+    // backoff countdown it triggers
+    await expect(page.getByRole('alert').first()).toHaveText('Could not reach the server', {
       timeout: CONNECT_TIMEOUT
     })
   })

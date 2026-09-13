@@ -20,6 +20,7 @@ modules_enabled = {
   "register",
   "mam",
   "smacks",
+  "csi",
   "websocket",
   "bosh",
   "http_file_share",

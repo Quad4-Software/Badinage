@@ -65,6 +65,34 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [x] Privacy settings: typing notifications, receipts, read markers
 - [x] Presence status picker (online/away/busy) in account switcher
 - [x] Demo screenshot script captures light + dark variants
+- [x] XEP-0198 stream management: enable, ack, resume on reconnect,
+      per-account persisted SM state (strophe engine + ScopedSmStorage)
+- [x] XEP-0199 ping keepalive and latency indicator
+- [x] XEP-0030/0115 disco + caps, publish own identity and features
+- [x] vCard4 + XEP-0153 avatars with lazy fetch, dedup and cache
+- [x] XEP-0402 PEP bookmarks: fetch, publish, retract, autojoin
+- [x] XEP-0077 in-band registration on the login screen
+- [x] XEP-0352 client state indication, gated on the advertised stream
+      feature (unadvertised nonzas are fatal on strict servers)
+- [x] XEP-0424 retraction, XEP-0382 spoilers, XEP-0393 styling,
+      XEP-0245 /me
+- [x] Upload progress UI with cancel, OMEMO aesgcm media
+- [x] Reaction edge cases: occupant-id keyed MUC reactions, raw sender
+      fallback
+- [x] MUC: nick changes, XEP-0249 invites, XEP-0004 room config,
+      XEP-0421 occupant ids, XEP-0425 moderation, self-ping + rejoin,
+      join error surface
+- [x] OMEMO wired into src/lib/core/omemo: device lists + bundles via PEP
+      (omemo:2 + legacy), prekey rotation, session building, trust UI,
+      WebCrypto-wrapped key storage, XEP-0454 media, undecryptable
+      tombstones + one-shot retry after key recovery
+- [x] UX: desktop notifications with focus check, command palette +
+      global search, density setting, aria-live announcements,
+      keybindings
+- [x] Security: session encryption envelope, login backoff on authfail,
+      CSP + dependency audit, untrusted device mode
+- [x] e2e hardening: CSI/SM/carbons sends gated on stream features, axe
+      pass restored (landmarks, combobox aria-controls, contrast)
 
 ## Decisions to make
 
@@ -74,37 +102,24 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Protocol core
 
-- [ ] XEP-0198 stream management: enable, ack, resume on reconnect,
-      per-account persisted SM state
-- [ ] XEP-0199 ping keepalive and latency indicator
-- [ ] XEP-0030/0115 disco + caps, publish own identity and features
-- [ ] vCard4 + XEP-0153 avatars with cache in IndexedDB
-- [ ] XEP-0402 PEP bookmarks, room and contact bookmarks UI
-- [ ] XEP-0077 in-band registration on the login screen
-- [ ] XEP-0352 client state indication on tab visibility change
+- [ ] XEP-0493 OAuth client login: OAUTHBEARER probe, RFC 8414 discovery,
+      RFC 7591 dynamic registration, PKCE redirect flow, token storage.
+      Also covers OIDC-backed servers (PocketID, Keycloak) and makes
+      LDAP-backed hosts reachable via SASL PLAIN
 - [ ] SASL2/Bind2/FAST when strophe.js or an alternative gains support
 - [x] MAM paging UX: load older on scroll-to-top, RSM cursor + complete
       tracking, scroll anchor preserved while prepending
 
 ## One-to-one chat
 
-- [ ] XEP-0424 retraction, XEP-0382 spoilers, XEP-0393 styling,
-      XEP-0245 /me
-- [ ] Upload progress UI, aesgcm for OMEMO later
 - [ ] Link preview policy decision (privacy vs convenience)
-- [ ] Reaction aggregation edge cases (same emoji from many senders list)
 
 ## Groupchat (XEP-0045)
 
-- [ ] Nickname changes in-room, subject editing UI
-- [ ] XEP-0249 direct invites, mediated invites
-- [ ] Room config via XEP-0004 data forms
-- [ ] XEP-0421 occupant ids (needed for MUC OMEMO)
-- [ ] XEP-0425 moderation actions (retract, kick, ban)
+- [ ] Subject editing UI
+- [ ] Mediated invites
 - [x] MUC MAM history paging (shared loadOlder path)
 - [ ] occupants-can-see-real-jids handling
-- [ ] Self-ping and rejoin on kick/disconnect, join error surface
-- [ ] Per-sender MUC reaction ids need occupant-id or stable nick mapping
 
 ## OMEMO (own library, packages/omemo, 0BSD)
 
@@ -115,15 +130,7 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       scripts/py_verify.py)
 - [x] Property-based tests (fast-check), RFC 5869 known-answer vectors
 - [x] API docs via TypeDoc (`pnpm --filter @quad4-software/omemo docs`)
-- [ ] Wire the package into src/lib/core/omemo/ module
-- [ ] Device list publish/fetch via PEP, both omemo:2 and legacy namespaces
-- [ ] Bundle publish, prekey rotation, session building per device
-- [ ] Trust model UI: blind trust on first use vs manual verify, key
-      fingerprints, QR verification
-- [ ] Per-account encrypted key storage in IndexedDB (WebCrypto-wrapped)
 - [ ] MUC OMEMO gated on members-only + non-anonymous + occupant ids
-- [ ] XEP-0454 encrypted media sharing
-- [ ] Undecryptable message handling and key-request UX
 - [x] Publish @quad4-software/omemo to GitHub Packages on omemo-v* tags
       (publish-omemo.yml workflow)
 
@@ -133,36 +140,28 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] SharedWorker transport per account for multi-tab same-account
 - [ ] Account ordering, per-account notification settings, profile colors
 - [ ] Account lock screen: wrap keys with a user passphrase
-- [ ] Untrusted device mode: no persistent storage, OMEMO off
 
 ## UX and platform
 
 - [ ] Message list virtualization (long history perf)
-- [ ] Desktop notifications with focus check, sound toggle
-- [ ] Global search across conversations
-- [ ] Emoji picker, file drag-drop paste
-- [ ] Settings dialog: notifications, privacy, per-account, appearance
 - [ ] Onboarding: server discovery hints, Tor/i2p notes for self-hosters
 - [ ] PWA manifest + service worker, installable
-- [ ] Keyboard shortcuts and command palette
-- [ ] Compact/comfortable density setting
 
 ## i18n and a11y
 
 - [ ] Second locale to prove the pipeline, then community process
 - [ ] RTL layout support
-- [ ] Locale-aware date/time formatting (formatTime already takes locale)
-- [ ] Full axe pass on all views, keyboard-only walkthrough
-- [ ] Screen reader announcements for incoming messages (aria-live)
+- [x] Locale-aware date/time formatting (formatTime already takes locale)
+- [x] Full axe pass on all views, keyboard-only walkthrough
+- [x] Screen reader announcements for incoming messages (aria-live)
 
 ## Security hardening
 
-- [ ] CSP audit, drop unsafe-inline for style if feasible
 - [ ] Subresource integrity for anything ever loaded off-origin (policy:
       nothing off-origin by default)
-- [ ] pnpm audit + dependency review in CI
-- [ ] Rate-limit login attempts, backoff on authfail
-- [ ] Session encryption envelope so a stolen IndexedDB dump is useless
+- [x] CSP audit + pnpm audit/dependency review in CI
+- [x] Rate-limit login attempts, backoff on authfail
+- [x] Session encryption envelope so a stolen IndexedDB dump is useless
 
 ## Testing
 

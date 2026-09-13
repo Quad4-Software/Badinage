@@ -1,7 +1,7 @@
 import { Strophe } from 'strophe.js'
 import { describe, expect, it, vi } from 'vitest'
 
-import { makeStub } from '../../../../../test/stub-connection'
+import { makeStub, xml } from '../../../../../test/stub-connection'
 
 import { sendClientState } from './csi'
 import type { XmppTransport } from './transport'
@@ -72,6 +72,24 @@ describe('XmppConnection client state indication', () => {
     send.mockClear()
 
     drive(Strophe.Status.CONNECTED)
+    const sent = send.mock.calls.map((c) => String(c[0]))
+    expect(sent.some((s) => s.includes('urn:xmpp:csi:0'))).toBe(false)
+  })
+
+  it('stays quiet when the stream did not advertise csi', () => {
+    const { conn, xmpp, send, drive } = makeStub()
+    xmpp.connect('me@example.net/res', 'secret')
+    // an unadvertised nonza is a stream error on strict servers, so the
+    // client must only send csi when the feature was offered
+    conn.features = xml(
+      `<stream:features xmlns:stream='http://etherx.jabber.org/streams'>` +
+        `<bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>` +
+        `</stream:features>`
+    )
+    drive(Strophe.Status.CONNECTED)
+
+    xmpp.setClientActive(true)
+    xmpp.setClientActive(false)
     const sent = send.mock.calls.map((c) => String(c[0]))
     expect(sent.some((s) => s.includes('urn:xmpp:csi:0'))).toBe(false)
   })

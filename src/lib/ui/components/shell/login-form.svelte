@@ -218,7 +218,7 @@
     <Button
       type="button"
       variant="link"
-      class="h-auto p-0"
+      class="h-auto min-h-6 p-0"
       onclick={() => {
         mode = mode === 'login' ? 'register' : 'login'
         error = ''

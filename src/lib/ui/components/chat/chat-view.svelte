@@ -299,7 +299,12 @@
                 <Tooltip>
                   <TooltipTrigger>
                     {#snippet child({ props })}
-                      <span {...props} class="inline-flex">
+                      <span
+                        {...props}
+                        class="inline-flex"
+                        role="img"
+                        aria-label={$LL.encryptedChat()}
+                      >
                         <Lock class="text-success size-3.5 shrink-0" />
                       </span>
                     {/snippet}

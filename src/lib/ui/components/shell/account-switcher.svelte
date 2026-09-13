@@ -40,6 +40,7 @@
                   aria-hidden="true"
                 ></span>
               </span>
+              <PresenceDot presence={active.status === 'connected' ? 'online' : 'offline'} />
             {/if}
             <span class="truncate">{active?.jid ?? ''}</span>
           </span>

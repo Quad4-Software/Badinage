@@ -50,6 +50,19 @@ export function makeStub() {
 
   const drive = (status: number) => {
     if (!statusCb) throw new Error('connect callback was not captured')
+    // strophe sets conn.connected before the CONNECTED callback and
+    // stashes the stream:features element on conn.features; the stub
+    // mirrors both so feature-gated sends behave like the wire
+    conn.connected = status === Strophe.Status.CONNECTED || status === Strophe.Status.ATTACHED
+    if (conn.connected && !conn.features) {
+      conn.features = xml(
+        `<stream:features xmlns:stream='http://etherx.jabber.org/streams'>` +
+          `<bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>` +
+          `<carbons xmlns='urn:xmpp:carbons:2'/>` +
+          `<csi xmlns='urn:xmpp:csi:0'/>` +
+          `</stream:features>`
+      )
+    }
     statusCb(status, null)
   }
 
