@@ -1,11 +1,12 @@
 // Optional crash reporting through a Sentry-compatible endpoint.
 //
-// The ingest endpoint is fixed at build time through VITE_SENTRY_DSN.
-// Any server that speaks the Sentry envelope API works: sentry.io, or a
-// self-hosted GlitchTip or Bugsink instance. With no DSN configured this
-// module stays fully inert: no SDK init, no global listeners, no network.
-// Users can also opt out at runtime through the crashReporting setting,
-// which drops events in beforeSend before anything leaves the device.
+// The ingest endpoint defaults to DEFAULT_TELEMETRY_DSN and can be
+// overridden at build time through VITE_SENTRY_DSN. Any server that
+// speaks the Sentry envelope API works: sentry.io, or a self-hosted
+// GlitchTip or Bugsink instance. Setting the env to 'off' disables the
+// integration for that build. Reporting is opt-in: until the user
+// enables it the SDK is never initialized, so no listeners attach and
+// no network traffic is generated at all.
 
 import type { Breadcrumb, ErrorEvent } from '@sentry/browser'
 import {
@@ -15,7 +16,10 @@ import {
   withScope
 } from '@sentry/browser'
 
-const DSN = import.meta.env.VITE_SENTRY_DSN?.trim() ?? ''
+import { DEFAULT_TELEMETRY_DSN } from '$lib/constants'
+
+const ENV_DSN = import.meta.env.VITE_SENTRY_DSN?.trim()
+const DSN = ENV_DSN === 'off' ? '' : ENV_DSN || DEFAULT_TELEMETRY_DSN
 
 // keeps sampled traces cheap; error events are always captured
 const TRACES_SAMPLE_RATE = 0.1
@@ -49,9 +53,9 @@ const STANZA_RE = /^\s*<(message|presence|iq|stream:\w+)\b/
 // request headers that carry credentials verbatim
 const SENSITIVE_HEADERS = new Set(['cookie', 'set-cookie', 'authorization', 'proxy-authorization'])
 
-// user-facing opt-out; runtime toggles never re-init the SDK, they only
-// gate what beforeSend lets through
-let reportingEnabled = true
+// user-facing opt-in; when off the SDK is never initialized and the
+// beforeSend gates stay armed for anything queued before a toggle off
+let reportingEnabled = false
 let initialized = false
 
 // Replaces JIDs and email-shaped addresses with a placeholder. Runs of
@@ -150,10 +154,12 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
   return out
 }
 
-// Flips the runtime opt-out. When off, beforeSend and beforeBreadcrumb
-// drop everything, and reportError becomes a no-op.
+// Flips the runtime opt-in. Enabling lazily initializes the SDK on the
+// spot so the toggle takes effect without a reload; disabling drops
+// every event in the beforeSend gates and makes reportError a no-op.
 export function setTelemetryEnabled(enabled: boolean): void {
   reportingEnabled = enabled
+  if (enabled) initTelemetry()
 }
 
 // Captures an error explicitly, e.g. from a svelte:boundary onerror
@@ -169,10 +175,11 @@ export function reportError(error: unknown, context?: Record<string, unknown>): 
   })
 }
 
-// Attaches the SDK global handlers and tracing. Call once at startup,
-// before the app mounts. Does nothing without a DSN.
-export function initTelemetry(): void {
-  if (!DSN || initialized) return
+// Attaches the SDK global handlers and tracing. Runs lazily the first
+// time reporting is enabled; does nothing while opted out or without a
+// DSN.
+function initTelemetry(): void {
+  if (!DSN || !reportingEnabled || initialized) return
   initialized = true
   sentryInit({
     dsn: DSN,
@@ -194,6 +201,13 @@ export function initTelemetry(): void {
     beforeBreadcrumb(crumb) {
       if (!reportingEnabled) return null
       return filterBreadcrumb(crumb)
+    },
+    // transaction envelopes bypass beforeSend, so the opt-out needs its
+    // own gate here as well
+    beforeSendTransaction(event) {
+      if (!reportingEnabled) return null
+      if (event.transaction) event.transaction = scrubText(event.transaction)
+      return event
     }
   })
 }

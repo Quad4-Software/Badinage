@@ -59,8 +59,8 @@ interface Settings {
   sendReadMarkers: boolean
   // omemo: trust newly seen device fingerprints automatically (BTBV)
   omemoBlindTrust: boolean
-  // crash reporting to a deployment-configured sentry-compatible
-  // endpoint; inert when no DSN was baked in at build time
+  // opt-in crash reporting to the bundled or deployment-configured
+  // sentry-compatible endpoint; off until the user explicitly enables it
   crashReporting: boolean
   // oklch hue for the accent color; null keeps the theme default
   accentHue: number | null
@@ -88,6 +88,9 @@ interface Settings {
   theme: string
   // settings section ids the user collapsed; persists across sessions
   collapsedSections: string[]
+  // one-time prompt id -> the version last answered; bumping a prompt's
+  // version re-asks users who answered an earlier one
+  seenPrompts: Record<string, number>
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -99,7 +102,7 @@ const DEFAULT_SETTINGS: Settings = {
   sendReceipts: true,
   sendReadMarkers: true,
   omemoBlindTrust: true,
-  crashReporting: true,
+  crashReporting: false,
   accentHue: null,
   density: 'comfortable',
   accountOrder: [],
@@ -110,7 +113,8 @@ const DEFAULT_SETTINGS: Settings = {
   xmppLinkHandler: false,
   autoAway: true,
   theme: 'default',
-  collapsedSections: []
+  collapsedSections: [],
+  seenPrompts: {}
 }
 
 class SettingsStore {
@@ -156,7 +160,7 @@ class SettingsStore {
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): void {
     this.persisted.current = { ...this.persisted.current, [key]: value }
-    // keep the telemetry opt-out in sync with the toggle
+    // keep the telemetry opt-in in sync with the toggle
     if (key === 'crashReporting') setTelemetryEnabled(value === true)
   }
 
@@ -172,9 +176,17 @@ class SettingsStore {
       keybindings: { ...DEFAULT_KEYBINDINGS },
       accountOrder: [],
       accountMeta: {},
-      collapsedSections: []
+      collapsedSections: [],
+      seenPrompts: {}
     }
     setTelemetryEnabled(DEFAULT_SETTINGS.crashReporting)
+  }
+
+  markPromptSeen(id: string, version: number): void {
+    this.persisted.current = {
+      ...this.persisted.current,
+      seenPrompts: { ...this.current.seenPrompts, [id]: version }
+    }
   }
 
   exportBackup(mode?: string): string {
@@ -188,10 +200,10 @@ class SettingsStore {
     const result = parseBackup(text, defaults, KEYBINDING_ACTIONS)
     if (!result.ok) return result
     const patch = result.backup.settings
+    // a settings file is not consent: crash reporting keeps its
+    // on-device state and only changes through the toggle or the ask
+    delete patch.crashReporting
     this.persisted.current = { ...this.current, ...patch }
-    if (typeof patch.crashReporting === 'boolean') {
-      setTelemetryEnabled(patch.crashReporting)
-    }
     return result
   }
 }

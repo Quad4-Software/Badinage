@@ -15,7 +15,12 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } }
   ],
   webServer: {
-    command: 'pnpm build && pnpm preview --port 4873 --strictPort',
+    // VITE_E2E skips the automatic one-time prompt queue so specs are
+    // not blocked by the consent modal; prompts.svelte.ts exposes a
+    // window hook for the prompt spec to drive it directly.
+    // VITE_SENTRY_DSN=off keeps the build hermetic: opting in through
+    // the prompt never initializes the SDK or hits a real endpoint
+    command: 'VITE_E2E=1 VITE_SENTRY_DSN=off pnpm build && pnpm preview --port 4873 --strictPort',
     url: 'http://localhost:4873',
     reuseExistingServer: false
   }

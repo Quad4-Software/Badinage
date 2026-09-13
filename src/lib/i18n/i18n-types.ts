@@ -586,9 +586,33 @@ type RootTranslation = {
 	 */
 	crashReporting: string
 	/**
-	 * S​e​n​d​s​ ​a​ ​s​c​r​u​b​b​e​d​ ​e​r​r​o​r​ ​r​e​p​o​r​t​ ​w​h​e​n​ ​s​o​m​e​t​h​i​n​g​ ​b​r​e​a​k​s​.​ ​A​d​d​r​e​s​s​e​s​ ​a​r​e​ ​r​e​m​o​v​e​d​ ​b​e​f​o​r​e​ ​s​e​n​d​i​n​g​,​ ​a​n​d​ ​r​e​p​o​r​t​i​n​g​ ​o​n​l​y​ ​w​o​r​k​s​ ​i​f​ ​t​h​i​s​ ​d​e​p​l​o​y​m​e​n​t​ ​c​o​n​f​i​g​u​r​e​d​ ​a​ ​s​e​r​v​e​r​.
+	 * S​e​n​d​s​ ​a​ ​s​c​r​u​b​b​e​d​ ​e​r​r​o​r​ ​r​e​p​o​r​t​ ​w​h​e​n​ ​s​o​m​e​t​h​i​n​g​ ​b​r​e​a​k​s​.​ ​A​d​d​r​e​s​s​e​s​ ​a​n​d​ ​m​e​s​s​a​g​e​ ​c​o​n​t​e​n​t​ ​a​r​e​ ​r​e​m​o​v​e​d​ ​b​e​f​o​r​e​ ​s​e​n​d​i​n​g​,​ ​a​n​d​ ​n​o​t​h​i​n​g​ ​i​s​ ​s​e​n​t​ ​u​n​l​e​s​s​ ​t​h​i​s​ ​i​s​ ​o​n​.
 	 */
 	crashReportingHint: string
+	/**
+	 * S​h​a​r​e​ ​c​r​a​s​h​ ​r​e​p​o​r​t​s​?
+	 */
+	crashPromptTitle: string
+	/**
+	 * B​a​d​i​n​a​g​e​ ​c​a​n​ ​s​e​n​d​ ​a​ ​s​c​r​u​b​b​e​d​ ​e​r​r​o​r​ ​r​e​p​o​r​t​ ​w​h​e​n​ ​s​o​m​e​t​h​i​n​g​ ​b​r​e​a​k​s​ ​s​o​ ​b​u​g​s​ ​g​e​t​ ​f​i​x​e​d​ ​f​a​s​t​e​r​.​ ​R​e​p​o​r​t​i​n​g​ ​i​s​ ​o​p​t​-​i​n​ ​a​n​d​ ​y​o​u​ ​c​a​n​ ​c​h​a​n​g​e​ ​i​t​ ​a​n​y​ ​t​i​m​e​ ​u​n​d​e​r​ ​S​e​t​t​i​n​g​s​ ​>​ ​P​r​i​v​a​c​y​.
+	 */
+	crashPromptBody: string
+	/**
+	 * N​e​v​e​r​ ​s​e​n​t​:​ ​m​e​s​s​a​g​e​ ​b​o​d​i​e​s​ ​o​r​ ​s​t​a​n​z​a​ ​X​M​L​,​ ​J​I​D​s​ ​a​n​d​ ​c​o​n​t​a​c​t​s​,​ ​p​a​s​s​w​o​r​d​s​ ​a​n​d​ ​t​o​k​e​n​s​,​ ​c​o​o​k​i​e​s​ ​a​n​d​ ​r​e​q​u​e​s​t​ ​b​o​d​i​e​s​,​ ​y​o​u​r​ ​i​d​e​n​t​i​t​y​.
+	 */
+	crashPromptNever: string
+	/**
+	 * S​e​e​ ​a​ ​s​a​m​p​l​e​ ​s​c​r​u​b​b​e​d​ ​r​e​p​o​r​t
+	 */
+	crashPromptSample: string
+	/**
+	 * E​n​a​b​l​e​ ​c​r​a​s​h​ ​r​e​p​o​r​t​s
+	 */
+	crashPromptEnable: string
+	/**
+	 * N​o​ ​t​h​a​n​k​s
+	 */
+	crashPromptDecline: string
 	/**
 	 * S​p​l​i​t​ ​v​i​e​w
 	 */
@@ -2204,9 +2228,33 @@ export type TranslationFunctions = {
 	 */
 	crashReporting: () => LocalizedString
 	/**
-	 * Sends a scrubbed error report when something breaks. Addresses are removed before sending, and reporting only works if this deployment configured a server.
+	 * Sends a scrubbed error report when something breaks. Addresses and message content are removed before sending, and nothing is sent unless this is on.
 	 */
 	crashReportingHint: () => LocalizedString
+	/**
+	 * Share crash reports?
+	 */
+	crashPromptTitle: () => LocalizedString
+	/**
+	 * Badinage can send a scrubbed error report when something breaks so bugs get fixed faster. Reporting is opt-in and you can change it any time under Settings > Privacy.
+	 */
+	crashPromptBody: () => LocalizedString
+	/**
+	 * Never sent: message bodies or stanza XML, JIDs and contacts, passwords and tokens, cookies and request bodies, your identity.
+	 */
+	crashPromptNever: () => LocalizedString
+	/**
+	 * See a sample scrubbed report
+	 */
+	crashPromptSample: () => LocalizedString
+	/**
+	 * Enable crash reports
+	 */
+	crashPromptEnable: () => LocalizedString
+	/**
+	 * No thanks
+	 */
+	crashPromptDecline: () => LocalizedString
 	/**
 	 * Split view
 	 */

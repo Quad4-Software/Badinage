@@ -16,6 +16,7 @@
   import ExploreRoomsDialog from '$lib/ui/components/dialogs/explore-rooms-dialog.svelte'
   import JoinRoomDialog from '$lib/ui/components/dialogs/join-room-dialog.svelte'
   import ProfileDialog from '$lib/ui/components/dialogs/profile-dialog.svelte'
+  import PromptHost from '$lib/ui/components/prompts/prompt-host.svelte'
   import ShareDialog from '$lib/ui/components/dialogs/share-dialog.svelte'
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
@@ -36,6 +37,12 @@
   import { Sonner } from '$lib/ui/primitives/sonner'
   import { TooltipProvider } from '$lib/ui/primitives/tooltip'
   import { watchIdleAway } from '$lib/ui/idle-away'
+  import {
+    currentPrompt,
+    queuePrompts,
+    resolvePrompt,
+    showPrompt
+  } from '$lib/state/app/prompts.svelte'
   import { normalizeDensity } from '$lib/utils/density'
   import { updatePageMeta } from '$lib/utils/meta'
   import { MANAGED_VARS, themeVars } from '$lib/utils/themes/presets'
@@ -126,6 +133,19 @@
       if (payload) app.sharePayload = payload
     })
 
+    // one-time asks (crash reporting opt-in and friends) run once the
+    // shell is up; e2e builds skip the queue so specs are not blocked
+    // and drive prompts through the window hook instead
+    if (import.meta.env.VITE_E2E) {
+      ;(window as unknown as Record<string, unknown>).__badinagePrompts = {
+        show: showPrompt,
+        resolve: resolvePrompt,
+        current: currentPrompt
+      }
+    } else {
+      queuePrompts()
+    }
+
     const onError = (event: ErrorEvent) => {
       if (!event.error) return
       toast.error(event.error instanceof Error ? event.error.message : String(event.error))
@@ -197,6 +217,7 @@
   <ProfileDialog />
   <AddContactDialog />
   <ExploreRoomsDialog />
+  <PromptHost />
   {#if app.sharePayload}
     <ShareDialog
       bind:open={

@@ -12,6 +12,11 @@ export const IDB_VERSION = 1
 
 export const DEFAULT_RESOURCE = 'badinage'
 
+// crash reports ship to this sentry-compatible endpoint unless the
+// deployment overrides VITE_SENTRY_DSN at build time; setting the env to
+// 'off' disables reporting entirely for that build
+export const DEFAULT_TELEMETRY_DSN = 'https://a33cf09841e94ba38d1efea79bf620f5@bugs.quad4.io/3'
+
 export const MESSAGE_PAGE_SIZE = 50
 
 export const RECONNECT_DELAY_MS = 5_000

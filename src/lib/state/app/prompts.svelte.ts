@@ -1,0 +1,76 @@
+// One-time ask prompts. Each registered prompt has an id, an audience
+// (new installs, existing installs, or everyone) and a version so a
+// materially changed ask can re-prompt users who answered an earlier
+// one. Answered prompts persist in settings.seenPrompts; a prompt
+// resolves once and the queue moves to the next eligible one.
+//
+// The e2e build disables the automatic queue so specs are not blocked
+// by a modal; App.svelte exposes a window hook instead so prompt
+// behavior stays testable end to end.
+
+import { globalKey } from '$lib/core/storage/keys'
+import { hasPersisted } from '$lib/core/storage/session'
+import { settings } from '$lib/state/settings.svelte'
+
+export interface PromptDef {
+  id: string
+  // 'new' targets first-run installs, 'existing' targets installs that
+  // already had a settings blob before this session, 'all' targets both
+  audience: 'new' | 'existing' | 'all'
+  // bump to re-ask users who already answered an earlier version
+  version: number
+  // optional extra gate for prompts aimed at a specific condition
+  when?: () => boolean
+}
+
+// captured at module load, before anything writes settings this
+// session; a persisted blob means the install ran a build before
+const returningUser = hasPersisted(globalKey('settings'))
+
+// legacy installs persisted crashReporting under the old default-on
+// build, before the consent ask existed; that value is not consent so
+// it folds back to off and the one-time prompt decides
+if (settings.current.crashReporting && (settings.current.seenPrompts['crash-reporting'] ?? 0) < 1) {
+  settings.set('crashReporting', false)
+}
+
+const PROMPTS: PromptDef[] = [{ id: 'crash-reporting', audience: 'all', version: 1 }]
+
+let pending = $state<PromptDef | null>(null)
+
+export function currentPrompt(): PromptDef | null {
+  return pending
+}
+
+export function promptEligible(
+  def: PromptDef,
+  seen: Record<string, number>,
+  existing: boolean
+): boolean {
+  if ((seen[def.id] ?? 0) >= def.version) return false
+  if (def.audience === 'new' && existing) return false
+  if (def.audience === 'existing' && !existing) return false
+  return def.when?.() ?? true
+}
+
+// surfaces the first eligible prompt; call once the shell is up
+export function queuePrompts(): void {
+  pending =
+    PROMPTS.find((def) => promptEligible(def, settings.current.seenPrompts, returningUser)) ?? null
+}
+
+// force-shows a prompt regardless of eligibility; used by the e2e hook
+export function showPrompt(id: string): void {
+  pending = PROMPTS.find((def) => def.id === id) ?? null
+}
+
+// records the answer and applies it; every prompt teaches resolve what
+// its choice means
+export function resolvePrompt(accepted: boolean): void {
+  const def = pending
+  if (!def) return
+  settings.markPromptSeen(def.id, def.version)
+  pending = null
+  if (def.id === 'crash-reporting') settings.set('crashReporting', accepted)
+  queuePrompts()
+}

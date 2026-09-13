@@ -25,6 +25,19 @@ async function expectNoViolations(page: Page) {
   expect(results.violations).toEqual([])
 }
 
+test('crash report prompt has no detectable axe violations', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() =>
+    (
+      window as unknown as {
+        __badinagePrompts: { show: (id: string) => void }
+      }
+    ).__badinagePrompts.show('crash-reporting')
+  )
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expectNoViolations(page)
+})
+
 test('demo shell has no detectable axe violations', async ({ page }) => {
   await enterDemo(page)
   await expect(page.getByRole('button', { name: /Aria/ }).first()).toBeVisible()

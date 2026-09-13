@@ -47,6 +47,12 @@ export function clearSession(jid: string): void {
   sessionStorage.removeItem(scopedKey(jid, 'session'))
 }
 
+// true when a namespaced key already holds a persisted value; used to
+// tell a returning install from a first run before any writes happen
+export function hasPersisted(key: string): boolean {
+  return typeof localStorage !== 'undefined' && localStorage.getItem(key) !== null
+}
+
 // Drop every badinage-namespaced key from both storage areas. Used by
 // the wipe-all-data flow; collects keys first so removals do not disturb
 // the index-based iteration.

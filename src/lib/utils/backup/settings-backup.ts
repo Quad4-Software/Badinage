@@ -80,6 +80,16 @@ function validAccountMeta(value: unknown): Record<string, unknown> {
   return out
 }
 
+// seenPrompts is a record of finite version numbers
+function validNumberMap(value: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  if (!isRecord(value)) return out
+  for (const [key, v] of Object.entries(value)) {
+    if (typeof v === 'number' && Number.isFinite(v)) out[key] = v
+  }
+  return out
+}
+
 // validates one settings key against the shape of the defaults blob;
 // returns undefined when the value is unusable so the caller drops it
 function validValue(
@@ -108,6 +118,7 @@ function validValue(
   if (Array.isArray(fallback)) return validStrings(value) ?? undefined
   if (key === 'keybindings') return validKeybindings(value, actions)
   if (key === 'accountMeta') return validAccountMeta(value)
+  if (key === 'seenPrompts') return validNumberMap(value)
   return isRecord(value) ? value : undefined
 }
 

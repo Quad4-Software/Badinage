@@ -11,7 +11,8 @@ const DEFAULTS: Record<string, unknown> = {
   accountOrder: [] as string[],
   collapsedSections: [] as string[],
   keybindings: {} as Record<string, string>,
-  accountMeta: {} as Record<string, unknown>
+  accountMeta: {} as Record<string, unknown>,
+  seenPrompts: {} as Record<string, number>
 }
 
 const ACTIONS = ['app.settings', 'chat.focusComposer'] as const
@@ -129,6 +130,17 @@ describe('parseBackup', () => {
     }
     expect(parseBackup('{"accentHue":264}', DEFAULTS, ACTIONS).ok).toBe(true)
     expect(parseBackup('{"accentHue":null}', DEFAULTS, ACTIONS).ok).toBe(true)
+  })
+
+  it('keeps only finite numbers in seenPrompts', () => {
+    const result = parseBackup(
+      '{"seenPrompts":{"crash-reporting":1,"x":"yes","y":null,"z":2}}',
+      DEFAULTS,
+      ACTIONS
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.backup.settings.seenPrompts).toEqual({ 'crash-reporting': 1, z: 2 })
   })
 
   it('ignores an invalid mode but keeps valid settings', () => {

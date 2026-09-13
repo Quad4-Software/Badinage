@@ -1,6 +1,7 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
   import { settings } from '$lib/state/settings.svelte'
+  import { SAMPLE_REPORT } from '$lib/ui/sample-report'
   import { Switch } from '$lib/ui/primitives/switch'
 
   import { matchesQuery } from './match'
@@ -69,6 +70,15 @@
         />
       </label>
       <p class="text-muted-foreground text-xs">{$LL.crashReportingHint()}</p>
+      <details class="text-xs">
+        <summary
+          class="text-primary cursor-pointer font-medium select-none [&::-webkit-details-marker]:hidden"
+        >
+          {$LL.crashPromptSample()}
+        </summary>
+        <pre
+          class="bg-muted text-muted-foreground mt-2 max-h-48 overflow-auto rounded-md p-3 text-[11px] leading-snug break-all whitespace-pre-wrap">{SAMPLE_REPORT}</pre>
+      </details>
     </div>
   {/if}
 </SettingSection>

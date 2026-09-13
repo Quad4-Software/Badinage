@@ -145,7 +145,15 @@ const en = {
   sendReadMarkers: 'Send read markers',
   crashReporting: 'Share crash reports',
   crashReportingHint:
-    'Sends a scrubbed error report when something breaks. Addresses are removed before sending, and reporting only works if this deployment configured a server.',
+    'Sends a scrubbed error report when something breaks. Addresses and message content are removed before sending, and nothing is sent unless this is on.',
+  crashPromptTitle: 'Share crash reports?',
+  crashPromptBody:
+    'Badinage can send a scrubbed error report when something breaks so bugs get fixed faster. Reporting is opt-in and you can change it any time under Settings > Privacy.',
+  crashPromptNever:
+    'Never sent: message bodies or stanza XML, JIDs and contacts, passwords and tokens, cookies and request bodies, your identity.',
+  crashPromptSample: 'See a sample scrubbed report',
+  crashPromptEnable: 'Enable crash reports',
+  crashPromptDecline: 'No thanks',
   splitView: 'Split view',
   closePane: 'Close pane',
   openInSplit: 'Open in split view',
