@@ -115,9 +115,17 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 ## One-to-one chat
 
 - [ ] Link preview policy decision (privacy vs convenience)
+- [x] XEP-0466 ephemeral messages: per-chat timer sync, local purge
+      sweep, envelope support in OMEMO
+- [x] XEP-0224 attention (buzz) with per-sender rate limiting
+- [x] XEP-0301 real-time text: opt-in live typing for DMs
+- [x] XEP-0080 geoloc share + location card, tile previews behind a
+      privacy setting
 
 ## Groupchat (XEP-0045)
 
+- [x] XEP-0372 mention references: @nick autocomplete, mention
+      highlight, feeds 0492 on-mention notifications
 - [ ] Subject editing UI
 - [ ] Mediated invites
 - [x] MUC MAM history paging (shared loadOlder path)
@@ -132,6 +140,10 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       scripts/py_verify.py)
 - [x] Property-based tests (fast-check), RFC 5869 known-answer vectors
 - [x] API docs via TypeDoc (`pnpm --filter @quad4-software/omemo docs`)
+- [x] XEP-0450 ATM: automatic trust policy (auto-trust first-seen on
+      decrypt, changed keys drop to undecided for manual verify,
+      manual verify overrides), bulk verify action
+- [ ] XEP-0434 trust messages: sync trust decisions across own devices
 - [ ] MUC OMEMO gated on members-only + non-anonymous + occupant ids
 - [x] Publish @quad4-software/omemo to GitHub Packages on omemo-v* tags
       (publish-omemo.yml workflow)
@@ -157,6 +169,12 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Multi-account and sessions
 
+- [x] XEP-0492 chat notification settings: always/on-mention/never on
+      bookmark extensions, local fallback for DMs
+- [x] XEP-0490 message displayed sync across own devices (private PEP)
+- [x] XEP-0186 invisibility toggle via privacy lists (note: blocks MUC
+      joins while active)
+- [x] XEP-0433 extended channel search: explore public rooms dialog
 - [ ] Per-account storage namespaces enforced everywhere (audit keys)
 - [ ] SharedWorker transport per account for multi-tab same-account
 - [ ] Account ordering, per-account notification settings, profile colors
@@ -164,6 +182,12 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## UX and platform
 
+- [x] web+xmpp protocol handler + XEP-0147 URI actions (message, join,
+      roster); message drafts land in the composer, send stays manual
+- [x] PWA share_target: text/links/files into a conversation picker,
+      POST via service worker inbox
+- [x] Badging API unread count on the installed icon
+- [x] XEP-0392 consistent contact/nick colors for avatar fallbacks
 - [ ] Message list virtualization (long history perf)
 - [ ] Onboarding: server discovery hints, Tor/i2p notes for self-hosters
 - [ ] PWA manifest + service worker, installable

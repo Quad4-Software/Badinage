@@ -54,3 +54,16 @@ Status: done | partial | planned | deferred
 | XEP-0461      | Replies                    | done     | quote block + fallback strip, jump                             |
 | XEP-0484      | FAST auth                  | deferred | needs SASL2 first                                              |
 | XEP-0493      | OAuth client login         | done     | empty-token probe, discovery, registration, PKCE, OAUTHBEARER  |
+| XEP-0147      | XMPP URI scheme            | done     | xmpp: link parsing, web+xmpp protocol handler, deep links      |
+| XEP-0080      | User location              | done     | geoloc send/receive, envelope-carrying, tile preview card      |
+| XEP-0166/0267 | Jingle / file transfer     | deferred | call signaling research done, implementation open              |
+| XEP-0186      | Invisible command          | done     | privacy-list presence-out deny, presence picker toggle         |
+| XEP-0224      | Attention                  | done     | buzz send/receive, notification + sound, per-chat gate         |
+| XEP-0301      | In-band real time text     | partial  | send/apply ops, live preview in header, no cursor tracking     |
+| XEP-0372      | References                 | done     | mention references on MUC sends, parsed for mentions           |
+| XEP-0392      | Consistent color           | done     | avatar fallbacks and MUC nicks via HSLuv                       |
+| XEP-0433      | Channel search             | done     | explore-rooms dialog over the search service form              |
+| XEP-0450      | OMEMO ATM                  | partial  | decrypt-observe trust, bulk verify; full ATM protocol open     |
+| XEP-0466      | Ephemeral messages         | partial  | per-chat timer, stanza + envelope timers, sweep on expiry      |
+| XEP-0490      | Message display sync       | partial  | MDS publish on view, remote markers sync unread                |
+| XEP-0492      | Chat notification settings | done     | per-chat notify overrides, bookmark notify extension           |
