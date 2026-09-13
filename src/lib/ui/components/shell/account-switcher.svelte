@@ -11,9 +11,10 @@
   import { bareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
 
+  import { presenceRingClass } from '$lib/ui/presence'
+
   import PeerAvatar from '../chat/peer-avatar.svelte'
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
-  import PresenceDot from '../presence/presence-dot.svelte'
   import PresenceMenu from '../presence/presence-menu.svelte'
 
   const active = $derived(accounts.active)
@@ -28,19 +29,18 @@
         <Button {...props} variant="outline" class="w-full justify-between">
           <span class="flex min-w-0 items-center gap-2">
             {#if active}
-              <span class="relative shrink-0">
-                <PeerAvatar
-                  jid={bareJid(active.jid)}
-                  fallback={active.jid.slice(0, 2)}
-                  account={active}
-                  force
-                  class="size-5"
-                />
-                <PresenceDot
-                  presence={active.status === 'connected' ? active.presence : 'offline'}
-                  class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
-                />
-              </span>
+              {@const shown =
+                active.invisible || active.status !== 'connected' ? 'offline' : active.presence}
+              <PeerAvatar
+                jid={bareJid(active.jid)}
+                fallback={active.jid.slice(0, 2)}
+                account={active}
+                force
+                class={cn(
+                  'ring-offset-background size-5 shrink-0 ring-2 ring-offset-1',
+                  presenceRingClass(shown)
+                )}
+              />
             {/if}
             <span class="truncate">{active?.jid ?? ''}</span>
           </span>

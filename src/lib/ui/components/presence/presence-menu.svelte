@@ -6,9 +6,8 @@
   import LL from '$lib/i18n/i18n-svelte'
   import type { Account } from '$lib/state/accounts.svelte'
   import { Input } from '$lib/ui/primitives/input'
-  import { PRESENCE_VALUES, presenceLabel } from '$lib/ui/presence'
-
-  import PresenceDot from './presence-dot.svelte'
+  import { cn } from '$lib/utils/cn'
+  import { PRESENCE_VALUES, presenceClass, presenceLabel } from '$lib/ui/presence'
 
   // items only: the account switcher owns the DropdownMenu.Root and the
   // content these render into, so they must stay inside its Content
@@ -32,8 +31,7 @@
 
 {#each PRESENCE_VALUES as value (value)}
   <DropdownMenu.Item class={itemClass} onSelect={() => account.setPresence(value)}>
-    <PresenceDot presence={value} />
-    <span class="flex-1">{presenceLabel(value)}</span>
+    <span class={cn('flex-1', presenceClass(value))}>{presenceLabel(value)}</span>
     {#if connected && !invisible && account.presence === value}
       <Check class="size-4 shrink-0" />
     {/if}

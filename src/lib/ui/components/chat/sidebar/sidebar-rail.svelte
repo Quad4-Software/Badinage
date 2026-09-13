@@ -6,12 +6,11 @@
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
   import { bareJid } from '$lib/utils/jid'
-  import { presenceLabel } from '$lib/ui/presence'
+  import { presenceLabel, presenceRingClass } from '$lib/ui/presence'
   import { Button } from '$lib/ui/primitives/button'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
   import PeerAvatar from '../peer-avatar.svelte'
-  import PresenceDot from '../../presence/presence-dot.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
 
   const account = $derived(accounts.active)
@@ -148,11 +147,10 @@
         fallback={account.jid.slice(0, 2)}
         {account}
         force
-        class="size-9"
-      />
-      <PresenceDot
-        presence={account.invisible ? 'offline' : shown}
-        class="ring-background absolute -right-0.5 -bottom-0.5 ring-2"
+        class={cn(
+          'ring-offset-background size-9 ring-2 ring-offset-2',
+          presenceRingClass(account.invisible ? 'offline' : shown)
+        )}
       />
     </button>
   {/if}

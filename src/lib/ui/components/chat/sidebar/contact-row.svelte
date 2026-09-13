@@ -1,7 +1,8 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
   import type { RosterContact } from '$lib/state/accounts.svelte'
-  import { presenceLabel } from '$lib/ui/presence'
+  import { cn } from '$lib/utils/cn'
+  import { presenceClass, presenceLabel } from '$lib/ui/presence'
 
   import PeerAvatar from '../peer-avatar.svelte'
 
@@ -30,7 +31,12 @@
         <span class="text-muted-foreground density-text-xs">· {$LL.blockedBadge()}</span>
       {/if}
     </span>
-    <span class="text-muted-foreground density-text-xs block truncate">
+    <span
+      class={cn(
+        'density-text-xs block truncate',
+        contact.presenceStatus ? 'text-muted-foreground' : presenceClass(contact.presence)
+      )}
+    >
       {contact.presenceStatus || presenceLabel(contact.presence)}
     </span>
   </span>

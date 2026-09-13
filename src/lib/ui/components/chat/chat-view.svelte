@@ -21,7 +21,8 @@
   import { Separator } from '$lib/ui/primitives/separator'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
-  import { presenceLabel } from '$lib/ui/presence'
+  import { presenceClass, presenceLabel } from '$lib/ui/presence'
+  import { cn } from '$lib/utils/cn'
 
   import { Sheet } from '$lib/ui/primitives/sheet'
 
@@ -36,7 +37,6 @@
   import MessageSheet from './message-item/sheet.svelte'
   import OccupantList from './occupant-list.svelte'
   import RoomStatusBanner from './room-status-banner.svelte'
-  import PresenceDot from '../presence/presence-dot.svelte'
   import TypingIndicator from './typing-indicator.svelte'
   import { createChatActions } from './chat-view/actions'
   import { ephemeralLabel } from './chat-view/ephemeral'
@@ -324,8 +324,7 @@
                   <span class="text-primary">{$LL.typing()}</span>
                 {/if}
               {:else if contact}
-                <PresenceDot presence={contact.presence} />
-                <span class="truncate">
+                <span class={cn('truncate', presenceClass(contact.presence))}>
                   {presenceLabel(contact.presence)}{contact.presenceStatus
                     ? ` · ${contact.presenceStatus}`
                     : ''}

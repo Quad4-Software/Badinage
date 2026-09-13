@@ -8,7 +8,7 @@
   import { Input } from '$lib/ui/primitives/input'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
   import { cn } from '$lib/utils/cn'
-  import { presenceLabel } from '$lib/ui/presence'
+  import { presenceClass, presenceLabel } from '$lib/ui/presence'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PeerAvatar from './peer-avatar.svelte'
@@ -120,10 +120,12 @@
                   <span class="text-muted-foreground text-xs">({$LL.you().toLowerCase()})</span>
                 {/if}
               </span>
-              <span class="text-muted-foreground block truncate text-xs">
+              <span class="block truncate text-xs">
                 {#if occupant.jid}
-                  {occupant.jid} ·
-                {/if}{presenceLabel(occupant.presence)}
+                  <span class="text-muted-foreground">{occupant.jid} · </span>
+                {/if}<span class={presenceClass(occupant.presence)}
+                  >{presenceLabel(occupant.presence)}</span
+                >
               </span>
             </span>
             {#if badge(occupant)}

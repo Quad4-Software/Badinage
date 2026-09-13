@@ -6,12 +6,12 @@
   import { app } from '$lib/state/app.svelte'
   import { settings } from '$lib/state/settings.svelte'
   import { effectiveHue, nextAccountHue } from '$lib/utils/account'
+  import { cn } from '$lib/utils/cn'
   import { Button } from '$lib/ui/primitives/button'
   import { Switch } from '$lib/ui/primitives/switch'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PeerAvatar from '../chat/peer-avatar.svelte'
-  import PresenceDot from '../presence/presence-dot.svelte'
   import { matchesQuery } from './match'
   import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
@@ -24,6 +24,13 @@
       : status === 'connecting'
         ? $LL.connecting()
         : $LL.offline()
+
+  const statusClass = (status: string) =>
+    status === 'connected'
+      ? 'text-presence-online'
+      : status === 'connecting'
+        ? 'text-presence-away'
+        : 'text-muted-foreground'
 
   const list = $derived(
     accounts.list.filter((a) => matchesQuery(q, a.jid, statusLabel(a.status), $LL.accounts()))
@@ -68,10 +75,11 @@
             class="size-6"
           />
         </button>
-        <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
         <span class="min-w-0 flex-1">
           <span class="block truncate text-sm">{account.jid}</span>
-          <span class="text-muted-foreground block text-xs">{statusLabel(account.status)}</span>
+          <span class={cn('block text-xs', statusClass(account.status))}>
+            {statusLabel(account.status)}
+          </span>
         </span>
         <span class="flex shrink-0 items-center" role="group" aria-label={account.jid}>
           <Button

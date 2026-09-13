@@ -28,6 +28,19 @@
 
   const total = $derived(measured > 0 ? measured : (duration ?? 0))
   const progress = $derived(total > 0 ? Math.min(1, elapsed / total) : 0)
+
+  // timeupdate only ticks a few times a second, which makes the bar fill
+  // visibly step. While playing, sample currentTime every frame instead
+  $effect(() => {
+    if (!playing) return
+    let raf = 0
+    const tick = () => {
+      elapsed = audio?.currentTime ?? elapsed
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  })
   // before playback starts show just the total, then elapsed / total
   const clockLabel = $derived(
     !playing && elapsed === 0

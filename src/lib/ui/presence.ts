@@ -24,3 +24,37 @@ export function presenceLabel(show: string): string {
       return t.online()
   }
 }
+
+// presence reads as colored text, not a status dot: online is green,
+// away hues are amber, busy is red and anything else stays muted. The
+// presence-* tokens are deeper than the icon-bright success/warning so
+// small text clears wcag aa on light surfaces
+export function presenceClass(show: string): string {
+  switch (show) {
+    case 'away':
+    case 'xa':
+      return 'text-presence-away'
+    case 'dnd':
+      return 'text-presence-busy'
+    case 'offline':
+      return 'text-muted-foreground'
+    default:
+      return 'text-presence-online'
+  }
+}
+
+// the same mapping as an avatar ring, for places where a status badge
+// used to sit on the avatar corner
+export function presenceRingClass(show: string): string {
+  switch (show) {
+    case 'away':
+    case 'xa':
+      return 'ring-presence-away'
+    case 'dnd':
+      return 'ring-presence-busy'
+    case 'offline':
+      return 'ring-muted-foreground/50'
+    default:
+      return 'ring-presence-online'
+  }
+}

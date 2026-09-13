@@ -37,6 +37,11 @@
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.552 0.016 285.938);
   --auth-tile: color-mix(in oklab, var(--foreground) 5%, transparent);
+  /* presence labels render as colored text, so they need deeper tones
+     than the icon-bright success and warning tokens to clear wcag aa */
+  --presence-online: oklch(0.527 0.154 150);
+  --presence-away: oklch(0.545 0.135 82);
+  --presence-busy: var(--destructive);
 }
 
 .dark {
@@ -70,6 +75,9 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.439 0 0);
   --auth-tile: color-mix(in oklab, var(--foreground) 7%, transparent);
+  --presence-online: var(--success);
+  --presence-away: var(--warning);
+  --presence-busy: var(--destructive);
 }
 
 /* Density scale: comfortable is the default, :root[data-density='compact']
@@ -128,6 +136,9 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-presence-online: var(--presence-online);
+  --color-presence-away: var(--presence-away);
+  --color-presence-busy: var(--presence-busy);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
