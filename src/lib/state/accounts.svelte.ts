@@ -1,4 +1,4 @@
-import { SvelteSet } from 'svelte/reactivity'
+import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
 import { DEFAULT_RESOURCE } from '$lib/constants'
 import { omemoModule, OmemoService } from '$lib/core/omemo'
@@ -6,13 +6,14 @@ import { ModuleRegistry } from '$lib/core/module'
 import { clearSession, saveSession, type SessionOptions } from '$lib/core/storage/session'
 import {
   XmppConnection,
+  type Bookmark,
   type ChatConnection,
   type ConnectionStatus
 } from '$lib/core/xmpp/connection'
 import { DemoConnection } from '$lib/core/xmpp/demo'
 import type { RosterItem } from '$lib/core/xmpp/stanzas'
 import { discoverEndpoints } from '$lib/core/xmpp/discovery'
-import { bareJid, jidDomain } from '$lib/utils/jid'
+import { bareJid, jidDomain, parseJid } from '$lib/utils/jid'
 import { settings } from '$lib/state/settings.svelte'
 
 export type AccountOptions = SessionOptions
@@ -52,8 +53,25 @@ export class Account {
   // last omemo init failure, surfaced so the ui can warn that the
   // account is running in plaintext
   omemoError = $state<string | undefined>(undefined)
+  // resolved avatar data uris keyed by address: bare contact jid, room
+  // jid, room/nick occupant key, or our own jid. Missing means initials.
+  avatars = new SvelteMap<string, string>()
+  // XEP-0402 PEP bookmarks keyed by the bookmarked bare jid; empty when
+  // the server has no PEP or the fetch has not landed yet
+  bookmarks = new SvelteMap<string, Bookmark>()
 
   private registry = new ModuleRegistry()
+
+  // presence-advertised photo hashes; SvelteMap so a hash change re-runs
+  // the ensureAvatar effects that read it
+  private avatarHashes = new SvelteMap<string, string>()
+
+  // session bookkeeping, intentionally plain collections: the reactive
+  // surface is avatars/bookmarks, these only dedupe fetches and joins
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  private avatarRequested = new Set<string>()
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  private autoJoined = new Set<string>()
 
   constructor(readonly options: AccountOptions) {
     this.jid = options.jid
@@ -204,6 +222,95 @@ export class Account {
     this.connection.leaveRoom(bareJid(room), nick)
   }
 
+  // ---- avatars (XEP-0153 + vcard-temp) --------------------------------------
+
+  // True when presence advertised a non-empty photo hash for this address.
+  // Rows that only want an avatar when one provably exists gate on this so
+  // a roster render never fans out into vcard queries.
+  avatarHint(jid: string): boolean {
+    return (this.avatarHashes.get(jid) ?? '') !== ''
+  }
+
+  // Lazily resolve an avatar into the avatars map. Without force the fetch
+  // only runs when presence hinted at a photo; forced callers (open
+  // conversation, own account, room) fetch regardless. In-flight and
+  // failed lookups are deduped for the session by the transport layer and
+  // this requested set.
+  ensureAvatar(jid: string, force = false): void {
+    const hash = this.avatarHashes.get(jid)
+    if (hash === '') return
+    if (hash === undefined && !force) return
+    if (this.avatars.has(jid) || this.avatarRequested.has(jid)) return
+    if (this.status !== 'connected') return
+    this.avatarRequested.add(jid)
+    this.connection.fetchAvatar(jid, (uri) => {
+      if (uri) this.avatars.set(jid, uri)
+    })
+  }
+
+  // Called when presence or occupant updates carry a vcard-temp:x:update
+  // photo hash: a changed hash drops the cached image so mounted rows
+  // refetch, an empty hash pins the jid to no-avatar.
+  noteAvatarHash(jid: string, hash: string | undefined): void {
+    if (hash === undefined) return
+    if (this.avatarHashes.get(jid) === hash) return
+    this.avatarHashes.set(jid, hash)
+    this.avatars.delete(jid)
+    if (hash === '') {
+      this.avatarRequested.add(jid)
+    } else {
+      this.avatarRequested.delete(jid)
+    }
+  }
+
+  // ---- bookmarks (XEP-0402) --------------------------------------------------
+
+  isBookmarked(jid: string): boolean {
+    return this.bookmarks.has(bareJid(jid))
+  }
+
+  addBookmark(bookmark: Bookmark): void {
+    const stored = { ...bookmark, jid: bareJid(bookmark.jid) }
+    // optimistic: the server push resyncs every resource anyway, and a
+    // failed publish triggers a refetch that restores server truth
+    this.bookmarks.set(stored.jid, stored)
+    this.connection.addBookmark(stored, (ok) => {
+      if (!ok) this.refreshBookmarks()
+    })
+  }
+
+  removeBookmark(jid: string): void {
+    this.bookmarks.delete(bareJid(jid))
+    this.connection.removeBookmark(bareJid(jid), (ok) => {
+      if (!ok) this.refreshBookmarks()
+    })
+  }
+
+  // The notification payload is deliberately not trusted: races between
+  // resources are resolved by refetching the whole node, last write wins.
+  private refreshBookmarks(): void {
+    if (this.status !== 'connected') return
+    this.connection.fetchBookmarks((bookmarks) => this.applyBookmarks(bookmarks))
+  }
+
+  private applyBookmarks(bookmarks: Bookmark[] | null): void {
+    // null means the server has no PEP: stay a graceful no-op
+    if (bookmarks === null) return
+    this.bookmarks.clear()
+    for (const bookmark of bookmarks) {
+      this.bookmarks.set(bareJid(bookmark.jid), bookmark)
+    }
+    for (const bookmark of bookmarks) {
+      if (bookmark.kind !== 'conference' || !bookmark.autojoin) continue
+      const room = bareJid(bookmark.jid)
+      // once per session per room: a notify refetch must not rejoin a
+      // room the user deliberately left
+      if (this.autoJoined.has(room)) continue
+      this.autoJoined.add(room)
+      this.joinRoom(room, bookmark.nick || parseJid(this.jid).local || 'me', bookmark.password)
+    }
+  }
+
   private bind(): void {
     this.connection.events.on('status', (status) => {
       this.status = status
@@ -224,6 +331,7 @@ export class Account {
           this.blocked.clear()
           for (const jid of jids) this.blocked.add(jid)
         })
+        this.refreshBookmarks()
       }
     })
     this.connection.events.on('roster', (items) => {
@@ -250,12 +358,15 @@ export class Account {
     })
     this.connection.events.on('presence', (update) => {
       if (this.blocked.has(update.from)) return
+      this.noteAvatarHash(update.from, update.avatarHash)
       const contact = this.roster.find((c) => c.jid === update.from)
       if (contact) {
         contact.presence = update.show
         contact.presenceStatus = update.status
       }
     })
+    // PEP notifications mean another resource changed the node; refetch
+    this.connection.events.on('bookmarks', () => this.refreshBookmarks())
     this.connection.events.on('blocked', (jids) => {
       for (const jid of jids) this.blocked.add(bareJid(jid))
     })

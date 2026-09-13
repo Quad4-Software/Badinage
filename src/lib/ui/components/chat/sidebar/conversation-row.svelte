@@ -3,8 +3,8 @@
   import type { Conversation } from '$lib/state/chats.svelte'
   import { cn } from '$lib/utils/cn'
   import { mediaKind } from '$lib/utils/media'
-  import { Avatar, AvatarFallback, AvatarImage } from '$lib/ui/primitives/avatar'
 
+  import PeerAvatar from '../peer-avatar.svelte'
   import TypingIndicator from '../typing-indicator.svelte'
 
   interface Props {
@@ -46,12 +46,7 @@
   class:bg-accent={selected}
   onclick={onSelect}
 >
-  <Avatar class="shrink-0">
-    {#if isRoom && conversation.avatar}
-      <AvatarImage src={conversation.avatar} alt="" />
-    {/if}
-    <AvatarFallback>{isRoom ? '#' : initials}</AvatarFallback>
-  </Avatar>
+  <PeerAvatar jid={conversation.peerJid} fallback={isRoom ? '#' : initials} force />
   <span class="min-w-0 flex-1">
     <span class="block truncate text-sm font-medium">{name}</span>
     <span

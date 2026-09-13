@@ -4,6 +4,7 @@
   import { app } from '$lib/state/app.svelte'
   import { bareJid, isValidBareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
+  import { Checkbox } from '$lib/ui/primitives/checkbox'
   import {
     Dialog,
     DialogContent,
@@ -16,6 +17,7 @@
 
   let room = $state('')
   let nick = $state('')
+  let saveBookmark = $state(false)
 
   const roomValid = $derived(isValidBareJid(room))
   const canJoin = $derived(roomValid && nick.trim().length > 0)
@@ -33,6 +35,15 @@
     if (!account || !canJoin) return
     const bare = bareJid(room)
     account.joinRoom(bare, nick.trim())
+    if (saveBookmark) {
+      account.addBookmark({
+        jid: bare,
+        kind: 'conference',
+        name: bare.split('@')[0],
+        autojoin: true,
+        nick: nick.trim()
+      })
+    }
     app.chatsFor(account.jid).open(bare, 'muc')
     app.joinRoomOpen = false
     app.selectPeer(bare)
@@ -59,6 +70,12 @@
       <div class="grid gap-2">
         <Label for="room-nick">{$LL.nickname()}</Label>
         <Input id="room-nick" bind:value={nick} placeholder={$LL.nicknamePlaceholder()} required />
+      </div>
+      <div class="flex items-center gap-2">
+        <Checkbox id="room-bookmark" bind:checked={saveBookmark} />
+        <Label for="room-bookmark" class="text-sm font-normal">
+          {$LL.bookmarkRoom()}
+        </Label>
       </div>
       <DialogFooter>
         <Button type="button" variant="ghost" onclick={() => (app.joinRoomOpen = false)}>

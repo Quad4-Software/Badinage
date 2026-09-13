@@ -3,11 +3,17 @@ import { describe, expect, it } from 'vitest'
 
 import {
   hasDiscoFeature,
+  parseAvatarHash,
   parseBlockPush,
-  parseDiscoItemJids,
+  parseBookmark,
+  parseBookmarkItems,
+  parseCaps,
+  parseDiscoInfo,
+  parseDiscoItems,
   parseJidItems,
   parseMamFin,
   parseMessage,
+  parsePepEvent,
   parsePresence,
   parseRosterItems,
   parseUploadSlot,
@@ -362,14 +368,172 @@ describe('parseBlockPush', () => {
   })
 })
 
-describe('parseDiscoItemJids', () => {
-  it('collects item jids from a disco items result', () => {
-    const jids = parseDiscoItemJids(
+describe('parseDiscoItems', () => {
+  it('collects items with jid, node and name', () => {
+    const items = parseDiscoItems(
       xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#items">
-        <item jid="upload.example.net"/><item jid="proxy.example.net"/>
+        <item jid="upload.example.net" name="Uploads"/>
+        <item jid="proxy.example.net" node="proxynode"/>
+        <item/>
       </query></iq>`)
     )
-    expect(jids).toEqual(['upload.example.net', 'proxy.example.net'])
+    expect(items).toEqual([
+      { jid: 'upload.example.net', name: 'Uploads', node: undefined },
+      { jid: 'proxy.example.net', name: undefined, node: 'proxynode' }
+    ])
+  })
+})
+
+describe('parseDiscoInfo', () => {
+  it('reads identities, features and extension forms', () => {
+    const info = parseDiscoInfo(
+      xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#info">
+        <identity category="client" type="pc" name="Exodus 0.9.1"/>
+        <feature var="http://jabber.org/protocol/muc"/>
+        <feature var="http://jabber.org/protocol/caps"/>
+        <x xmlns="jabber:x:data" type="result">
+          <field var="FORM_TYPE" type="hidden">
+            <value>urn:xmpp:dataforms:softwareinfo</value>
+          </field>
+          <field var="software"><value>Exodus</value></field>
+          <field var="ip_version"><value>ipv4</value><value>ipv6</value></field>
+        </x>
+      </query></iq>`)
+    )
+    expect(info.identities).toEqual([
+      { category: 'client', type: 'pc', name: 'Exodus 0.9.1', lang: undefined }
+    ])
+    expect(info.features).toContain('http://jabber.org/protocol/muc')
+    expect(info.forms).toEqual([
+      {
+        formType: 'urn:xmpp:dataforms:softwareinfo',
+        fields: [
+          { var: 'software', values: ['Exodus'] },
+          { var: 'ip_version', values: ['ipv4', 'ipv6'] }
+        ]
+      }
+    ])
+  })
+
+  it('skips submit-type forms and tolerates empty results', () => {
+    const info = parseDiscoInfo(
+      xml(`<iq type="result"><query xmlns="http://jabber.org/protocol/disco#info">
+        <x xmlns="jabber:x:data" type="submit"><field var="FORM_TYPE"><value>x</value></field></x>
+      </query></iq>`)
+    )
+    expect(info).toEqual({ identities: [], features: [], forms: [] })
+  })
+})
+
+describe('parseCaps', () => {
+  it('reads the entity capabilities element', () => {
+    const caps = parseCaps(
+      xml(`<presence from="a@b.c/r">
+        <c xmlns="http://jabber.org/protocol/caps" hash="sha-1" node="https://x.c/caps" ver="abc="/>
+      </presence>`)
+    )
+    expect(caps).toEqual({ node: 'https://x.c/caps', hash: 'sha-1', ver: 'abc=' })
+  })
+
+  it('returns null when attributes are missing', () => {
+    expect(parseCaps(xml(`<presence><c xmlns="http://jabber.org/protocol/caps" hash="sha-1"/></presence>`))).toBeNull()
+    expect(parseCaps(xml(`<presence/>`))).toBeNull()
+  })
+})
+
+describe('parseAvatarHash', () => {
+  it('reads the vcard-temp:x:update photo hash', () => {
+    const stanza = xml(`<presence from="a@b.c/r">
+      <x xmlns="vcard-temp:x:update"><photo>  aabbcc  </photo></x>
+    </presence>`)
+    expect(parseAvatarHash(stanza)).toBe('aabbcc')
+  })
+
+  it('returns an empty string for an explicit no-avatar update', () => {
+    const stanza = xml(`<presence from="a@b.c/r">
+      <x xmlns="vcard-temp:x:update"><photo/></x>
+    </presence>`)
+    expect(parseAvatarHash(stanza)).toBe('')
+  })
+
+  it('returns undefined when no update element is present', () => {
+    expect(parseAvatarHash(xml(`<presence from="a@b.c/r"/>`))).toBeUndefined()
+  })
+})
+
+describe('parsePepEvent', () => {
+  it('extracts node, items and retracts from a pubsub event', () => {
+    const event = parsePepEvent(
+      xml(`<message from="me@example.net" type="headline">
+        <event xmlns="http://jabber.org/protocol/pubsub#event">
+          <items node="urn:xmpp:bookmarks:1">
+            <item id="room@conference.example.net">
+              <conference xmlns="urn:xmpp:bookmarks:1" autojoin="true"><nick>me</nick></conference>
+            </item>
+            <retract id="old@conference.example.net"/>
+          </items>
+        </event>
+      </message>`)
+    )
+    expect(event?.node).toBe('urn:xmpp:bookmarks:1')
+    expect(event?.items).toHaveLength(1)
+    expect(event?.retracted).toEqual(['old@conference.example.net'])
+  })
+
+  it('returns null on a plain message', () => {
+    expect(
+      parsePepEvent(xml(`<message from="a@b.c"><body>hi</body></message>`))
+    ).toBeNull()
+  })
+})
+
+describe('parseBookmark', () => {
+  it('parses a conference item', () => {
+    const bookmark = parseBookmark(
+      xml(`<item id="room@conference.example.net">
+        <conference xmlns="urn:xmpp:bookmarks:1" name="Room" autojoin="true">
+          <nick>me</nick><password>s3cret</password>
+        </conference>
+      </item>`)
+    )
+    expect(bookmark).toEqual({
+      jid: 'room@conference.example.net',
+      kind: 'conference',
+      name: 'Room',
+      autojoin: true,
+      nick: 'me',
+      password: 's3cret'
+    })
+  })
+
+  it('parses a contact item', () => {
+    const bookmark = parseBookmark(
+      xml(`<item id="friend@example.net">
+        <contact xmlns="urn:xmpp:bookmarks:1" name="Friend"/>
+      </item>`)
+    )
+    expect(bookmark).toEqual({
+      jid: 'friend@example.net',
+      kind: 'contact',
+      name: 'Friend'
+    })
+  })
+
+  it('returns null for unknown payloads', () => {
+    expect(parseBookmark(xml(`<item id="x"><other/></item>`))).toBeNull()
+  })
+})
+
+describe('parseBookmarkItems', () => {
+  it('collects bookmark items and drops jid-less entries', () => {
+    const bookmarks = parseBookmarkItems(
+      xml(`<items node="urn:xmpp:bookmarks:1">
+        <item id="a@conference.x"><conference xmlns="urn:xmpp:bookmarks:1"/></item>
+        <item><conference xmlns="urn:xmpp:bookmarks:1"/></item>
+      </items>`)
+    )
+    expect(bookmarks).toHaveLength(1)
+    expect(bookmarks[0]?.jid).toBe('a@conference.x')
   })
 })
 

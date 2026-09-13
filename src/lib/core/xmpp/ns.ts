@@ -3,6 +3,8 @@ export const NS = {
   ROSTER: 'jabber:iq:roster',
   DISCO_INFO: 'http://jabber.org/protocol/disco#info',
   DISCO_ITEMS: 'http://jabber.org/protocol/disco#items',
+  // XEP-0115 entity capabilities presence element
+  CAPS: 'http://jabber.org/protocol/caps',
   MUC: 'http://jabber.org/protocol/muc',
   MUC_USER: 'http://jabber.org/protocol/muc#user',
   MUC_ADMIN: 'http://jabber.org/protocol/muc#admin',
@@ -19,6 +21,10 @@ export const NS = {
   HTTP_UPLOAD: 'urn:xmpp:http:upload:0',
   VCARD_AVATAR: 'urn:xmpp:avatar:metadata',
   VCARD_TEMP: 'vcard-temp',
+  // XEP-0153 presence update element carrying the avatar photo hash
+  VCARD_UPDATE: 'vcard-temp:x:update',
+  // stanza-level error conditions live in this rfc 6120 namespace
+  STANZA_ERRORS: 'urn:ietf:params:xml:ns:xmpp-stanzas',
   BLOCKING: 'urn:xmpp:blocking',
   OMEMO: 'urn:xmpp:omemo:2',
   OMEMO_LEGACY: 'eu.siacs.conversations.axolotl',
@@ -28,6 +34,10 @@ export const NS = {
   HINTS: 'urn:xmpp:hints',
   BOOKMARKS: 'urn:xmpp:bookmarks:1',
   PUBSUB: 'http://jabber.org/protocol/pubsub',
+  PUBSUB_EVENT: 'http://jabber.org/protocol/pubsub#event',
+  // XEP-0060 publish-options FORM_TYPE value (a form field value, kept
+  // with the other pubsub constants rather than with xml namespaces)
+  PUBSUB_PUBLISH_OPTIONS: 'http://jabber.org/protocol/pubsub#publish-options',
   RECEIPTS: 'urn:xmpp:receipts',
   MARKERS: 'urn:xmpp:chat-markers:0',
   REPLY: 'urn:xmpp:reply:0',

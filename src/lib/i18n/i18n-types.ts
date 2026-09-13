@@ -210,6 +210,26 @@ type RootTranslation = {
 	 */
 	leaveRoom: string
 	/**
+	 * B​o​o​k​m​a​r​k​s
+	 */
+	bookmarks: string
+	/**
+	 * B​o​o​k​m​a​r​k​ ​t​h​i​s​ ​r​o​o​m
+	 */
+	bookmarkRoom: string
+	/**
+	 * B​o​o​k​m​a​r​k​ ​t​h​i​s​ ​c​o​n​t​a​c​t
+	 */
+	bookmarkContact: string
+	/**
+	 * R​e​m​o​v​e​ ​b​o​o​k​m​a​r​k
+	 */
+	removeBookmark: string
+	/**
+	 * J​o​i​n​s​ ​a​u​t​o​m​a​t​i​c​a​l​l​y
+	 */
+	autojoin: string
+	/**
 	 * {​c​o​u​n​t​}​ ​o​c​c​u​p​a​n​t​s
 	 * @param {number} count
 	 */
@@ -1098,6 +1118,26 @@ export type TranslationFunctions = {
 	 * Leave room
 	 */
 	leaveRoom: () => LocalizedString
+	/**
+	 * Bookmarks
+	 */
+	bookmarks: () => LocalizedString
+	/**
+	 * Bookmark this room
+	 */
+	bookmarkRoom: () => LocalizedString
+	/**
+	 * Bookmark this contact
+	 */
+	bookmarkContact: () => LocalizedString
+	/**
+	 * Remove bookmark
+	 */
+	removeBookmark: () => LocalizedString
+	/**
+	 * Joins automatically
+	 */
+	autojoin: () => LocalizedString
 	/**
 	 * {count} occupants
 	 */

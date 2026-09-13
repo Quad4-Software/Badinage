@@ -47,7 +47,7 @@ describe('XmppConnection with a stubbed strophe connection', () => {
     xmpp.connect('me@example.net/res', 'secret')
     drive(Strophe.Status.CONNECTED)
 
-    expect(addHandler).toHaveBeenCalledTimes(4)
+    expect(addHandler).toHaveBeenCalledTimes(6)
     const registrations = addHandler.mock.calls.map((c) => ({
       ns: c[1],
       name: c[2],
@@ -57,7 +57,9 @@ describe('XmppConnection with a stubbed strophe connection', () => {
       { ns: null, name: 'message', type: null },
       { ns: null, name: 'presence', type: null },
       { ns: 'jabber:iq:roster', name: 'iq', type: 'set' },
-      { ns: 'urn:xmpp:blocking', name: 'iq', type: 'set' }
+      { ns: 'urn:xmpp:blocking', name: 'iq', type: 'set' },
+      { ns: 'http://jabber.org/protocol/disco#info', name: 'iq', type: 'get' },
+      { ns: 'http://jabber.org/protocol/disco#items', name: 'iq', type: 'get' }
     ])
 
     const iqs = sendIQ.mock.calls.map((c) => c[0].toString())
@@ -69,6 +71,12 @@ describe('XmppConnection with a stubbed strophe connection', () => {
 
     const sent = send.mock.calls.map((c) => String(c[0]))
     expect(sent.some((s) => s.startsWith('<presence'))).toBe(true)
+    // XEP-0115: outgoing presence advertises entity capabilities
+    expect(
+      sent.some(
+        (s) => s.startsWith('<presence') && s.includes('http://jabber.org/protocol/caps')
+      )
+    ).toBe(true)
   })
 
   it('emits message for an incoming chat stanza', () => {

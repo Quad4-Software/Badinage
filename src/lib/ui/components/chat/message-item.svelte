@@ -3,10 +3,10 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
-  import { Avatar, AvatarFallback } from '$lib/ui/primitives/avatar'
   import { cn } from '$lib/utils/cn'
   import { isEmojiOnly } from '$lib/utils/emoji'
 
+  import PeerAvatar from './peer-avatar.svelte'
   import MessageAttachments from './message-attachments.svelte'
   import MessageMeta from './message-meta.svelte'
   import EmojiPicker from './emoji-picker.svelte'
@@ -17,6 +17,10 @@
     showNick?: boolean
     showAvatar?: boolean
     avatarName?: string
+    // address the sender avatar is resolved under; force fetches even
+    // without a presence photo hash hint (dm peers)
+    avatarJid?: string
+    avatarForce?: boolean
     // bare jid (dm) or nick (muc) used to mark our own reaction pills
     selfJid?: string
     onQuoteClick?: ((id: string) => void) | undefined
@@ -30,6 +34,8 @@
     showNick = false,
     showAvatar = false,
     avatarName = '',
+    avatarJid = '',
+    avatarForce = false,
     selfJid = '',
     onQuoteClick,
     onReply,
@@ -71,9 +77,7 @@
 <div class={cn('group flex items-end gap-2', message.outgoing && 'justify-end')}>
   {#if !message.outgoing}
     {#if showAvatar}
-      <Avatar class="size-7">
-        <AvatarFallback>{initials}</AvatarFallback>
-      </Avatar>
+      <PeerAvatar jid={avatarJid} fallback={initials} force={avatarForce} class="size-7" />
     {:else}
       <!-- keeps continuation bubbles aligned under the avatar column -->
       <span class="size-7 shrink-0" aria-hidden="true"></span>

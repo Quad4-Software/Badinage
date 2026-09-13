@@ -6,8 +6,10 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { cn } from '$lib/utils/cn'
+  import { bareJid } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
 
+  import PeerAvatar from '../chat/peer-avatar.svelte'
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceDot from '../presence/presence-dot.svelte'
 
@@ -20,7 +22,18 @@
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}
         <Button {...props} variant="outline" class="w-full justify-between">
-          <span class="truncate">{active?.jid ?? ''}</span>
+          <span class="flex min-w-0 items-center gap-2">
+            {#if active}
+              <PeerAvatar
+                jid={bareJid(active.jid)}
+                fallback={active.jid.slice(0, 2)}
+                account={active}
+                force
+                class="size-5"
+              />
+            {/if}
+            <span class="truncate">{active?.jid ?? ''}</span>
+          </span>
           <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
         </Button>
       {/snippet}
@@ -39,6 +52,13 @@
             )}
             onSelect={() => (accounts.activeJid = account.jid)}
           >
+            <PeerAvatar
+              jid={bareJid(account.jid)}
+              fallback={account.jid.slice(0, 2)}
+              account={account}
+              force
+              class="size-5"
+            />
             <PresenceDot presence={account.status === 'connected' ? 'online' : 'offline'} />
             <span class="min-w-0 flex-1 truncate">{account.jid}</span>
             {#if account.jid === active?.jid}

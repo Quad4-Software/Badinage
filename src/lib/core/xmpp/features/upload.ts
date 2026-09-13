@@ -6,11 +6,13 @@ import { $iq } from 'strophe.js'
 import { jidDomain } from '$lib/utils/jid'
 
 import { NS } from '../ns'
-import { hasDiscoFeature, parseDiscoItemJids, parseUploadSlot, type UploadSlot } from '../stanzas'
+import { parseUploadSlot, type DiscoItem, type UploadSlot } from '../stanzas'
+import { discoInfo, discoItems } from './disco'
 import type { XmppTransport } from './transport'
 
 // Finds the upload service: items disco on our server domain, then info
-// disco on each item until one advertises the http upload feature.
+// disco on each item until one advertises the http upload feature. Both
+// go through the cached disco layer so repeat lookups are free.
 export function discoverUploadService(
   conn: XmppTransport,
   onDone: (serviceJid: string | null) => void
@@ -20,38 +22,32 @@ export function discoverUploadService(
     onDone(null)
     return
   }
-  conn.sendIq(
-    $iq({ type: 'get', to: domain, id: conn.uniqueId('disco-items') }).c('query', {
-      xmlns: NS.DISCO_ITEMS
-    }),
-    (stanza) => probeUploadServices(conn, parseDiscoItemJids(stanza), onDone),
-    () => onDone(null)
-  )
+  discoItems(conn, domain, (items) => {
+    if (!items) {
+      onDone(null)
+      return
+    }
+    probeUploadServices(conn, items, onDone)
+  })
 }
 
 function probeUploadServices(
   conn: XmppTransport,
-  jids: string[],
+  items: DiscoItem[],
   onDone: (serviceJid: string | null) => void
 ): void {
-  const [next, ...rest] = jids
+  const [next, ...rest] = items
   if (!next) {
     onDone(null)
     return
   }
-  conn.sendIq(
-    $iq({ type: 'get', to: next, id: conn.uniqueId('disco-info') }).c('query', {
-      xmlns: NS.DISCO_INFO
-    }),
-    (stanza) => {
-      if (hasDiscoFeature(stanza, NS.HTTP_UPLOAD)) {
-        onDone(next)
-        return
-      }
-      probeUploadServices(conn, rest, onDone)
-    },
-    () => probeUploadServices(conn, rest, onDone)
-  )
+  discoInfo(conn, next.jid, next.node, (info) => {
+    if (info?.features.includes(NS.HTTP_UPLOAD)) {
+      onDone(next.jid)
+      return
+    }
+    probeUploadServices(conn, rest, onDone)
+  })
 }
 
 export function requestUploadSlot(

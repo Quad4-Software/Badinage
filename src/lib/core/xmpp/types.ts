@@ -6,8 +6,12 @@
 
 import type { Emitter } from '$lib/core/events'
 
+import type { PepPublishOptions } from './features/pep'
 import type {
+  Bookmark,
   ChatState,
+  DiscoInfo,
+  DiscoItem,
   IncomingMessage,
   MamPageResult,
   MarkerType,
@@ -58,6 +62,10 @@ export type ConnectionEvents = {
   // blocklist. An empty unblocked list means the list was cleared.
   blocked: string[]
   unblocked: string[]
+  // XEP-0402 PEP notification: another of our resources published or
+  // retracted bookmark items. Consumers refetch the node (last write
+  // wins) rather than trusting the partial update.
+  bookmarks: { updated: Bookmark[]; retracted: string[] }
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
@@ -113,7 +121,15 @@ export interface ChatConnection {
   // PEP item fetch/publish for omemo device lists and bundles. pepGet
   // resolves with the <items> element of the result iq, or null on error.
   pepGet(node: string, jid: string | undefined, onDone: (items: Element | null) => void): void
-  pepPublish(node: string, itemId: string, payloadXml: string): void
+  // options adds XEP-0060 publish-options so the node config is applied
+  // atomically with the publish
+  pepPublish(
+    node: string,
+    itemId: string,
+    payloadXml: string,
+    options?: PepPublishOptions,
+    onDone?: (ok: boolean) => void
+  ): void
   // OMEMO: send a pre-encrypted message stanza. encryptedXml is the
   // serialized <encrypted> element produced by the omemo service.
   sendEncryptedMessage(to: string, encryptedXml: string, opts?: SendMessageOptions): string
@@ -126,4 +142,18 @@ export interface ChatConnection {
     onDone: (result: MamPageResult) => void
   ): void
   enableCarbons(): void
+  // XEP-0030 service discovery. discoInfo resolves null on error or
+  // timeout; a node of the form base#ver is served from the entity-caps
+  // cache when the verification string was already resolved before.
+  discoInfo(
+    jid: string,
+    node: string | undefined,
+    onDone: (info: DiscoInfo | null) => void
+  ): void
+  discoItems(jid: string, onDone: (items: DiscoItem[] | null) => void): void
+  // XEP-0402 bookmarks on our own PEP node. fetch resolves null when the
+  // server lacks PEP; add republishes and remove retracts one item.
+  fetchBookmarks(onDone: (bookmarks: Bookmark[] | null) => void): void
+  addBookmark(bookmark: Bookmark, onDone?: (ok: boolean) => void): void
+  removeBookmark(jid: string, onDone?: (ok: boolean) => void): void
 }
