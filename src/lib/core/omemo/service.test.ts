@@ -6,10 +6,10 @@ import { DOMParser } from '@xmldom/xmldom'
 import { describe, expect, it } from 'vitest'
 
 import type { ChatConnection } from '$lib/core/xmpp/connection'
-import type { IncomingMessage } from '$lib/core/xmpp/stanzas'
+import type { IncomingMessage, TrustOwner } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 
-import { InMemoryOmemoStore, NAMESPACES } from '@quad4-software/omemo'
+import { InMemoryOmemoStore, NAMESPACES } from '@quad4-software/badinage-omemo'
 
 import { MemoryKeyMetaStore } from './rotation'
 import { OmemoService } from './service'
@@ -23,6 +23,7 @@ type PepDir = Map<string, Map<string, string>>
 class FakeConnection {
   readonly notifications: { to: string; xml: string }[] = []
   readonly sentEncrypted: { to: string; xml: string }[] = []
+  readonly trustMessages: { to: string; usage: string; owners: TrustOwner[] }[] = []
   private counter = 0
 
   constructor(
@@ -67,6 +68,10 @@ class FakeConnection {
 
   sendEncryptedNotification(to: string, encryptedXml: string): void {
     this.notifications.push({ to, xml: encryptedXml })
+  }
+
+  sendTrustMessage(to: string, usage: string, owners: TrustOwner[]): void {
+    this.trustMessages.push({ to, usage, owners })
   }
 }
 
@@ -115,8 +120,7 @@ describe('OmemoService', () => {
     expect(nodes?.has(NAMESPACES.legacy.devices)).toBe(true)
     expect(nodes?.has(`${NAMESPACES.omemo2.bundles}:${a.service.deviceId}`)).toBe(true)
     expect(nodes?.has(`${NAMESPACES.legacy.bundles}:${a.service.deviceId}`)).toBe(true)
-    // both profiles advertise the same device id (serializeXml uses
-    // single-quoted attributes)
+    // both profiles advertise the same device id
     const omemo2List = nodes?.get(NAMESPACES.omemo2.devices) ?? ''
     const legacyList = nodes?.get(NAMESPACES.legacy.devices) ?? ''
     expect(omemo2List).toContain(`id='${a.service.deviceId}'`)
@@ -169,13 +173,6 @@ describe('OmemoService', () => {
     expect(m2.chatState).toBe('composing')
   })
 
-  it('returns null when the peer publishes no devices at all', async () => {
-    const pep: PepDir = new Map()
-    const a = await makeAccount(`${ROMEO}/desk`, pep)
-    await a.service.publishOwn()
-    expect(await a.service.encryptBody('ghost@example.net', 'hi')).toBeNull()
-  })
-
   it('never encrypts for our own devices alone when the peer has none', async () => {
     const pep: PepDir = new Map()
     const a = await makeAccount(`${ROMEO}/desk`, pep)
@@ -183,9 +180,7 @@ describe('OmemoService', () => {
     await a.service.publishOwn()
     await b.service.publishOwn()
 
-    // give romeo a second device by grafting juliet's published bundle
-    // under a new id into his PEP tree, so his own devicelist has two
-    // entries with resolvable bundles
+    // graft a second romeo device with a resolvable bundle into his PEP
     const julietNodes = pep.get(JULIET)
     const bundle = julietNodes?.get(`${NAMESPACES.omemo2.bundles}:${b.service.deviceId}`) ?? ''
     const romeo = pep.get(ROMEO)
@@ -202,14 +197,12 @@ describe('OmemoService', () => {
 
   it('falls back to the legacy profile for legacy-only peers', async () => {
     const { b, pep } = await paired()
-    // juliet unpublishes her omemo:2 devices and bundles: from romeo's
-    // fresh point of view she is a legacy-only contact
+    // juliet unpublishes her omemo:2 nodes: she is a legacy-only contact
     const juliet = pep.get(JULIET)
     for (const node of [...(juliet?.keys() ?? [])]) {
       if (node.includes('omemo:2')) juliet?.delete(node)
     }
-    // romeo must not have a cached omemo:2 device list for juliet, so use
-    // a second account that never saw one
+    // a third account never cached juliet's omemo:2 device list
     const pep2: PepDir = new Map([...pep])
     const c = await makeAccount('mercutio@example.net/w', pep2)
     await c.service.publishOwn()
@@ -280,5 +273,27 @@ describe('OmemoService', () => {
     // every peer device is distrusted: no recipients, no ciphertext
     expect(await a.service.encryptBody(JULIET, 'hi')).toBeNull()
     expect(await a.service.encryptReaction(JULIET, 'm', ['x'])).toBeNull()
+  })
+
+  it('syncs trust decisions between own devices via XEP-0434', async () => {
+    const { a, b } = await paired()
+    await a.service.fingerprints(JULIET)
+    const fp = a.service.trust.get(JULIET, b.service.deviceId)?.fingerprint ?? ''
+    // automated levels stay local, manual ones broadcast
+    await a.service.setTrust(JULIET, b.service.deviceId, 'undecided')
+    expect(a.connection.trustMessages).toHaveLength(0)
+    await a.service.setTrust(JULIET, b.service.deviceId, 'trusted')
+    const tm = a.connection.trustMessages[0]
+    expect(tm?.to).toBe(bareJid(ROMEO))
+    expect(tm?.usage).toBe('urn:xmpp:omemo:2')
+    expect(tm?.owners[0]).toMatchObject({ jid: JULIET, trust: [fp], distrust: [] })
+    // the wire form applies back onto matching records only
+    await a.service.setTrust(JULIET, b.service.deviceId, 'undecided')
+    await a.service.applyTrustMessage(tm?.owners ?? [])
+    expect(a.service.trust.get(JULIET, b.service.deviceId)?.level).toBe('trusted')
+    await a.service.applyTrustMessage([
+      { jid: JULIET, trust: [], distrust: ['deadbeef'.repeat(8)] }
+    ])
+    expect(a.service.trust.get(JULIET, b.service.deviceId)?.level).toBe('trusted')
   })
 })

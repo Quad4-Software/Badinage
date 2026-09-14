@@ -48,6 +48,7 @@ export type {
   PresenceError,
   PresenceUpdate,
   RosterItem,
+  TrustOwner,
   UploadSlot,
   Vcard
 } from './types'

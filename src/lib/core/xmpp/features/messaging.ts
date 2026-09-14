@@ -7,7 +7,7 @@ import { $msg } from 'strophe.js'
 import type { RttEvent, RttOp } from '$lib/utils/protocol/rtt'
 
 import { NS } from '../ns'
-import type { ChatState, MarkerType } from '../stanzas'
+import type { ChatState, MarkerType, TrustOwner } from '../stanzas'
 import type { AttachmentMeta, SendMessageOptions } from '../types'
 import type { XmppTransport } from './transport'
 
@@ -200,5 +200,27 @@ export function sendRetraction(
     .t('/me retracted a message')
     .up()
     .c('store', { xmlns: NS.HINTS })
+  conn.send(stanza)
+}
+
+// XEP-0434: sync a trust decision to our other devices. Sent to our own
+// bare jid with a store hint so every online resource and MAM see it.
+// usage names the encryption protocol the fingerprints belong to
+export function sendTrustMessage(
+  conn: XmppTransport,
+  to: string,
+  usage: string,
+  owners: TrustOwner[]
+): void {
+  const stanza = $msg({ to, type: 'chat', id: conn.uniqueId('tm') })
+    .c('store', { xmlns: NS.HINTS })
+    .up()
+    .c('trust-message', { xmlns: NS.TM, usage })
+  for (const owner of owners) {
+    stanza.c('key-owner', { jid: owner.jid })
+    for (const fp of owner.trust) stanza.c('trust').t(fp).up()
+    for (const fp of owner.distrust) stanza.c('distrust').t(fp).up()
+    stanza.up()
+  }
   conn.send(stanza)
 }

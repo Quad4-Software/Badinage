@@ -1,7 +1,6 @@
-// Stanza parsing: pure Element -> typed event helpers. Everything here is a
-// pure function over DOM Elements so it can be unit tested without Strophe.
-// Uses getElementsByTagName(NS) rather than querySelector because the test
-// suite runs under @xmldom/xmldom, which has no selector engine.
+// Stanza parsing: pure Element -> typed event helpers, unit testable
+// without Strophe. Uses getElementsByTagName rather than querySelector
+// because the test suite runs under @xmldom/xmldom (no selector engine).
 
 import type { RttStanza } from '$lib/utils/protocol/rtt'
 
@@ -53,8 +52,8 @@ export interface IncomingMessage {
   stanzaBy?: string | undefined
   originId?: string | undefined
   delay?: number | undefined
-  // carbons: another device of ours sent ('sent') or received ('received')
-  // this. mam: the stanza came out of an archive query. Neither means live.
+  // carbon: another device of ours sent or received this. mam: the stanza
+  // came out of an archive query. Neither means live.
   carbon?: 'sent' | 'received' | undefined
   mam?: boolean | undefined
   chatState?: ChatState | undefined
@@ -73,11 +72,9 @@ export interface IncomingMessage {
   reactionTo?: { id: string; emojis: string[]; remove?: boolean | undefined } | undefined
   // XEP-0308: this body replaces the stanza with this id.
   replaceId?: string | undefined
-  // XEP-0424: this stanza asks receivers to retract the message whose id
-  // it names (the stanza id attribute in a dm, the room stanza-id in a
-  // muc). An empty string means a retract element that carried no usable
-  // id. The fallback body must still never render. The older draft form
-  // wrapped message-retract:0 in a fasten apply-to and is also accepted.
+  // XEP-0424: retract the message with this id (stanza id in a dm, room
+  // stanza-id in a muc). Empty means a retract element without a usable
+  // id. The older draft form wrapped message-retract:0 in fasten.
   retractId?: string | undefined
   // XEP-0382: the body is a spoiler. The element text is an optional
   // hint. An empty string means a spoiler without a hint.
@@ -89,18 +86,16 @@ export interface IncomingMessage {
   // (OMEMO once verification lands, OpenPGP later). Not parsed here.
   signed?: boolean | undefined
   encrypted?: boolean | undefined
-  // serialized <encrypted> element, handed to the OMEMO service for
-  // async decryption before ingest
+  // serialized <encrypted> element, decrypted by the omemo service
   encryptedXml?: string | undefined
-  // decryption was attempted and failed. The body must not be trusted
+  // decryption failed: the body must not be trusted
   undecryptable?: boolean | undefined
   // decrypted, but the sending device is distrusted or changed keys
   untrustedDevice?: boolean | undefined
   // XEP-0421: stable sender id on groupchat traffic, survives renames
   occupantId?: string | undefined
-  // XEP-0425: the room tells us the message carrying this stanza-id was
-  // retracted by a moderator. by is the moderating entity when the room
-  // discloses it.
+  // XEP-0425: the message carrying this stanza-id was retracted by a
+  // moderator. by is the moderating entity when the room discloses it
   retraction?: { id: string; reason?: string | undefined; by?: string | undefined } | undefined
   // XEP-0424/0425 tombstone: this stanza is itself the archived form of
   // an already retracted message
@@ -116,10 +111,19 @@ export interface IncomingMessage {
   ephemeralTimer?: number | undefined
   // XEP-0080 location shared by the sender
   geoloc?: Geoloc | undefined
-  // stanza type=error: a bounce referencing our sent message id. The
-  // store marks that message failed. The stanza never becomes a row, so
-  // a forged error cannot inject a body
+  // stanza type=error: a bounce referencing our sent message id. Never a
+  // row, so a forged error cannot inject a body
   error?: { condition?: string | undefined; text?: string | undefined } | undefined
+  // XEP-0434: trust decisions synced from another of our own devices,
+  // fingerprints mapped back to devices by the omemo service
+  trustMessage?: { usage?: string | undefined; owners: TrustOwner[] } | undefined
+}
+
+// XEP-0434 key-owner: fingerprints the sender trusts or distrusts
+export interface TrustOwner {
+  jid: string
+  trust: string[]
+  distrust: string[]
 }
 
 export interface PresenceUpdate {

@@ -180,6 +180,39 @@ describe('new message extensions', () => {
     expect(m?.attention).toBe(true)
   })
 
+  it('parses a XEP-0434 trust message with key owners', () => {
+    const m = parseMessage(
+      xml(`<message from="me@x.y" to="me@x.y" type="chat">
+        <store xmlns="urn:xmpp:hints"/>
+        <trust-message xmlns="urn:xmpp:tm:1" usage="urn:xmpp:omemo:2">
+          <key-owner jid="a@b.c">
+            <trust>A1B2C3</trust>
+            <distrust>DEAD</distrust>
+          </key-owner>
+          <key-owner jid="d@e.f">
+            <trust>F00D</trust>
+          </key-owner>
+        </trust-message>
+      </message>`)
+    )
+    expect(m?.trustMessage?.usage).toBe('urn:xmpp:omemo:2')
+    expect(m?.trustMessage?.owners).toEqual([
+      { jid: 'a@b.c', trust: ['A1B2C3'], distrust: ['DEAD'] },
+      { jid: 'd@e.f', trust: ['F00D'], distrust: [] }
+    ])
+  })
+
+  it('drops key-owner elements without a jid', () => {
+    const m = parseMessage(
+      xml(`<message from="me@x.y" to="me@x.y" type="chat">
+        <trust-message xmlns="urn:xmpp:tm:1" usage="urn:xmpp:omemo:2">
+          <key-owner><trust>AA</trust></key-owner>
+        </trust-message>
+      </message>`)
+    )
+    expect(m?.trustMessage?.owners).toEqual([])
+  })
+
   it('parses rtt events and ops', () => {
     const m = parseMessage(
       xml(`<message from="a@b.c" to="x@y.z" type="chat">

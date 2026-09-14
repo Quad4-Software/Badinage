@@ -25,7 +25,8 @@ import {
   sendReaction,
   sendReceipt,
   sendRetraction,
-  sendRtt
+  sendRtt,
+  sendTrustMessage
 } from './features/messaging'
 import {
   banOccupant,
@@ -70,6 +71,7 @@ import type {
   DiscoItem,
   MamPageResult,
   MarkerType,
+  TrustOwner,
   UploadSlot
 } from './stanzas'
 import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptions } from './types'
@@ -264,9 +266,11 @@ export class XmppConnection implements ChatConnection {
   sendEncryptedMessage(to: string, encryptedXml: string): string {
     return sendEncryptedMessage(this.transport, to, encryptedXml)
   }
-
   sendEncryptedNotification(to: string, encryptedXml: string): void {
     sendEncryptedNotification(this.transport, to, encryptedXml)
+  }
+  sendTrustMessage(to: string, usage: string, owners: TrustOwner[]): void {
+    sendTrustMessage(this.transport, to, usage, owners)
   }
 
   // ---- presence / avatars / vcard, in features/presence.ts and features/pep/ ---

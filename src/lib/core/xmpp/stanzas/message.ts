@@ -178,6 +178,25 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
   }
 
   const geoloc = parseGeoloc(inner)
+
+  // XEP-0434: trust sync between our own devices. Parsed anywhere it
+  // appears and filtered to self-sent stanzas by the consumer
+  const tm = firstNsTag(inner, NS.TM, 'trust-message')
+  if (tm) {
+    const owners = [...tm.children]
+      .filter((c) => c.localName === 'key-owner')
+      .map((owner) => ({
+        jid: owner.getAttribute('jid') ?? '',
+        trust: [...owner.children]
+          .filter((c) => c.localName === 'trust')
+          .map((c) => c.textContent ?? ''),
+        distrust: [...owner.children]
+          .filter((c) => c.localName === 'distrust')
+          .map((c) => c.textContent ?? '')
+      }))
+      .filter((o) => o.jid !== '')
+    message.trustMessage = { usage: tm.getAttribute('usage') ?? undefined, owners }
+  }
   if (geoloc) message.geoloc = geoloc
 
   const occupantId = firstNsTag(inner, NS.OCCUPANT_ID, 'occupant-id')?.getAttribute('id')
@@ -239,6 +258,7 @@ export function parseMessage(stanza: Element, ctx?: ParseContext): IncomingMessa
     !message.rtt &&
     message.ephemeralTimer === undefined &&
     !message.geoloc &&
+    !message.trustMessage &&
     message.subject === undefined &&
     message.error === undefined
   ) {

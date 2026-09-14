@@ -28,6 +28,7 @@ export const NS = {
   BLOCKING: 'urn:xmpp:blocking',
   OMEMO: 'urn:xmpp:omemo:2',
   OMEMO_LEGACY: 'eu.siacs.conversations.axolotl',
+  TM: 'urn:xmpp:tm:1',
   SCE: 'urn:xmpp:sce:1',
   // XEP-0380 explicit encryption announcement + XEP-0334 storage hint
   EME: 'urn:xmpp:eme:0',

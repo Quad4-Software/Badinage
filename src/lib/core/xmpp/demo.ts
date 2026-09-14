@@ -45,7 +45,7 @@ import {
 } from './demo-muc'
 import { DemoProfiles } from './demo/profile'
 import { DISCO_FEATURES, DISCO_IDENTITY } from './features/caps'
-import type { ChannelSearchItem, ChatState, DataForm, MarkerType } from './stanzas'
+import type { ChannelSearchItem, ChatState, DataForm, MarkerType, TrustOwner } from './stanzas'
 
 const DEMO_CONNECT_DELAY_MS = 400
 const DEMO_REPLY_DELAY_MS = 1200
@@ -225,6 +225,13 @@ export class DemoConnection implements ChatConnection {
     // key transports and encrypted reactions/states are inert in demo
     void to
     void encryptedXml
+  }
+
+  sendTrustMessage(to: string, usage: string, owners: TrustOwner[]): void {
+    // trust sync is inert in demo
+    void to
+    void usage
+    void owners
   }
 
   sendChatState(to: string, state: ChatState, type: 'chat' | 'groupchat' = 'chat'): void {

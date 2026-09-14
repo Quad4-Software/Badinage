@@ -5,6 +5,8 @@
 // user has confirmed it.
 
 import { Emitter } from '$lib/core/events'
+import type { TrustOwner } from '$lib/core/xmpp/stanzas'
+import { bareJid } from '$lib/utils/jid'
 
 // undecided: seen but never acted on. blind: trusted automatically on
 // first use because the blind-trust setting was on. trusted: the user
@@ -123,5 +125,31 @@ export class TrustRegistry {
     await this.store.put(record)
     this.events.emit('changed', record)
     return record
+  }
+
+  // XEP-0434: apply trust decisions synced from another of our own
+  // devices. A fingerprint lands on the record we already observed for
+  // it. Unknown ones are skipped: without a device id they cannot be
+  // recorded
+  async applySync(owners: TrustOwner[]): Promise<void> {
+    for (const owner of owners) {
+      for (const record of this.list(bareJid(owner.jid))) {
+        const fp = record.fingerprint.toLowerCase()
+        if (owner.trust.some((t) => t.toLowerCase() === fp)) {
+          await this.setLevel(record.jid, record.deviceId, 'trusted')
+        } else if (owner.distrust.some((d) => d.toLowerCase() === fp)) {
+          await this.setLevel(record.jid, record.deviceId, 'distrusted')
+        }
+      }
+    }
+  }
+}
+
+// XEP-0434 key-owner payload for a manual decision on one record
+export function trustOwner(record: TrustRecord, level: TrustLevel): TrustOwner {
+  return {
+    jid: record.jid,
+    trust: level === 'trusted' ? [record.fingerprint] : [],
+    distrust: level === 'distrusted' ? [record.fingerprint] : []
   }
 }

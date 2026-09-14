@@ -34,6 +34,14 @@ export function messageHandler(
   const queueKey = (ns: string, from: string, sid: number) => `${ns}:${bareJid(from)}/${sid}`
 
   return (message) => {
+    // XEP-0434 trust sync arrives as a chat stanza from our own bare
+    // jid. Apply it through the omemo service and never ingest it as
+    // a conversation row
+    if (message.trustMessage && bareJid(message.from) === bareJid(account.jid)) {
+      void account.omemo?.applyTrustMessage(message.trustMessage.owners)
+      return
+    }
+
     // locally ignored peers never reach the store, even when the
     // server has no XEP-0191 support to filter them for us
     if (account.blocked.has(bareJid(message.from))) return

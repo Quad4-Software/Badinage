@@ -28,6 +28,7 @@ import type {
   PresenceError,
   PresenceUpdate,
   RosterItem,
+  TrustOwner,
   UploadSlot,
   Vcard
 } from './stanzas'
@@ -208,6 +209,10 @@ export interface ChatConnection {
   // OMEMO: send a bare encrypted payload with no fallback body - used for
   // key transports, reactions and chat states in encrypted conversations.
   sendEncryptedNotification(to: string, encryptedXml: string): void
+  // XEP-0434: send a trust sync stanza to our own bare jid so other
+  // devices learn the decision. usage names the encryption namespace
+  // the fingerprints belong to
+  sendTrustMessage(to: string, usage: string, owners: TrustOwner[]): void
   joinRoom(room: string, nick: string, password?: string): void
   leaveRoom(room: string, nick: string): void
   setRoomSubject(room: string, subject: string): void

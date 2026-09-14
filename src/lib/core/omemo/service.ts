@@ -1,17 +1,16 @@
-// OmemoService: per-account facade that ties the OmemoManager pair (one per
+// OmemoService: per-account facade tying the OmemoManager pair (one per
 // supported namespace), PEP device and bundle discovery, and the trust
-// registry together. Trust decisions live in TrustRegistry. This file
-// decides who gets keys and who can decrypt, never UI code.
+// registry together. This file decides who gets keys and who can
+// decrypt, never UI code.
 //
 // Both XEP-0384 profiles are served: urn:xmpp:omemo:2 is preferred for
 // sending, the legacy eu.siacs.conversations.axolotl profile is used only
 // when a peer publishes no omemo:2 devices, and either namespace is
 // accepted for decryption. Legacy has no SCE envelope, so envelope-bound
-// content (replies, corrections, reactions, chat states) can only ride
-// the omemo:2 profile.
+// content can only ride the omemo:2 profile.
 
 import type { ChatConnection } from '$lib/core/xmpp/connection'
-import type { ChatState, IncomingMessage } from '$lib/core/xmpp/stanzas'
+import type { ChatState, IncomingMessage, TrustOwner } from '$lib/core/xmpp/stanzas'
 import type { AttachmentMeta } from '$lib/core/xmpp/types'
 import { bareJid } from '$lib/utils/jid'
 import { firstTag } from '$lib/utils/xml'
@@ -35,14 +34,14 @@ import {
   serializeDeviceList,
   textEnvelope,
   utf8ToBytes
-} from '@quad4-software/omemo'
+} from '@quad4-software/badinage-omemo'
 import type {
   EncryptRecipient,
   Namespace,
   OmemoStore,
   ParsedBundle,
   XmlElement
-} from '@quad4-software/omemo'
+} from '@quad4-software/badinage-omemo'
 
 import {
   applyEnvelopeContent,
@@ -57,7 +56,7 @@ import {
 } from './envelope'
 import { maintainKeys, MemoryKeyMetaStore, type KeyMetaStore } from './rotation'
 import { IdbOmemoStore, IdbTrustStore } from './store'
-import { TrustRegistry, type TrustLevel, type TrustRecord } from './trust'
+import { TrustRegistry, trustOwner, type TrustLevel, type TrustRecord } from './trust'
 
 export interface DeviceFingerprint {
   jid: string
@@ -71,8 +70,7 @@ export interface DeviceFingerprint {
 }
 
 // What decryptInto made of a stanza. 'empty' is a key transport or
-// heartbeat (decrypted fine, no payload). 'duplicate' is an already-seen
-// stanza and must not be flagged as an error. 'failed' is undecryptable.
+// heartbeat, 'duplicate' an already-seen stanza, 'failed' undecryptable.
 export interface DecryptReport {
   status: 'none' | 'decrypted' | 'empty' | 'duplicate' | 'failed'
   sid?: number | undefined
@@ -90,8 +88,7 @@ export interface OmemoServiceOptions {
   trustStore?: ConstructorParameters<typeof TrustRegistry>[0]
 }
 
-// A DOM element and the package's own XmlElement are different models, so
-// bridge through the serialized form.
+// Bridge a DOM element to the package's own XmlElement via its xml text
 function domToXml(element: Element): XmlElement {
   const outer = (element as { outerHTML?: string }).outerHTML
   const text = outer ?? (element as unknown as { toString(): string }).toString()
@@ -106,11 +103,10 @@ function namespaceOf(element: XmlElement): Namespace | undefined {
 }
 
 export class OmemoService {
-  // (sender, sid) pairs we already sent a key transport to this session.
-  // XEP-0384 key recovery is one empty message per device, never a loop
+  // (sender, sid) pairs we already sent a key transport to this session
   private readonly requestedKeys = new Set<string>()
-  // senders whose device list we already re-fetched after traffic from an
-  // unknown device, rate limited to once per namespace per session
+  // senders whose device list we already re-fetched after traffic from
+  // an unknown device, rate limited to once per session
   private readonly refreshedDevices = new Set<string>()
 
   private constructor(
@@ -188,8 +184,7 @@ export class OmemoService {
   }
 
   // Advertise our bundles and device lists on PEP, on both namespaces.
-  // Safe to call on every reconnect: republishing the same items is
-  // idempotent, and maintainKeys tops up or rotates key material first.
+  // Safe on every reconnect: republishing the same items is idempotent.
   async publishOwn(): Promise<void> {
     await maintainKeys({
       store: this.omemoStore,
@@ -241,8 +236,7 @@ export class OmemoService {
   }
 
   // The PEP device list of a bare JID for one profile. Falls back to the
-  // last list we persisted when the fetch fails. The omemo:2 payload root
-  // is <devices>, the legacy root is <list>. ParseDeviceList takes both.
+  // last persisted list when the fetch fails.
   private async devicesOfNs(ns: Namespace, jid: string): Promise<number[]> {
     const bare = bareJid(jid)
     const items = await this.pepItems(NAMESPACES[ns].devices, bare)
@@ -292,8 +286,8 @@ export class OmemoService {
   }
 
   // Device list enriched with fingerprints and current trust state.
-  // Observing records first-seen devices so the UI can react without a
-  // second pass. A legacy-only peer still lists its devices for verify.
+  // Observing records first-seen devices so the UI can react. A
+  // legacy-only peer still lists its devices for verify.
   async fingerprints(jid: string): Promise<DeviceFingerprint[]> {
     const bare = bareJid(jid)
     const out: DeviceFingerprint[] = []
@@ -317,7 +311,21 @@ export class OmemoService {
   }
 
   async setTrust(jid: string, deviceId: number, level: TrustLevel): Promise<TrustRecord> {
-    return this.trust.setLevel(bareJid(jid), deviceId, level)
+    const record = await this.trust.setLevel(bareJid(jid), deviceId, level)
+    // XEP-0434: manual decisions sync to our other devices. Automated
+    // levels (undecided, blind) stay local per the spec
+    if (level === 'trusted' || level === 'distrusted') {
+      const usage = (await this.devicesOfNs('omemo2', record.jid)).includes(deviceId)
+        ? NAMESPACES.omemo2.element
+        : NAMESPACES.legacy.element
+      this.connection.sendTrustMessage(bareJid(this.ownJid), usage, [trustOwner(record, level)])
+    }
+    return record
+  }
+
+  // XEP-0434: trust decisions synced from our other devices
+  applyTrustMessage(owners: TrustOwner[]): Promise<void> {
+    return this.trust.applySync(owners)
   }
 
   setBlindTrust(enabled: boolean): void {
@@ -325,8 +333,7 @@ export class OmemoService {
   }
 
   // Non-distrusted devices of the peer with a resolvable bundle. A peer
-  // with none yields null from the encrypt paths so the caller falls
-  // back to plaintext.
+  // with none yields null so the caller falls back to plaintext.
   private async peerRecipients(ns: Namespace, bare: string): Promise<EncryptRecipient[]> {
     const recipients: EncryptRecipient[] = []
     for (const deviceId of await this.devicesOfNs(ns, bare)) {
@@ -356,9 +363,8 @@ export class OmemoService {
     return recipients
   }
 
-  // Encrypt an SCE envelope (omemo:2 only) for the peer and our own other
-  // devices. Returns the serialized <encrypted> element, or null when the
-  // peer publishes no usable omemo:2 devices.
+  // Encrypt an SCE envelope (omemo:2 only) for the peer and our own
+  // devices. Null when the peer publishes no usable omemo:2 devices.
   private async encryptEnvelope(jid: string, content: XmlElement[]): Promise<string | null> {
     const bare = bareJid(jid)
     const peer = await this.peerRecipients('omemo2', bare)
@@ -377,10 +383,9 @@ export class OmemoService {
     return serializeXml(encrypted)
   }
 
-  // Encrypt a text body plus envelope content (XEP-0308 replaceId,
-  // XEP-0461 replyTo, XEP-0382 spoilerHint, ephemeral timer, geoloc).
-  // Legacy-only peers cannot carry envelope content, so that metadata is
-  // dropped there rather than sent in the clear.
+  // Encrypt a text body plus envelope content (replies, corrections,
+  // spoilers, ephemeral timer, geoloc). Legacy-only peers cannot carry
+  // envelope content, so that metadata is dropped there.
   async encryptBody(
     jid: string,
     body: string,
@@ -413,9 +418,8 @@ export class OmemoService {
     return serializeXml(encrypted)
   }
 
-  // Encrypt an attachment announcement (XEP-0066 url plus optional
-  // XEP-0446 metadata) inside an envelope. The url is also the envelope
-  // body so body-only clients still share it.
+  // Encrypt an attachment announcement inside an envelope. The url is
+  // also the envelope body so body-only clients still share it.
   async encryptAttachment(jid: string, url: string, meta?: AttachmentMeta): Promise<string | null> {
     return this.encryptEnvelope(jid, [el('body', {}, [], url), ...attachmentNodes(url, meta)])
   }
@@ -426,18 +430,15 @@ export class OmemoService {
     return this.encryptEnvelope(jid, [reactionsNode(targetId, emojis)])
   }
 
-  // Encrypt a XEP-0085 chat state. Same fallback contract as
-  // encryptReaction.
+  // Encrypt a XEP-0085 chat state. Same fallback contract as encryptReaction
   async encryptChatState(jid: string, state: ChatState): Promise<string | null> {
     return this.encryptEnvelope(jid, [chatStateNode(state)])
   }
 
   // XEP-0384 recovery for undecryptable stanzas: send one empty OMEMO
-  // message (a key transport) to the sender device that produced the
-  // failed stanza, so it can complete or repair the session. Key
-  // transports may build a session without prior trust. Rate limited to
-  // once per (sender, sid) per app session, skipped for distrusted
-  // devices.
+  // message (a key transport) to the device that produced the failed
+  // stanza so it can repair the session. Rate limited to once per
+  // (sender, sid) per app session, skipped for distrusted devices.
   async sendKeyTransport(jid: string, sid: number, ns: Namespace): Promise<boolean> {
     const bare = bareJid(jid)
     const key = `${ns}:${bare}/${sid}`
@@ -473,11 +474,10 @@ export class OmemoService {
   }
 
   // Decrypt an incoming stanza's <encrypted> element in place: fills
-  // message.body plus any envelope content (reply, replace, reactions,
-  // chat states, attachments), flags encrypted state, and records the
-  // sender's device fingerprint so key changes surface in the UI. The
-  // report names the sending device and whether a key transport might
-  // help, even when decryption itself failed.
+  // message.body plus any envelope content, flags encrypted state, and
+  // records the sender's device fingerprint so key changes surface in
+  // the UI. The report names the device and whether a key transport
+  // might help, even when decryption itself failed.
   async decryptInto(message: IncomingMessage): Promise<DecryptReport> {
     if (!message.encryptedXml) return { status: 'none' }
     const sender = bareJid(message.from)

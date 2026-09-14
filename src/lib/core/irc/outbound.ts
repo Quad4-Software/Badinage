@@ -252,6 +252,7 @@ export abstract class IrcStubs {
     return this.uniqueId('enc')
   }
   sendEncryptedNotification = noop
+  sendTrustMessage = noop
   sendDirectedPresence = noop
   declineRoomInvite = noop
   pepGet(_n: string, _j: string | undefined, onDone: (items: Element | null) => void): void {
@@ -283,12 +284,8 @@ export abstract class IrcStubs {
   channelSearchForm(_s: string, onDone: (form: DataForm | null) => void): void {
     onDone(null)
   }
-  channelSearch(
-    _s: string,
-    _f: DataForm,
-    onDone: (items: ChannelSearchItem[] | null) => void
-  ): void {
-    onDone([])
+  channelSearch(_s: string, _f: DataForm, cb: (items: ChannelSearchItem[] | null) => void): void {
+    cb([])
   }
   fetchRoomConfig(_r: string, onDone: (form: DataForm | null) => void): void {
     onDone(null)
