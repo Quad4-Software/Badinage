@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Openfire autosetup for local development of Badinage.
+  Not for production use. Provisions an embedded-db server on first
+  boot, domain localhost, anonymous auth on. WebSocket is built in on
+  the BOSH port: ws://host:7070/ws/
+-->
+<jive>
+  <adminConsole>
+    <port>9090</port>
+    <securePort>9091</securePort>
+  </adminConsole>
+  <connectionProvider>
+    <className>org.jivesoftware.database.EmbeddedConnectionProvider</className>
+  </connectionProvider>
+  <autosetup>
+    <run>true</run>
+    <locale>en</locale>
+    <xmpp>
+      <domain>localhost</domain>
+      <fqdn>localhost</fqdn>
+      <auth>
+        <anonymous>true</anonymous>
+      </auth>
+      <socket>
+        <ssl>
+          <active>false</active>
+        </ssl>
+      </socket>
+    </xmpp>
+    <encryption>
+      <algorithm>AES</algorithm>
+      <key>badinage-dev-key</key>
+    </encryption>
+    <database>
+      <mode>embedded</mode>
+    </database>
+    <admin>
+      <email>admin@example.com</email>
+      <password>admin</password>
+    </admin>
+    <authprovider>
+      <mode>default</mode>
+    </authprovider>
+  </autosetup>
+</jive>

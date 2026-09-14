@@ -1,0 +1,96 @@
+# Minimal ejabberd config for local development of Badinage.
+# Not for production use. WebSocket on 5280 at /websocket, in-band
+# registration is open, SASL ANONYMOUS lives on the anon.localhost host.
+
+hosts:
+  - localhost
+  - anon.localhost
+
+host_config:
+  anon.localhost:
+    auth_method: anonymous
+
+loglevel: info
+
+listen:
+  - port: 5280
+    ip: "::"
+    module: ejabberd_http
+    request_handlers:
+      /websocket: ejabberd_http_ws
+      /admin: ejabberd_web_admin
+
+access_rules:
+  register:
+    allow: all
+  muc_create:
+    allow: all
+  pubsub_createnode:
+    allow: all
+  local:
+    allow: local
+  c2s:
+    allow: all
+  announce:
+    allow: admin
+  configure:
+    allow: admin
+  trusted_network:
+    # dev only: docker bridge subnets are trusted so mod_register
+    # skips its per-ip registration timeout for the interop suite
+    allow:
+      - loopback
+      - ip:
+          - 10.0.0.0/8
+          - 172.16.0.0/12
+          - 192.168.0.0/16
+
+api_permissions:
+  "console commands":
+    from:
+      - ejabberd_ctl
+    who: all
+    what: "*"
+
+shaper:
+  normal: 1000
+  fast: 50000
+
+max_fsm_queue: 1000
+
+# dev only: no per-ip rate limit on in-band registration so the
+# interop suite can create users freely
+registration_timeout: infinity
+
+modules:
+  mod_adhoc: {}
+  mod_admin_extra: {}
+  mod_blocking: {}
+  mod_caps: {}
+  mod_carboncopy: {}
+  mod_client_state: {}
+  mod_disco: {}
+  mod_last: {}
+  mod_mam:
+    default: always
+  mod_muc:
+    host: conference.@HOST@
+    access_create: all
+  mod_offline: {}
+  mod_ping: {}
+  mod_privacy: {}
+  mod_private: {}
+  mod_pubsub:
+    access_createnode: all
+    plugins:
+      - flat
+      - pep
+  mod_register:
+    access: register
+  mod_roster:
+    versioning: true
+  mod_stream_mgmt: {}
+  mod_time: {}
+  mod_vcard: {}
+  mod_version:
+    show_os: false

@@ -12,6 +12,15 @@
 # optional SASL password. Register an account first with
 # /msg NickServ REGISTER <password> from any IRC client, or connect
 # anonymously without a password.
+#
+# ejabberd listens on 15280 (WebSocket at /websocket, same shape as
+# prosody: register in-band at login or sign in anonymously on the
+# anon.localhost host). Openfire listens on 17070 (WebSocket at /ws/,
+# BOSH at /http-bind/). It self-provisions from openfire.xml on first
+# boot: domain localhost, embedded database, anonymous auth enabled.
+# The xmpp interop vitest suite exercises all three:
+#   XMPP_INTEROP_WS=ws://localhost:15280/websocket \
+#     pnpm vitest run src/lib/core/xmpp/tests/interop.live.test.ts
 
 services:
   app:
@@ -31,7 +40,7 @@ services:
     image: prosody/prosody:latest@sha256:984d473833c8401e049c63039b93a6fd1cdffa1f4abe3e93d005f34b3c87b893
     ports:
       - '5222:5222'
-      - '5280:5280'
+      - '${PROSODY_HTTP_PORT:-5280}:5280'
     volumes:
       - prosody_data:/var/lib/prosody
       - ./prosody.cfg.lua:/etc/prosody/prosody.cfg.lua:ro
@@ -48,7 +57,36 @@ services:
       - ./ergo/ircd.yaml:/ircd-conf/ircd.yaml:ro
     restart: unless-stopped
 
+  ejabberd:
+    image: ejabberd/ecs:latest@sha256:3d120adff1ba1f2993d1ededed6c1eb7f5f6d9c9ad645d32b3e505e8dedeec35
+    ports:
+      - '15280:5280'
+    volumes:
+      - ejabberd_data:/opt/ejabberd/database
+      - ./ejabberd/ejabberd.yml:/opt/ejabberd/conf/ejabberd.yml:ro
+    restart: unless-stopped
+
+  openfire:
+    image: ghcr.io/igniterealtime/openfire:main@sha256:767ac7088da09509057324fd12c427d79a6caf80bd8279e43a59605e7b812258
+    # the autosetup block deletes itself from openfire.xml on first
+    # boot, so seed a writable copy instead of bind-mounting the file
+    entrypoint:
+      [
+        '/bin/bash',
+        '-c',
+        'mkdir -p /var/lib/openfire/conf && cp /seed/openfire.xml /seed/security.xml /var/lib/openfire/conf/ && exec /sbin/entrypoint.sh'
+      ]
+    ports:
+      - '17070:7070'
+    volumes:
+      - openfire_data:/var/lib/openfire
+      - ./openfire/openfire.xml:/seed/openfire.xml:ro
+      - ./openfire/security.xml:/seed/security.xml:ro
+    restart: unless-stopped
+
 volumes:
   node_modules:
   prosody_data:
   ergo_data:
+  ejabberd_data:
+  openfire_data:

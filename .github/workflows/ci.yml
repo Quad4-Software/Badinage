@@ -159,6 +159,68 @@ jobs:
         if: always()
         run: docker compose -f docker/dev/compose.yaml down -v
 
+  xmpp-interop:
+    name: xmpp interop (${{ matrix.server.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        server:
+          - name: prosody
+            port: 5280
+            ws: ws://localhost:5280/xmpp-websocket
+            anon: anon.localhost
+          - name: ejabberd
+            port: 15280
+            ws: ws://localhost:15280/websocket
+            anon: anon.localhost
+          - name: openfire
+            port: 17070
+            ws: ws://localhost:17070/ws/
+            anon: localhost
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: start dev ${{ matrix.server.name }}
+        run: docker compose -f docker/dev/compose.yaml up -d ${{ matrix.server.name }}
+
+      # openfire boots a jvm, give it more room than the others
+      - name: wait for ${{ matrix.server.name }}
+        run: |
+          for i in $(seq 1 90); do
+            (exec 3<>/dev/tcp/localhost/${{ matrix.server.port }}) 2>/dev/null && exit 0
+            sleep 1
+          done
+          echo "${{ matrix.server.name }} did not come up in 90s" >&2
+          exit 1
+
+      - name: run xmpp interop tests
+        run: pnpm vitest run src/lib/core/xmpp/tests/interop.live.test.ts
+        env:
+          XMPP_INTEROP_WS: ${{ matrix.server.ws }}
+          XMPP_INTEROP_ANON: ${{ matrix.server.anon }}
+
+      - name: ${{ matrix.server.name }} logs on failure
+        if: failure()
+        run: docker compose -f docker/dev/compose.yaml logs ${{ matrix.server.name }}
+
+      - name: stop dev ${{ matrix.server.name }}
+        if: always()
+        run: docker compose -f docker/dev/compose.yaml down -v
+
   bench:
     name: benchmarks
     runs-on: ubuntu-latest

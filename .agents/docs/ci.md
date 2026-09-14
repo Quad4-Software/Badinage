@@ -18,6 +18,14 @@
   waits for the websocket port on 8097, and runs
   src/lib/core/irc/tests/ergo.live.test.ts with
   ERGO_WS=ws://localhost:8097.
+  The xmpp-interop job is a matrix over prosody, ejabberd and openfire.
+  Each leg starts the matching dev compose service, waits on its port,
+  and runs src/lib/core/xmpp/tests/interop.live.test.ts with
+  XMPP_INTEROP_WS and XMPP_INTEROP_ANON set per server. The suite
+  creates users through in-band registration, exchanges a direct
+  message, connects anonymously, and meets in a muc room. ejabberd
+  serves websocket on 15280 at /websocket, openfire on 17070 at /ws/
+  (self-provisioned through openfire.xml autosetup, embedded db).
   pnpm store is cached through setup-node.
   PR runs cancel in progress on new pushes, main never cancels.
 - perf.yml: PRs, weekly cron plus manual dispatch. Builds dist and runs

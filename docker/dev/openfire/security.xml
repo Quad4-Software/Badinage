@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Seed for autosetup: runAutoSetup unconditionally compares the
+  requested encryption algorithm to the encrypt.algorithm stored here
+  and NPEs when the property is absent on a fresh install. The
+  entrypoint does not populate conf/security.xml on an empty volume,
+  so pre-seed it in the format this Openfire version expects.
+-->
+<security>
+  <encrypt>
+    <algorithm>AES</algorithm>
+    <key>
+      <current />
+    </key>
+  </encrypt>
+</security>
