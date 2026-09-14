@@ -467,7 +467,39 @@ const pt = {
   verifyAll: 'Verificar todos',
   verifyAllDescription: 'Marcar todos os dispositivos de {jid} como verificados?',
   trustAll: 'Confiar em todos',
-  trustAllDescription: 'Confiar cegamente em todos os dispositivos não verificados de {jid}?'
-} satisfies Translation
+  trustAllDescription: 'Confiar cegamente em todos os dispositivos não verificados de {jid}?',
+  contextMenu: 'Menu de contexto',
+  open: 'Abrir',
+  markRead: 'Marcar como lido',
+  copyAddress: 'Copiar endereço',
+  removeContact: 'Remover contacto',
+
+  extensions: 'Extensões',
+  extensionsHint:
+    'As extensões correm num ambiente isolado e podem adicionar entradas de menu. Os pacotes assinados são verificados com a chave do editor.',
+  extensionsEmpty: 'Nenhuma extensão instalada',
+  extensionInstall: 'Instalar extensão',
+  extensionSigned: 'assinada',
+  extensionUnsigned: 'não assinada',
+  extensionOutdated: 'desatualizada',
+  extensionUnknownPublisher: 'editor desconhecido',
+  extensionErrorCount: '{count} erros',
+  extensionToggle: 'Alternar {name}',
+  extensionRemove: 'Remover {name}',
+  extensionRemoveTitle: 'Remover esta extensão?',
+  extensionRemoveDescription: 'As suas entradas de menu, armazenamento e definições são removidas.',
+  extensionRemoveConfirm: 'Remover extensão',
+  extensionAllowUnsigned: 'Permitir extensões não assinadas',
+  extensionUnsignedHint:
+    'Os pacotes não assinados não podem ser verificados. Instala apenas ficheiros em que confies.',
+  extensionTrustTitle: 'Confiar neste editor?',
+  extensionTrustDescription:
+    '{name} está assinada por um editor que este dispositivo ainda não conhece. Confia na chave para instalar e atualizar as suas extensões.',
+  extensionKeyChangedTitle: 'A chave do editor mudou',
+  extensionKeyChangedDescription:
+    '{name} foi assinada com uma chave diferente da cópia instalada. Confia apenas se esperavas que o editor rodasse as chaves.',
+  extensionTrustAccept: 'Confiar e instalar',
+  extensionTrustReject: 'Rejeitar'
+}
 
 export default pt

@@ -19,6 +19,7 @@
   import BlockedSection from './blocked-section.svelte'
   import DangerSection from './danger-section.svelte'
   import EncryptionSection from './encryption-section.svelte'
+  import ExtensionsSection from './extensions/extensions-section.svelte'
   import GeneralSection from './general-section.svelte'
   import KeybindingsSection from './keybindings-section.svelte'
   import PrivacySection from './privacy-section.svelte'
@@ -43,6 +44,7 @@
     { id: 'blocked', label: $LL.blockedContacts() },
     { id: 'accounts', label: $LL.accounts() },
     { id: 'keyboard', label: $LL.keyboard() },
+    { id: 'extensions', label: $LL.extensions() },
     { id: 'danger', label: $LL.dangerZone() }
   ])
 
@@ -154,6 +156,7 @@
         <BlockedSection {q} />
         <AccountsSection {q} />
         <KeybindingsSection {q} />
+        <ExtensionsSection {q} />
         <DangerSection {q} />
         {#if q && totalHits === 0}
           <p class="text-muted-foreground px-5 py-8 text-center text-sm">

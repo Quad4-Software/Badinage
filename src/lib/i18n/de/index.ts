@@ -470,7 +470,39 @@ const de = {
   verifyAll: 'Alle verifizieren',
   verifyAllDescription: 'Jedes Gerät von {jid} als verifiziert markieren?',
   trustAll: 'Allen vertrauen',
-  trustAllDescription: 'Jedem unentschiedenen Gerät von {jid} blind vertrauen?'
-} satisfies Translation
+  trustAllDescription: 'Jedem unentschiedenen Gerät von {jid} blind vertrauen?',
+  contextMenu: 'Kontextmenü',
+  open: 'Öffnen',
+  markRead: 'Als gelesen markieren',
+  copyAddress: 'Adresse kopieren',
+  removeContact: 'Kontakt entfernen',
+
+  extensions: 'Erweiterungen',
+  extensionsHint:
+    'Erweiterungen laufen in einer Sandbox und können Menüeinträge hinzufügen. Signierte Pakete werden gegen den Schlüssel des Herausgebers geprüft.',
+  extensionsEmpty: 'Keine Erweiterungen installiert',
+  extensionInstall: 'Erweiterung installieren',
+  extensionSigned: 'signiert',
+  extensionUnsigned: 'unsigniert',
+  extensionOutdated: 'veraltet',
+  extensionUnknownPublisher: 'unbekannter Herausgeber',
+  extensionErrorCount: '{count} Fehler',
+  extensionToggle: '{name} umschalten',
+  extensionRemove: '{name} entfernen',
+  extensionRemoveTitle: 'Diese Erweiterung entfernen?',
+  extensionRemoveDescription: 'Menüeinträge, Speicher und Einstellungen werden entfernt.',
+  extensionRemoveConfirm: 'Erweiterung entfernen',
+  extensionAllowUnsigned: 'Unsignierte Erweiterungen erlauben',
+  extensionUnsignedHint:
+    'Unsignierte Pakete lassen sich nicht verifizieren. Installiere nur Dateien, denen du vertraust.',
+  extensionTrustTitle: 'Diesem Herausgeber vertrauen?',
+  extensionTrustDescription:
+    '{name} ist von einem Herausgeber signiert, den dieses Gerät noch nicht kennt. Vertraue dem Schlüssel, um Erweiterungen von ihm zu installieren und zu aktualisieren.',
+  extensionKeyChangedTitle: 'Herausgeberschlüssel geändert',
+  extensionKeyChangedDescription:
+    '{name} wurde mit einem anderen Schlüssel signiert als die installierte Kopie. Vertraue nur, wenn der Herausgeber den Schlüssel erwartbar gewechselt hat.',
+  extensionTrustAccept: 'Vertrauen und installieren',
+  extensionTrustReject: 'Ablehnen'
+}
 
 export default de

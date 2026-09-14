@@ -467,7 +467,40 @@ const en = {
   verifyAll: 'Verify all',
   verifyAllDescription: 'Mark every device of {jid:string} as verified?',
   trustAll: 'Trust all',
-  trustAllDescription: 'Blindly trust every undecided device of {jid:string}?'
+  trustAllDescription: 'Blindly trust every undecided device of {jid:string}?',
+
+  contextMenu: 'Context menu',
+  open: 'Open',
+  markRead: 'Mark as read',
+  copyAddress: 'Copy address',
+  removeContact: 'Remove contact',
+
+  extensions: 'Extensions',
+  extensionsHint:
+    'Extensions run in a sandboxed worker and can add menu entries. Signed packages are verified against their publisher key.',
+  extensionsEmpty: 'No extensions installed',
+  extensionInstall: 'Install extension',
+  extensionSigned: 'signed',
+  extensionUnsigned: 'unsigned',
+  extensionOutdated: 'outdated',
+  extensionUnknownPublisher: 'unknown publisher',
+  extensionErrorCount: '{count:number} errors',
+  extensionToggle: 'Toggle {name:string}',
+  extensionRemove: 'Remove {name:string}',
+  extensionRemoveTitle: 'Remove this extension?',
+  extensionRemoveDescription: 'Its menu items, storage and settings are removed.',
+  extensionRemoveConfirm: 'Remove extension',
+  extensionAllowUnsigned: 'Allow unsigned extensions',
+  extensionUnsignedHint:
+    'Unsigned packages cannot be verified. Only install files you trust.',
+  extensionTrustTitle: 'Trust this publisher?',
+  extensionTrustDescription:
+    '{name:string} is signed by a publisher this device has not seen before. Trust the key to install and update their extensions.',
+  extensionKeyChangedTitle: 'Publisher key changed',
+  extensionKeyChangedDescription:
+    '{name:string} was signed with a different key than the installed copy. Only trust this if you expected the publisher to rotate keys.',
+  extensionTrustAccept: 'Trust and install',
+  extensionTrustReject: 'Reject'
 } satisfies BaseTranslation
 
 export default en

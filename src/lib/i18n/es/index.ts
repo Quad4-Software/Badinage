@@ -470,7 +470,39 @@ const es = {
   verifyAll: 'Verificar todo',
   verifyAllDescription: '¿Marcar todos los dispositivos de {jid} como verificados?',
   trustAll: 'Confiar en todos',
-  trustAllDescription: '¿Confiar ciegamente en todos los dispositivos no decididos de {jid}?'
-} satisfies Translation
+  trustAllDescription: '¿Confiar ciegamente en todos los dispositivos no decididos de {jid}?',
+  contextMenu: 'Menú contextual',
+  open: 'Abrir',
+  markRead: 'Marcar como leído',
+  copyAddress: 'Copiar dirección',
+  removeContact: 'Eliminar contacto',
+
+  extensions: 'Extensiones',
+  extensionsHint:
+    'Las extensiones se ejecutan en un entorno aislado y pueden añadir entradas de menú. Los paquetes firmados se verifican con la clave del editor.',
+  extensionsEmpty: 'No hay extensiones instaladas',
+  extensionInstall: 'Instalar extensión',
+  extensionSigned: 'firmada',
+  extensionUnsigned: 'sin firmar',
+  extensionOutdated: 'obsoleta',
+  extensionUnknownPublisher: 'editor desconocido',
+  extensionErrorCount: '{count} errores',
+  extensionToggle: 'Alternar {name}',
+  extensionRemove: 'Quitar {name}',
+  extensionRemoveTitle: '¿Quitar esta extensión?',
+  extensionRemoveDescription: 'Se eliminan sus entradas de menú, almacenamiento y ajustes.',
+  extensionRemoveConfirm: 'Quitar extensión',
+  extensionAllowUnsigned: 'Permitir extensiones sin firmar',
+  extensionUnsignedHint:
+    'Los paquetes sin firmar no se pueden verificar. Instala solo archivos en los que confíes.',
+  extensionTrustTitle: '¿Confiar en este editor?',
+  extensionTrustDescription:
+    '{name} está firmada por un editor que este dispositivo no conoce. Confía en la clave para instalar y actualizar sus extensiones.',
+  extensionKeyChangedTitle: 'La clave del editor cambió',
+  extensionKeyChangedDescription:
+    '{name} se firmó con una clave distinta a la de la copia instalada. Confía solo si esperabas que el editor rotara las claves.',
+  extensionTrustAccept: 'Confiar e instalar',
+  extensionTrustReject: 'Rechazar'
+}
 
 export default es

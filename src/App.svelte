@@ -13,6 +13,7 @@
   import { applyLocale, asLocale } from '$lib/i18n/languages'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
+  import { extensions } from '$lib/state/app/extensions.svelte'
   import { app } from '$lib/state/app.svelte'
   import { parseDeepLink, shareInbox } from '$lib/state/links'
   import { settings } from '$lib/state/settings.svelte'
@@ -25,6 +26,7 @@
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
   import CommandPalette from '$lib/ui/components/shell/command-palette.svelte'
+  import ContextMenuHost from '$lib/ui/components/context-menu/host.svelte'
   import CrashView from '$lib/ui/components/shell/crash-view.svelte'
   import DemoBadge from '$lib/ui/components/shell/demo-badge.svelte'
   import Keyboard from '$lib/ui/components/shell/keyboard.svelte'
@@ -94,6 +96,9 @@
     setLocale('en')
     const wanted = asLocale(settings.current.locale) ?? detectLocale(navigatorDetector)
     if (wanted !== 'en') void applyLocale(wanted)
+
+    // enabled extensions respawn their workers each session
+    extensions.hydrate()
 
     // XEP-0493 callback: the authorization server redirected back here
     // with ?code&state. Finish the flow before any session restore so a
@@ -233,6 +238,7 @@
     />
   {/if}
   <CommandPalette />
+  <ContextMenuHost />
 
   <Dialog bind:open={app.loginOpen}>
     <DialogContent>

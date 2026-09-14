@@ -170,6 +170,26 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       Pocket ID (Ergo supports it server-side)
 - [ ] IRC bouncer or always-on story for history across disconnects
 
+## Extensions and context menus
+
+- [x] App-wide context menu: registry in state, contextArea attachment
+      per section, keyboard navigation, viewport clamping, touch
+      long-press dedup, native menu kept on links, inputs and selections
+- [x] Menu sections on message bubbles, sidebar conversations and rail
+      accounts; extension items merge per section at open time
+- [x] Extension packages: manifest validation, Ed25519 signatures via
+      WebCrypto, publisher trust prompts, key-change approval that
+      retires stale keys, signed-to-unsigned downgrade rejection
+- [x] Sandboxed workers: network/storage/code-loading intrinsics wiped,
+      permission-gated api, connect-origin allowlist on proxied fetch,
+      whitelisted payload scrubbing, error budget with auto-disable,
+      ready timeout for hung workers
+- [x] Settings extensions section: upload, install list, enable and
+      disable, remove with kv purge, unsigned toggle off by default
+- [ ] Extension store or curated registry for discovery
+- [ ] Extension apis beyond menus/toast/storage/net: commands,
+      settings pages, message decorators
+
 ## Calls (Jingle + WebRTC)
 
 - [ ] XEP-0166 Jingle session layer: initiate/accept/terminate,

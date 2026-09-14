@@ -3,6 +3,7 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
+  import { extensions } from '$lib/state/app/extensions.svelte'
 
   let lastStatus = $state(new Map<string, string>())
   // object identity marks a fresh decline. Null is ignored. A plain
@@ -30,6 +31,13 @@
         $LL.inviteDeclined({ from: decline.from, room: decline.room }) +
           (decline.reason ? `: ${decline.reason}` : '')
       )
+    }
+    // extension-originated notices: worker toasts and host warnings
+    for (const note of extensions.notices) {
+      if (note.kind === 'error') toast.error(note.text)
+      else if (note.kind === 'warning') toast.warning(note.text)
+      else toast.info(note.text)
+      extensions.drainNotice(note.id)
     }
   })
 </script>

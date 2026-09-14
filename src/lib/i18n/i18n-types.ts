@@ -1746,6 +1746,119 @@ type RootTranslation = {
 	 * @param {string} jid
 	 */
 	trustAllDescription: RequiredParams<'jid'>
+	/**
+	 * C​o​n​t​e​x​t​ ​m​e​n​u
+	 */
+	contextMenu: string
+	/**
+	 * O​p​e​n
+	 */
+	open: string
+	/**
+	 * M​a​r​k​ ​a​s​ ​r​e​a​d
+	 */
+	markRead: string
+	/**
+	 * C​o​p​y​ ​a​d​d​r​e​s​s
+	 */
+	copyAddress: string
+	/**
+	 * R​e​m​o​v​e​ ​c​o​n​t​a​c​t
+	 */
+	removeContact: string
+	/**
+	 * E​x​t​e​n​s​i​o​n​s
+	 */
+	extensions: string
+	/**
+	 * E​x​t​e​n​s​i​o​n​s​ ​r​u​n​ ​i​n​ ​a​ ​s​a​n​d​b​o​x​e​d​ ​w​o​r​k​e​r​ ​a​n​d​ ​c​a​n​ ​a​d​d​ ​m​e​n​u​ ​e​n​t​r​i​e​s​.​ ​S​i​g​n​e​d​ ​p​a​c​k​a​g​e​s​ ​a​r​e​ ​v​e​r​i​f​i​e​d​ ​a​g​a​i​n​s​t​ ​t​h​e​i​r​ ​p​u​b​l​i​s​h​e​r​ ​k​e​y​.
+	 */
+	extensionsHint: string
+	/**
+	 * N​o​ ​e​x​t​e​n​s​i​o​n​s​ ​i​n​s​t​a​l​l​e​d
+	 */
+	extensionsEmpty: string
+	/**
+	 * I​n​s​t​a​l​l​ ​e​x​t​e​n​s​i​o​n
+	 */
+	extensionInstall: string
+	/**
+	 * s​i​g​n​e​d
+	 */
+	extensionSigned: string
+	/**
+	 * u​n​s​i​g​n​e​d
+	 */
+	extensionUnsigned: string
+	/**
+	 * o​u​t​d​a​t​e​d
+	 */
+	extensionOutdated: string
+	/**
+	 * u​n​k​n​o​w​n​ ​p​u​b​l​i​s​h​e​r
+	 */
+	extensionUnknownPublisher: string
+	/**
+	 * {​c​o​u​n​t​}​ ​e​r​r​o​r​s
+	 * @param {number} count
+	 */
+	extensionErrorCount: RequiredParams<'count'>
+	/**
+	 * T​o​g​g​l​e​ ​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	extensionToggle: RequiredParams<'name'>
+	/**
+	 * R​e​m​o​v​e​ ​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	extensionRemove: RequiredParams<'name'>
+	/**
+	 * R​e​m​o​v​e​ ​t​h​i​s​ ​e​x​t​e​n​s​i​o​n​?
+	 */
+	extensionRemoveTitle: string
+	/**
+	 * I​t​s​ ​m​e​n​u​ ​i​t​e​m​s​,​ ​s​t​o​r​a​g​e​ ​a​n​d​ ​s​e​t​t​i​n​g​s​ ​a​r​e​ ​r​e​m​o​v​e​d​.
+	 */
+	extensionRemoveDescription: string
+	/**
+	 * R​e​m​o​v​e​ ​e​x​t​e​n​s​i​o​n
+	 */
+	extensionRemoveConfirm: string
+	/**
+	 * A​l​l​o​w​ ​u​n​s​i​g​n​e​d​ ​e​x​t​e​n​s​i​o​n​s
+	 */
+	extensionAllowUnsigned: string
+	/**
+	 * U​n​s​i​g​n​e​d​ ​p​a​c​k​a​g​e​s​ ​c​a​n​n​o​t​ ​b​e​ ​v​e​r​i​f​i​e​d​.​ ​O​n​l​y​ ​i​n​s​t​a​l​l​ ​f​i​l​e​s​ ​y​o​u​ ​t​r​u​s​t​.
+	 */
+	extensionUnsignedHint: string
+	/**
+	 * T​r​u​s​t​ ​t​h​i​s​ ​p​u​b​l​i​s​h​e​r​?
+	 */
+	extensionTrustTitle: string
+	/**
+	 * {​n​a​m​e​}​ ​i​s​ ​s​i​g​n​e​d​ ​b​y​ ​a​ ​p​u​b​l​i​s​h​e​r​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​h​a​s​ ​n​o​t​ ​s​e​e​n​ ​b​e​f​o​r​e​.​ ​T​r​u​s​t​ ​t​h​e​ ​k​e​y​ ​t​o​ ​i​n​s​t​a​l​l​ ​a​n​d​ ​u​p​d​a​t​e​ ​t​h​e​i​r​ ​e​x​t​e​n​s​i​o​n​s​.
+	 * @param {string} name
+	 */
+	extensionTrustDescription: RequiredParams<'name'>
+	/**
+	 * P​u​b​l​i​s​h​e​r​ ​k​e​y​ ​c​h​a​n​g​e​d
+	 */
+	extensionKeyChangedTitle: string
+	/**
+	 * {​n​a​m​e​}​ ​w​a​s​ ​s​i​g​n​e​d​ ​w​i​t​h​ ​a​ ​d​i​f​f​e​r​e​n​t​ ​k​e​y​ ​t​h​a​n​ ​t​h​e​ ​i​n​s​t​a​l​l​e​d​ ​c​o​p​y​.​ ​O​n​l​y​ ​t​r​u​s​t​ ​t​h​i​s​ ​i​f​ ​y​o​u​ ​e​x​p​e​c​t​e​d​ ​t​h​e​ ​p​u​b​l​i​s​h​e​r​ ​t​o​ ​r​o​t​a​t​e​ ​k​e​y​s​.
+	 * @param {string} name
+	 */
+	extensionKeyChangedDescription: RequiredParams<'name'>
+	/**
+	 * T​r​u​s​t​ ​a​n​d​ ​i​n​s​t​a​l​l
+	 */
+	extensionTrustAccept: string
+	/**
+	 * R​e​j​e​c​t
+	 */
+	extensionTrustReject: string
 }
 
 export type TranslationFunctions = {
@@ -3429,6 +3542,114 @@ export type TranslationFunctions = {
 	 * Blindly trust every undecided device of {jid}?
 	 */
 	trustAllDescription: (arg: { jid: string }) => LocalizedString
+	/**
+	 * Context menu
+	 */
+	contextMenu: () => LocalizedString
+	/**
+	 * Open
+	 */
+	open: () => LocalizedString
+	/**
+	 * Mark as read
+	 */
+	markRead: () => LocalizedString
+	/**
+	 * Copy address
+	 */
+	copyAddress: () => LocalizedString
+	/**
+	 * Remove contact
+	 */
+	removeContact: () => LocalizedString
+	/**
+	 * Extensions
+	 */
+	extensions: () => LocalizedString
+	/**
+	 * Extensions run in a sandboxed worker and can add menu entries. Signed packages are verified against their publisher key.
+	 */
+	extensionsHint: () => LocalizedString
+	/**
+	 * No extensions installed
+	 */
+	extensionsEmpty: () => LocalizedString
+	/**
+	 * Install extension
+	 */
+	extensionInstall: () => LocalizedString
+	/**
+	 * signed
+	 */
+	extensionSigned: () => LocalizedString
+	/**
+	 * unsigned
+	 */
+	extensionUnsigned: () => LocalizedString
+	/**
+	 * outdated
+	 */
+	extensionOutdated: () => LocalizedString
+	/**
+	 * unknown publisher
+	 */
+	extensionUnknownPublisher: () => LocalizedString
+	/**
+	 * {count} errors
+	 */
+	extensionErrorCount: (arg: { count: number }) => LocalizedString
+	/**
+	 * Toggle {name}
+	 */
+	extensionToggle: (arg: { name: string }) => LocalizedString
+	/**
+	 * Remove {name}
+	 */
+	extensionRemove: (arg: { name: string }) => LocalizedString
+	/**
+	 * Remove this extension?
+	 */
+	extensionRemoveTitle: () => LocalizedString
+	/**
+	 * Its menu items, storage and settings are removed.
+	 */
+	extensionRemoveDescription: () => LocalizedString
+	/**
+	 * Remove extension
+	 */
+	extensionRemoveConfirm: () => LocalizedString
+	/**
+	 * Allow unsigned extensions
+	 */
+	extensionAllowUnsigned: () => LocalizedString
+	/**
+	 * Unsigned packages cannot be verified. Only install files you trust.
+	 */
+	extensionUnsignedHint: () => LocalizedString
+	/**
+	 * Trust this publisher?
+	 */
+	extensionTrustTitle: () => LocalizedString
+	/**
+	 * {name} is signed by a publisher this device has not seen before. Trust the key to install and update their extensions.
+	 */
+	extensionTrustDescription: (arg: { name: string }) => LocalizedString
+	/**
+	 * Publisher key changed
+	 */
+	extensionKeyChangedTitle: () => LocalizedString
+	/**
+	 * {name} was signed with a different key than the installed copy. Only trust this if you expected the publisher to rotate keys.
+	 */
+	extensionKeyChangedDescription: (arg: { name: string }) => LocalizedString
+	/**
+	 * Trust and install
+	 */
+	extensionTrustAccept: () => LocalizedString
+	/**
+	 * Reject
+	 */
+	extensionTrustReject: () => LocalizedString
 }
 
 export type Formatters = {}

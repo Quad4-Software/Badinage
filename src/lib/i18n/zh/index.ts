@@ -467,7 +467,39 @@ const zh = {
   verifyAll: '全部验证',
   verifyAllDescription: '将 {jid} 的所有设备标记为已验证？',
   trustAll: '全部信任',
-  trustAllDescription: '盲信 {jid} 的所有未验证设备？'
-} satisfies Translation
+  trustAllDescription: '盲信 {jid} 的所有未验证设备？',
+  contextMenu: '上下文菜单',
+  open: '打开',
+  markRead: '标记为已读',
+  copyAddress: '复制地址',
+  removeContact: '删除联系人',
+
+  extensions: '扩展',
+  extensionsHint:
+    '扩展在沙箱 Worker 中运行，可以添加菜单项。已签名的软件包会按发布者密钥进行验证。',
+  extensionsEmpty: '未安装扩展',
+  extensionInstall: '安装扩展',
+  extensionSigned: '已签名',
+  extensionUnsigned: '未签名',
+  extensionOutdated: '已过时',
+  extensionUnknownPublisher: '未知发布者',
+  extensionErrorCount: '{count} 个错误',
+  extensionToggle: '切换 {name}',
+  extensionRemove: '移除 {name}',
+  extensionRemoveTitle: '移除此扩展？',
+  extensionRemoveDescription: '其菜单项、存储和设置将被移除。',
+  extensionRemoveConfirm: '移除扩展',
+  extensionAllowUnsigned: '允许未签名扩展',
+  extensionUnsignedHint:
+    '未签名的软件包无法验证。只安装你信任的文件。',
+  extensionTrustTitle: '信任此发布者？',
+  extensionTrustDescription:
+    '{name} 由此设备未曾见过的发布者签名。信任该密钥以安装和更新其扩展。',
+  extensionKeyChangedTitle: '发布者密钥已更改',
+  extensionKeyChangedDescription:
+    '{name} 使用了与已安装副本不同的密钥签名。仅当你预期发布者轮换密钥时才应信任。',
+  extensionTrustAccept: '信任并安装',
+  extensionTrustReject: '拒绝'
+}
 
 export default zh

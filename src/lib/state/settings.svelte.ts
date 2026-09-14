@@ -87,6 +87,9 @@ interface Settings {
   // ui language as a typesafe-i18n locale code. Empty means follow the
   // browser's navigator.language
   locale: string
+  // install unsigned extension packages. Off by default since unsigned
+  // code cannot be verified against a publisher key
+  allowUnsignedExtensions: boolean
   // named palette preset. 'default' keeps the stylesheet tokens
   theme: string
   // settings section ids the user collapsed. Persists across sessions
@@ -116,6 +119,7 @@ const DEFAULT_SETTINGS: Settings = {
   xmppLinkHandler: false,
   autoAway: true,
   locale: '',
+  allowUnsignedExtensions: false,
   theme: 'default',
   collapsedSections: [],
   seenPrompts: {}

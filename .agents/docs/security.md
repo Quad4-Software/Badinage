@@ -90,6 +90,42 @@ Keep it that way. Do not add configDependencies.
 - MUC OMEMO is only safe in members-only non-anonymous rooms. Enforce in
   the UI when that feature lands.
 
+## Extensions
+
+Extensions are client-side only, installed from a JSON package uploaded
+in settings. The model is stricter than typical editor plugins:
+
+- Packages carry {manifest, signature, code}. Manifests are validated
+  for shape, sizes, permission names and connect origins before code
+  is stored or run.
+- Signed packages use Ed25519 over a canonical manifest plus the code
+  bytes, verified with WebCrypto. Publisher keys are pinned per
+  publisher name: an unknown key or a key change needs an explicit
+  trust dialog approval, and approval retires stale same-name keys.
+- Signed installs can never be updated by unsigned packages. Unsigned
+  installs are rejected unless the user turns on the unsigned
+  extensions setting.
+- Code runs in a dedicated worker built from a blob URL. The prelude
+  deletes fetch, XHR, WebSocket, Worker, importScripts, indexedDB,
+  caches, broadcast and file-picker intrinsics before extension code
+  evaluates, so CSP worker-src 'self' blob: plus the wipe leave no
+  remote code path.
+- The api object is permission gated: menus, toast, storage, net and
+  messages.read. Everything else is unreachable.
+- net.fetch is proxied by the host, restricted to the manifest's
+  connect origins (https/wss only), strips auth-shaped headers, sends
+  no credentials, follows no redirects and caps response size.
+- Menu payloads cross the boundary through a whitelist scrub. Message
+  bodies only cross with messages.read.
+- Extension storage is namespaced under ext:kv:<id> in IndexedDB and
+  purged on removal. Extension code lives under ext:code:<id>, never
+  in the app storage namespace.
+- An error budget auto-disables extensions that crash, throw or time
+  out repeatedly, and a ready timeout kills workers that never come
+  up. Host isolation means an extension cannot take down the app.
+- api versions gate compatibility: newer api is refused at install,
+  api below the floor loads as outdated and stays disabled.
+
 ## Crash reporting
 
 - Optional, off unless VITE_SENTRY_DSN is set at build time. Any

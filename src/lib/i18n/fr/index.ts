@@ -467,7 +467,39 @@ const fr = {
   verifyAll: 'Tout vérifier',
   verifyAllDescription: 'Marquer tous les appareils de {jid} comme vérifiés ?',
   trustAll: 'Tout approuver',
-  trustAllDescription: 'Approuver aveuglément tous les appareils indécis de {jid} ?'
-} satisfies Translation
+  trustAllDescription: 'Approuver aveuglément tous les appareils indécis de {jid} ?',
+  contextMenu: 'Menu contextuel',
+  open: 'Ouvrir',
+  markRead: 'Marquer comme lu',
+  copyAddress: "Copier l'adresse",
+  removeContact: 'Supprimer le contact',
+
+  extensions: 'Extensions',
+  extensionsHint:
+    "Les extensions s'exécutent dans un environnement isolé et peuvent ajouter des entrées de menu. Les paquets signés sont vérifiés avec la clé de l'éditeur.",
+  extensionsEmpty: 'Aucune extension installée',
+  extensionInstall: 'Installer une extension',
+  extensionSigned: 'signée',
+  extensionUnsigned: 'non signée',
+  extensionOutdated: 'obsolète',
+  extensionUnknownPublisher: 'éditeur inconnu',
+  extensionErrorCount: '{count} erreurs',
+  extensionToggle: 'Basculer {name}',
+  extensionRemove: 'Supprimer {name}',
+  extensionRemoveTitle: 'Supprimer cette extension ?',
+  extensionRemoveDescription: 'Ses entrées de menu, son stockage et ses réglages sont supprimés.',
+  extensionRemoveConfirm: "Supprimer l'extension",
+  extensionAllowUnsigned: 'Autoriser les extensions non signées',
+  extensionUnsignedHint:
+    "Les paquets non signés ne peuvent pas être vérifiés. N'installez que des fichiers de confiance.",
+  extensionTrustTitle: 'Faire confiance à cet éditeur ?',
+  extensionTrustDescription:
+    "{name} est signée par un éditeur que cet appareil ne connaît pas. Faites confiance à la clé pour installer et mettre à jour ses extensions.",
+  extensionKeyChangedTitle: "La clé de l'éditeur a changé",
+  extensionKeyChangedDescription:
+    "{name} a été signée avec une clé différente de la copie installée. Ne faites confiance que si vous attendiez une rotation de clés de l'éditeur.",
+  extensionTrustAccept: 'Faire confiance et installer',
+  extensionTrustReject: 'Refuser'
+}
 
 export default fr
