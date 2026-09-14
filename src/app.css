@@ -286,3 +286,12 @@
     0 0,
     48px 48px;
 }
+
+/* wheel scrolling still works, the platform scrollbar with its arrow
+   buttons stays out of small inputs like the composer */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

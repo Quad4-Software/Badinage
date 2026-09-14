@@ -344,7 +344,7 @@
         disabled={voice.recording}
         enterkeyhint={settings.current.sendWithEnter ? 'send' : 'enter'}
         autocapitalize="sentences"
-        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-md border bg-transparent py-2 pr-3 pl-10 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none scrollbar-none overflow-y-auto rounded-md border bg-transparent py-2 pr-3 pl-10 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
       ></textarea>
     </div>
     <Button
