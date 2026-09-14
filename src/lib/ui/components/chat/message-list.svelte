@@ -1,5 +1,8 @@
 <script lang="ts">
   import { ArrowDown, CheckCheck } from '@lucide/svelte'
+  import type { SvelteComponent } from 'svelte'
+  import { Virtualizer } from 'virtua/svelte'
+  import type { VirtualizerHandle } from 'virtua/svelte'
 
   import LL, { locale } from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
@@ -7,12 +10,12 @@
   import type { ChatMessage, Conversation } from '$lib/state/chats.svelte'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
   import { parseJid } from '$lib/utils/jid'
-  import { formatDay, isSameDay } from '$lib/utils/time'
+  import { formatDay } from '$lib/utils/time'
 
   import LoadOlder from './load-older.svelte'
+  import { buildRows, messageRowId, type ListRow } from './message-list/rows'
   import MessageItem from './message-item.svelte'
-  import PeerAvatar from './peer-avatar.svelte'
-  import TypingIndicator from './typing-indicator.svelte'
+  import TypingRow from './message-list/typing-row.svelte'
 
   interface Props {
     conversation: Conversation
@@ -52,17 +55,23 @@
     onLongPress
   }: Props = $props()
 
-  const GROUP_GAP_MS = 5 * 60 * 1000
   // scrollTop under this counts as near the top and shows the pager button
   const TOP_THRESHOLD_PX = 60
+  // this close to the bottom still counts as pinned to the tail
+  const BOTTOM_THRESHOLD_PX = 40
 
   let viewport = $state<HTMLDivElement | null>(null)
+  // virtua types its component generically so bind:this cannot carry
+  // the handle shape. The exported methods are the documented handle
+  let vlist = $state<SvelteComponent>()
   let nearTop = $state(true)
   let pinned = $state(true)
-  // scrollHeight captured when an older page is requested. While set the
-  // viewport is re-anchored by the prepended height as rows land so the
-  // reading position does not move
-  let anchorHeight: number | null = null
+  // virtua compensates the scroll position on every length change while
+  // the prop is set, so it stays true only while the head message
+  // actually moved: prepends and head trims. A tail append compensated
+  // as a prepend would jump the viewport
+  let shift = $state(false)
+  let lastHead: string | undefined
 
   // the pager only makes sense while a transport can answer it
   const canLoadOlder = $derived(accounts.active?.status === 'connected')
@@ -82,25 +91,23 @@
       : conversation.peerState === 'composing'
   )
 
-  // muc typers are nicks keyed room/nick for the avatar lookup, capped
-  // so a flood of typers does not grow the row
-  const typerAvatars = $derived(
-    [...conversation.typers].slice(0, 3).map((nick) => ({
-      nick,
-      jid: `${conversation.peerJid}/${nick}`
-    }))
+  const rows = $derived(
+    buildRows(conversation.messages, {
+      typing,
+      seen:
+        conversation.kind === 'dm' && lastMessage?.outgoing && !typing
+          ? { read: lastMessage.read, delivered: lastMessage.delivered }
+          : undefined
+    })
   )
 
-  // a new visual group starts on a different sender, a day separator,
-  // or a gap of more than five minutes
-  function startsGroup(index: number): boolean {
-    const message = conversation.messages[index]
-    const prev = conversation.messages[index - 1]
-    if (!message || !prev) return true
-    if (!isSameDay(prev.timestamp, message.timestamp)) return true
-    if (message.timestamp - prev.timestamp > GROUP_GAP_MS) return true
-    return prev.outgoing !== message.outgoing || prev.nick !== message.nick
-  }
+  // must run before the virtualizer's own length-change effect so the
+  // shift flag reflects the mutation it is about to process
+  $effect.pre(() => {
+    const head = conversation.messages[0]?.id
+    shift = lastHead !== undefined && head !== lastHead
+    lastHead = head
+  })
 
   function avatarName(message: ChatMessage): string {
     return message.nick ?? parseJid(message.peerJid).local ?? message.peerJid
@@ -117,79 +124,99 @@
 
   function loadOlder() {
     const account = accounts.active
-    if (!account || !viewport) return
-    if (conversation.historyLoading || conversation.historyComplete) return
-    anchorHeight = viewport.scrollHeight
+    if (!account || conversation.historyLoading || conversation.historyComplete) return
+    // the prepended rows move the head and shift anchors the viewport
     app.chatsFor(account.jid).loadOlder(conversation, account.connection)
-    // the store refused (loading, complete or offline): drop the anchor
-    // so a stale height does not corrupt the next prepend
-    if (!conversation.historyLoading) anchorHeight = null
   }
 
-  function scrollToLatest(behavior: 'auto' | 'smooth' = 'auto') {
-    if (!viewport) return
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior })
+  function scrollToLatest(smooth = false) {
+    const el = viewport
+    if (!el) return
+    // scrollTop to scrollHeight always lands on the true bottom even
+    // while row sizes are still estimates. scrollToIndex would use the
+    // layout cache and land short, which reads as an unpin
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
   }
 
-  // reset scroll state when the pane switches to another conversation
+  function handle(): VirtualizerHandle | undefined {
+    return vlist as VirtualizerHandle | undefined
+  }
+
+  // bring a quoted message into view even while its row is unmounted
+  export function jumpTo(id: string): void {
+    const index = rows.findIndex((row) => row.kind === 'message' && row.message.id === id)
+    const v = handle()
+    if (index < 0 || !v) return
+    v.scrollToIndex(index, { align: 'center' })
+    // a second pass lands the exact offset once unmeasured rows resolve
+    requestAnimationFrame(() => handle()?.scrollToIndex(index, { align: 'center' }))
+  }
+
+  function onScroll(offset: number) {
+    const v = handle()
+    if (!v) return
+    pinned = offset + v.getViewportSize() >= v.getScrollSize() - BOTTOM_THRESHOLD_PX
+    nearTop = offset < TOP_THRESHOLD_PX
+  }
+
+  // land on the newest row when the pane switches to another
+  // conversation. Unmeasured rows make the first landing approximate:
+  // the pinned resize observer below corrects as sizes resolve
   $effect(() => {
     void conversation.peerJid
     pinned = true
     nearTop = true
-    anchorHeight = null
-    // land on the newest message once the peer's rows mount. The
-    // pinned resize observer covers media growing in afterwards
     requestAnimationFrame(() => scrollToLatest())
   })
 
+  // keep the tail in view when rows arrive while already pinned
   $effect(() => {
-    const _count = conversation.messages.length
-    const el = viewport
-    if (!el) return
-    if (anchorHeight !== null) {
-      // an older page is landing above: shift the viewport by the added
-      // height so the same messages stay in view
-      el.scrollTop += el.scrollHeight - anchorHeight
-      anchorHeight = el.scrollHeight
-      return
-    }
-    // stay pinned to the bottom only when the user is already there
-    if (pinned) el.scrollTop = el.scrollHeight
+    void conversation.messages.length
+    if (pinned) requestAnimationFrame(() => scrollToLatest())
   })
 
-  // a page that adds no rows (empty or fully deduped) leaves nothing to
-  // anchor against
-  $effect(() => {
-    if (!conversation.historyLoading) anchorHeight = null
-  })
-
-  // images and other async content grow the list after the initial scroll.
-  // stay pinned to the bottom whenever we were already there
+  // media and async content grow measured rows after the initial
+  // scroll. Re-pin while the user is still at the bottom
   $effect(() => {
     const el = viewport
     if (!el) return
-    const onScroll = () => {
-      pinned = el.scrollTop + el.clientHeight >= el.scrollHeight - 40
-      nearTop = el.scrollTop < TOP_THRESHOLD_PX
-    }
-    el.addEventListener('scroll', onScroll)
     const observer = new ResizeObserver(() => {
-      if (pinned) el.scrollTop = el.scrollHeight
+      if (pinned) scrollToLatest()
     })
-    // the viewport itself shrinks when the on-screen keyboard opens.
-    // observing it keeps the pinned tail in view
     observer.observe(el)
-    for (const child of el.children) observer.observe(child)
-    return () => {
-      el.removeEventListener('scroll', onScroll)
-      observer.disconnect()
-    }
+    const content = el.firstElementChild
+    if (content) observer.observe(content)
+    return () => observer.disconnect()
   })
+
+  // spacing must be padding not margin: the virtualizer measures the
+  // element box and row offsets ignore margins between rows
+  function itemProps({ item }: { item: ListRow }): Record<string, string> | undefined {
+    if (item.kind === 'message') {
+      return {
+        id: messageRowId(item.message.id),
+        class: item.index > 0 ? (item.grouped ? 'pt-[var(--density-msg-gap)]' : 'pt-0.5') : ''
+      }
+    }
+    if (item.kind === 'day') {
+      return { class: 'text-muted-foreground py-3 text-center text-xs', 'aria-hidden': 'true' }
+    }
+    if (item.kind === 'typing') {
+      return { class: 'flex items-center gap-2 pt-3', 'aria-live': 'polite' }
+    }
+    if (item.kind === 'seen') {
+      return {
+        class: 'text-muted-foreground flex items-center justify-end gap-1 pt-1 text-[0.65rem]',
+        'aria-live': 'polite'
+      }
+    }
+    return undefined
+  }
 </script>
 
 <div class="relative flex min-h-0 flex-1 flex-col">
   <ScrollArea bind:viewportRef={viewport} class="flex-1">
-    <ol class="flex flex-col p-[var(--density-list-pad)]">
+    <div class="p-[var(--density-list-pad)]">
       {#if canLoadOlder}
         <LoadOlder
           loading={conversation.historyLoading ?? false}
@@ -198,84 +225,57 @@
           onLoad={loadOlder}
         />
       {/if}
-      {#each conversation.messages as message, i (message.id)}
-        {@const grouped = startsGroup(i)}
-        {#if i === 0 || !isSameDay(message.timestamp, conversation.messages[i - 1]?.timestamp ?? 0)}
-          <li class="text-muted-foreground my-3 text-center text-xs" aria-hidden="true">
-            {formatDay(message.timestamp, $locale)}
-          </li>
-        {/if}
-        <li
-          id={`m-${message.id}`}
-          class={i > 0 ? (grouped ? 'mt-[var(--density-msg-gap)]' : 'mt-0.5') : ''}
+      {#if viewport}
+        <Virtualizer
+          bind:this={vlist}
+          data={rows}
+          getKey={(row: ListRow) => row.key}
+          scrollRef={viewport}
+          {shift}
+          {itemProps}
+          onscroll={onScroll}
+          as="ol"
+          item="li"
         >
-          <MessageItem
-            {message}
-            showNick={grouped}
-            showAvatar={grouped}
-            avatarName={avatarName(message)}
-            avatarJid={avatarJid(message)}
-            avatarForce={conversation.kind === 'dm'}
-            selfJid={self}
-            {senderLabel}
-            {onQuoteClick}
-            {onReply}
-            {onEdit}
-            onReact={onReact ? (emoji) => onReact(message, emoji) : undefined}
-            {onRetract}
-            {onCancelUpload}
-            {canModerate}
-            onModerate={onModerate ? () => onModerate(message) : undefined}
-            {onDismiss}
-            {onLongPress}
-          />
-        </li>
-      {/each}
-      {#if typing}
-        <li class="mt-3 flex items-center gap-2" aria-live="polite">
-          {#if conversation.kind === 'muc'}
-            <span class="flex shrink-0 -space-x-1.5">
-              {#each typerAvatars as typer (typer.jid)}
-                <PeerAvatar
-                  jid={typer.jid}
-                  fallback={typer.nick.slice(0, 2)}
-                  class="ring-background size-5 ring-2"
-                />
-              {/each}
-            </span>
-          {:else}
-            <PeerAvatar
-              jid={conversation.peerJid}
-              fallback={(parseJid(conversation.peerJid).local ?? conversation.peerJid).slice(0, 2)}
-              force
-              class="size-6 shrink-0"
-            />
-          {/if}
-          <span class="bg-muted inline-flex items-center rounded-2xl rounded-bl-sm px-3 py-2">
-            <TypingIndicator class="text-muted-foreground" />
-          </span>
-          {#if conversation.kind === 'muc'}
-            <span class="text-muted-foreground text-xs">
-              {$LL.typingNames({ names: [...conversation.typers].join(', ') })}
-            </span>
-          {/if}
-        </li>
+          {#snippet children(row: ListRow, _index: number)}
+            {#if row.kind === 'day'}
+              {formatDay(row.timestamp, $locale)}
+            {:else if row.kind === 'message'}
+              <MessageItem
+                message={row.message}
+                showNick={row.grouped}
+                showAvatar={row.grouped}
+                avatarName={avatarName(row.message)}
+                avatarJid={avatarJid(row.message)}
+                avatarForce={conversation.kind === 'dm'}
+                selfJid={self}
+                {senderLabel}
+                {onQuoteClick}
+                {onReply}
+                {onEdit}
+                onReact={onReact ? (emoji) => onReact(row.message, emoji) : undefined}
+                {onRetract}
+                {onCancelUpload}
+                {canModerate}
+                onModerate={onModerate ? () => onModerate(row.message) : undefined}
+                {onDismiss}
+                {onLongPress}
+              />
+            {:else if row.kind === 'typing'}
+              <TypingRow {conversation} />
+            {:else if row.kind === 'seen'}
+              {#if row.read}
+                <CheckCheck class="text-success size-3" aria-hidden="true" />
+                {$LL.seen()}
+              {:else if row.delivered}
+                <CheckCheck class="size-3 opacity-60" aria-hidden="true" />
+                {$LL.delivered()}
+              {/if}
+            {/if}
+          {/snippet}
+        </Virtualizer>
       {/if}
-      {#if conversation.kind === 'dm' && lastMessage?.outgoing && !typing}
-        <li
-          class="text-muted-foreground mt-1 flex items-center justify-end gap-1 text-[0.65rem]"
-          aria-live="polite"
-        >
-          {#if lastMessage.read}
-            <CheckCheck class="text-success size-3" aria-hidden="true" />
-            {$LL.seen()}
-          {:else if lastMessage.delivered}
-            <CheckCheck class="size-3 opacity-60" aria-hidden="true" />
-            {$LL.delivered()}
-          {/if}
-        </li>
-      {/if}
-    </ol>
+    </div>
   </ScrollArea>
   {#if !pinned}
     <button
@@ -284,7 +284,7 @@
       class="bg-popover hover:bg-accent absolute right-3 bottom-3 z-10 flex size-10 items-center justify-center rounded-full border shadow-md"
       onclick={() => {
         pinned = true
-        scrollToLatest('smooth')
+        scrollToLatest(true)
       }}
     >
       <ArrowDown class="size-4" />

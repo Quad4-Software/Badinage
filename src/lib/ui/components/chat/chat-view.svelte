@@ -109,6 +109,9 @@
   // the outgoing message awaiting a retract confirm
   let retractTarget = $state<ChatMessage | null>(null)
 
+  // virtualized list handle for quote jumps into unmounted rows
+  let msgList = $state<MessageList | undefined>(undefined)
+
   // the long-press sheet: target outlives the close animation
   let sheetMessage = $state<ChatMessage | null>(null)
   let sheetOpen = $state(false)
@@ -445,11 +448,10 @@
           <RoomStatusBanner conversation={conv} />
         {/if}
         <MessageList
+          bind:this={msgList}
           conversation={conv}
           selfJid={account?.jid ?? ''}
-          onQuoteClick={(id) => {
-            document.getElementById(`m-${id}`)?.scrollIntoView({ block: 'center' })
-          }}
+          onQuoteClick={(id) => msgList?.jumpTo(id)}
           onReply={(message) => {
             app.setComposer(conv.peerJid, { replyTo: message })
             app.focusComposer(conv.peerJid)

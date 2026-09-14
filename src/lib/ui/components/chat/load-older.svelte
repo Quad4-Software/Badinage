@@ -21,7 +21,7 @@
   Fixed height so swapping between button, spinner and label never shifts
   the scroll position of the messages below.
 -->
-<li class="flex h-9 shrink-0 items-center justify-center">
+<div class="flex h-9 shrink-0 items-center justify-center">
   {#if loading}
     <span role="status">
       <LoaderCircle class="text-muted-foreground size-4 animate-spin" aria-hidden="true" />
@@ -32,4 +32,4 @@
   {:else if nearTop}
     <Button variant="ghost" size="sm" onclick={onLoad}>{$LL.loadOlder()}</Button>
   {/if}
-</li>
+</div>
