@@ -32,9 +32,12 @@ overrides:
   # typed-rest-client (pulled in by stryker) pins a vulnerable qs range
   'typed-rest-client>qs': '6.16.0'
   # @lhci/cli is pinned at its latest release, so its vulnerable
-  # transitive deps need overrides. extract-zip has no patched release
+  # transitive deps need overrides. lighthouse 13 moves the chrome
+  # download path off the unmaintained extract-zip package
   'body-parser>qs': '6.16.0'
   'express>qs': '6.16.0'
   'external-editor>tmp': '0.2.7'
   '@lhci/cli>tmp': '0.2.7'
   '@lhci/cli>uuid': '11.1.1'
+  '@lhci/cli>lighthouse': '13.4.1'
+  '@lhci/utils>lighthouse': '13.4.1'
