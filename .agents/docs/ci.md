@@ -23,9 +23,12 @@
   and runs src/lib/core/xmpp/tests/interop.live.test.ts with
   XMPP_INTEROP_WS and XMPP_INTEROP_ANON set per server. The suite
   creates users through in-band registration, exchanges a direct
-  message, connects anonymously, and meets in a muc room. ejabberd
-  serves websocket on 15280 at /websocket, openfire on 17070 at /ws/
-  (self-provisioned through openfire.xml autosetup, embedded db).
+  message, connects anonymously, meets in a muc room, and roundtrips
+  a jingle session-initiate between two clients. The ejabberd leg
+  also sets XMPP_INTEROP_EXTDISCO so the XEP-0215 stun lookup runs
+  against its mod_stun_disco. ejabberd serves websocket on 15280 at
+  /websocket, openfire on 17070 at /ws/ (self-provisioned through
+  openfire.xml autosetup, embedded db).
   pnpm store is cached through setup-node.
   PR runs cancel in progress on new pushes, main never cancels.
 - perf.yml: PRs, weekly cron plus manual dispatch. Builds dist and runs

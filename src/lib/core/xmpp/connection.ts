@@ -58,6 +58,8 @@ import { fetchRoster, rosterRemove, rosterSet } from './features/roster'
 import { channelSearch, channelSearchForm } from './features/search'
 import { smConnectionOptions } from './features/sm'
 import { noop, type StanzaBuilder, type XmppTransport } from './features/transport'
+import { fetchExtServices, probeJingleSupport, sendJingleIq } from './jingle/feature'
+import type { ExtService } from './jingle/extdisco'
 import { discoverUploadService, requestUploadSlot, uploadFile } from './features/upload'
 import { NS } from './ns'
 import type { RttEvent, RttOp } from '$lib/utils/protocol/rtt'
@@ -75,7 +77,17 @@ import type {
   TrustOwner,
   UploadSlot
 } from './stanzas'
-import type { AttachmentMeta, ChatConnection, ConnectionEvents, SendMessageOptions } from './types'
+import type {
+  AttachmentMeta,
+  ChatConnection,
+  ChatKind,
+  ConnectionEvents,
+  SendMessageOptions
+} from './types'
+
+type Done = (ok: boolean) => void
+type ArchiveOpts = { max?: number; before?: string | undefined; room?: boolean | undefined }
+type SearchDone = (items: ChannelSearchItem[] | null) => void
 
 // The public contract lives in types.ts and the parsed result shapes in
 // stanzas.ts. Re-exported here so importers of this module keep working.
@@ -179,21 +191,11 @@ export class XmppConnection implements ChatConnection {
     return sendChatMessage(this.transport, to, body, type, opts)
   }
 
-  sendReaction(
-    to: string,
-    targetId: string,
-    emojis: string[],
-    type: 'chat' | 'groupchat' = 'chat'
-  ): void {
+  sendReaction(to: string, targetId: string, emojis: string[], type: ChatKind = 'chat'): void {
     sendReaction(this.transport, to, targetId, emojis, type)
   }
 
-  sendAttachment(
-    to: string,
-    url: string,
-    type: 'chat' | 'groupchat' = 'chat',
-    meta?: AttachmentMeta
-  ): string {
+  sendAttachment(to: string, url: string, type: ChatKind = 'chat', meta?: AttachmentMeta): string {
     return sendAttachment(this.transport, to, url, type, meta)
   }
 
@@ -371,11 +373,7 @@ export class XmppConnection implements ChatConnection {
   // ---- MAM, implemented in features/mam.ts ---------------------------------------
 
   // results arrive as 'message' events flagged mam=true, onDone fires on fin
-  queryArchive(
-    peerJid: string,
-    opts: { max?: number; before?: string | undefined; room?: boolean | undefined },
-    onDone: (result: MamPageResult) => void
-  ): void {
+  queryArchive(peerJid: string, opts: ArchiveOpts, onDone: (result: MamPageResult) => void): void {
     queryArchive(
       this.transport,
       this.mamQueries,
@@ -442,12 +440,7 @@ export class XmppConnection implements ChatConnection {
     setInvisible(this.transport, enabled, onDone)
   }
 
-  publishDisplayed(
-    peer: string,
-    stanzaId: string,
-    by?: string,
-    onDone?: (ok: boolean) => void
-  ): void {
+  publishDisplayed(peer: string, stanzaId: string, by?: string, onDone?: Done): void {
     publishDisplayed(this.transport, peer, stanzaId, by, onDone)
   }
 
@@ -457,15 +450,21 @@ export class XmppConnection implements ChatConnection {
     })
   }
 
+  sendJingle(stanza: StanzaBuilder, onDone?: (ok: boolean) => void): void {
+    sendJingleIq(this.transport, stanza, onDone)
+  }
+  jingleSupported(jid: string, onDone: (supported: boolean) => void): void {
+    probeJingleSupport(this.transport, jid, onDone)
+  }
+  externalServices(onDone: (services: ExtService[]) => void): void {
+    fetchExtServices(this.transport, onDone)
+  }
+
   channelSearchForm(service: string, onDone: (form: DataForm | null) => void): void {
     channelSearchForm(this.transport, service, onDone)
   }
 
-  channelSearch(
-    service: string,
-    form: DataForm,
-    onDone: (items: ChannelSearchItem[] | null) => void
-  ): void {
+  channelSearch(service: string, form: DataForm, onDone: SearchDone): void {
     channelSearch(this.transport, service, form, onDone)
   }
 

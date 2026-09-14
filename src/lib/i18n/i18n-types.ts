@@ -1987,6 +1987,82 @@ type RootTranslation = {
 	 * T​h​i​s​ ​e​x​t​e​n​s​i​o​n​ ​d​e​c​l​a​r​e​s​ ​n​o​ ​s​e​t​t​i​n​g​s​.
 	 */
 	extensionNoSettings: string
+	/**
+	 * A​u​d​i​o​ ​c​a​l​l
+	 */
+	callAudio: string
+	/**
+	 * V​i​d​e​o​ ​c​a​l​l
+	 */
+	callVideo: string
+	/**
+	 * I​n​c​o​m​i​n​g​ ​c​a​l​l
+	 */
+	callIncoming: string
+	/**
+	 * A​c​c​e​p​t
+	 */
+	callAccept: string
+	/**
+	 * D​e​c​l​i​n​e
+	 */
+	callDecline: string
+	/**
+	 * H​a​n​g​ ​u​p
+	 */
+	callHangUp: string
+	/**
+	 * M​u​t​e
+	 */
+	callMute: string
+	/**
+	 * U​n​m​u​t​e
+	 */
+	callUnmute: string
+	/**
+	 * T​u​r​n​ ​c​a​m​e​r​a​ ​o​f​f
+	 */
+	callCameraOff: string
+	/**
+	 * T​u​r​n​ ​c​a​m​e​r​a​ ​o​n
+	 */
+	callCameraOn: string
+	/**
+	 * C​a​l​l​i​n​g​.​.​.
+	 */
+	callDialing: string
+	/**
+	 * R​i​n​g​i​n​g​.​.​.
+	 */
+	callRinging: string
+	/**
+	 * C​o​n​n​e​c​t​i​n​g​.​.​.
+	 */
+	callConnecting: string
+	/**
+	 * C​a​l​l​ ​e​n​d​e​d
+	 */
+	callEnded: string
+	/**
+	 * B​u​s​y
+	 */
+	callBusy: string
+	/**
+	 * D​e​c​l​i​n​e​d
+	 */
+	callDeclined: string
+	/**
+	 * N​o​ ​a​n​s​w​e​r
+	 */
+	callNoAnswer: string
+	/**
+	 * C​a​l​l​ ​f​a​i​l​e​d
+	 */
+	callFailed: string
+	/**
+	 * M​i​c​r​o​p​h​o​n​e​ ​o​r​ ​c​a​m​e​r​a​ ​u​n​a​v​a​i​l​a​b​l​e
+	 */
+	callMediaError: string
 }
 
 export type TranslationFunctions = {
@@ -3902,6 +3978,82 @@ export type TranslationFunctions = {
 	 * This extension declares no settings.
 	 */
 	extensionNoSettings: () => LocalizedString
+	/**
+	 * Audio call
+	 */
+	callAudio: () => LocalizedString
+	/**
+	 * Video call
+	 */
+	callVideo: () => LocalizedString
+	/**
+	 * Incoming call
+	 */
+	callIncoming: () => LocalizedString
+	/**
+	 * Accept
+	 */
+	callAccept: () => LocalizedString
+	/**
+	 * Decline
+	 */
+	callDecline: () => LocalizedString
+	/**
+	 * Hang up
+	 */
+	callHangUp: () => LocalizedString
+	/**
+	 * Mute
+	 */
+	callMute: () => LocalizedString
+	/**
+	 * Unmute
+	 */
+	callUnmute: () => LocalizedString
+	/**
+	 * Turn camera off
+	 */
+	callCameraOff: () => LocalizedString
+	/**
+	 * Turn camera on
+	 */
+	callCameraOn: () => LocalizedString
+	/**
+	 * Calling...
+	 */
+	callDialing: () => LocalizedString
+	/**
+	 * Ringing...
+	 */
+	callRinging: () => LocalizedString
+	/**
+	 * Connecting...
+	 */
+	callConnecting: () => LocalizedString
+	/**
+	 * Call ended
+	 */
+	callEnded: () => LocalizedString
+	/**
+	 * Busy
+	 */
+	callBusy: () => LocalizedString
+	/**
+	 * Declined
+	 */
+	callDeclined: () => LocalizedString
+	/**
+	 * No answer
+	 */
+	callNoAnswer: () => LocalizedString
+	/**
+	 * Call failed
+	 */
+	callFailed: () => LocalizedString
+	/**
+	 * Microphone or camera unavailable
+	 */
+	callMediaError: () => LocalizedString
 }
 
 export type Formatters = {}

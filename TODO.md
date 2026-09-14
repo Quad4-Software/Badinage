@@ -103,8 +103,9 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [ ] App resource naming and device-id scheme for OMEMO
 - [ ] Whether BOSH stays a first-class transport or becomes fallback-only
 - [ ] Domain and final branding for badinage (check badinage.dev/.app)
-- [ ] TURN strategy for calls: rely on XEP-0215 server discovery vs
-      bundle a default relay in settings
+- [x] TURN strategy for calls: rely on XEP-0215 server discovery vs
+      bundle a default relay in settings (decided: XEP-0215 only, no
+      bundled relay)
 
 ## Protocol core
 
@@ -194,15 +195,15 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## Calls (Jingle + WebRTC)
 
-- [ ] XEP-0166 Jingle session layer: initiate/accept/terminate,
+- [x] XEP-0166 Jingle session layer: initiate/accept/terminate,
       transport-info trickle, N contents per session from the start
-- [ ] XEP-0167 RTP audio/video contents, SDP <-> Jingle mapping
-- [ ] XEP-0176 ICE-UDP transport + XEP-0320 DTLS-SRTP fingerprints
+- [x] XEP-0167 RTP audio/video contents, SDP <-> Jingle mapping
+- [x] XEP-0176 ICE-UDP transport + XEP-0320 DTLS-SRTP fingerprints
 - [ ] XEP-0353 Jingle message initiation: propose/proceed/retract ring UX
-- [ ] XEP-0215 external service discovery for STUN/TURN credentials
-- [ ] Split: pure signaling module in core/ (worker/test-safe),
+- [x] XEP-0215 external service discovery for STUN/TURN credentials
+- [x] Split: pure signaling module in core/ (worker/test-safe),
       RTCPeerConnection + getUserMedia glue in ui/, call store in state/
-- [ ] Call UI: incoming ring dialog, mute/camera/hangup controls,
+- [x] Call UI: incoming ring dialog, mute/camera/hangup controls,
       remote video layout, mic/camera permission handling
 - [ ] Screen share via getDisplayMedia: replaceTrack swap first, then a
       second video content tagged XEP-0507 (slides vs speaker) for

@@ -537,7 +537,26 @@ const es = {
   extensionTrustAccept: 'Confiar e instalar',
   extensionTrustReject: 'Rechazar',
   extensionConfigure: 'Configurar {name:string}',
-  extensionNoSettings: 'Esta extensión no declara ajustes.'
+  extensionNoSettings: 'Esta extensión no declara ajustes.',
+  callAudio: 'Llamada de voz',
+  callVideo: 'Videollamada',
+  callIncoming: 'Llamada entrante',
+  callAccept: 'Aceptar',
+  callDecline: 'Rechazar',
+  callHangUp: 'Colgar',
+  callMute: 'Silenciar',
+  callUnmute: 'Activar sonido',
+  callCameraOff: 'Apagar la cámara',
+  callCameraOn: 'Encender la cámara',
+  callDialing: 'Llamando...',
+  callRinging: 'Sonando...',
+  callConnecting: 'Conectando...',
+  callEnded: 'Llamada finalizada',
+  callBusy: 'Ocupado',
+  callDeclined: 'Rechazada',
+  callNoAnswer: 'Sin respuesta',
+  callFailed: 'La llamada falló',
+  callMediaError: 'Micrófono o cámara no disponibles'
 }
 
 export default es

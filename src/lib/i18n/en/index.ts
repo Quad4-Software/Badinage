@@ -534,7 +534,26 @@ const en = {
   extensionTrustAccept: 'Trust and install',
   extensionTrustReject: 'Reject',
   extensionConfigure: 'Configure {name:string}',
-  extensionNoSettings: 'This extension declares no settings.'
+  extensionNoSettings: 'This extension declares no settings.',
+  callAudio: 'Audio call',
+  callVideo: 'Video call',
+  callIncoming: 'Incoming call',
+  callAccept: 'Accept',
+  callDecline: 'Decline',
+  callHangUp: 'Hang up',
+  callMute: 'Mute',
+  callUnmute: 'Unmute',
+  callCameraOff: 'Turn camera off',
+  callCameraOn: 'Turn camera on',
+  callDialing: 'Calling...',
+  callRinging: 'Ringing...',
+  callConnecting: 'Connecting...',
+  callEnded: 'Call ended',
+  callBusy: 'Busy',
+  callDeclined: 'Declined',
+  callNoAnswer: 'No answer',
+  callFailed: 'Call failed',
+  callMediaError: 'Microphone or camera unavailable'
 } satisfies BaseTranslation
 
 export default en

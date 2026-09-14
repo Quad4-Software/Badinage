@@ -26,6 +26,17 @@ test('demo mode opens a conversation and sends a message', async ({ page }) => {
   await expect(page.locator('ol').getByText('hello from the test')).toBeVisible()
 })
 
+test('demo mode hides call buttons', async ({ page }) => {
+  await enterDemo(page)
+  const conversation = page.getByRole('button', { name: /Aria/ }).first()
+  await expect(conversation).toBeVisible({ timeout: 10_000 })
+  await conversation.click()
+  await expect(page.getByLabel(/Message Aria/)).toBeVisible()
+  // the demo transport has no sendJingle so call controls never render
+  await expect(page.getByRole('button', { name: 'Audio call' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Video call' })).toBeHidden()
+})
+
 test('demo mode opens the room and shows its subject', async ({ page }) => {
   await enterDemo(page)
   const room = page.getByRole('button', { name: /lobby/ }).first()

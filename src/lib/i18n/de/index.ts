@@ -537,7 +537,26 @@ const de = {
   extensionTrustAccept: 'Vertrauen und installieren',
   extensionTrustReject: 'Ablehnen',
   extensionConfigure: '{name:string} konfigurieren',
-  extensionNoSettings: 'Diese Erweiterung deklariert keine Einstellungen.'
+  extensionNoSettings: 'Diese Erweiterung deklariert keine Einstellungen.',
+  callAudio: 'Audioanruf',
+  callVideo: 'Videoanruf',
+  callIncoming: 'Eingehender Anruf',
+  callAccept: 'Annehmen',
+  callDecline: 'Ablehnen',
+  callHangUp: 'Auflegen',
+  callMute: 'Stummschalten',
+  callUnmute: 'Stummschaltung aufheben',
+  callCameraOff: 'Kamera ausschalten',
+  callCameraOn: 'Kamera einschalten',
+  callDialing: 'Anruf läuft...',
+  callRinging: 'Es klingelt...',
+  callConnecting: 'Verbinde...',
+  callEnded: 'Anruf beendet',
+  callBusy: 'Besetzt',
+  callDeclined: 'Abgelehnt',
+  callNoAnswer: 'Keine Antwort',
+  callFailed: 'Anruf fehlgeschlagen',
+  callMediaError: 'Mikrofon oder Kamera nicht verfügbar'
 }
 
 export default de

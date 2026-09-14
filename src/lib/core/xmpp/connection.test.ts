@@ -47,7 +47,7 @@ describe('XmppConnection with a stubbed strophe connection', () => {
     xmpp.connect('me@example.net/res', 'secret')
     drive(Strophe.Status.CONNECTED)
 
-    expect(addHandler).toHaveBeenCalledTimes(7)
+    expect(addHandler).toHaveBeenCalledTimes(8)
     const registrations = addHandler.mock.calls.map((c) => ({
       ns: c[1],
       name: c[2],
@@ -60,7 +60,8 @@ describe('XmppConnection with a stubbed strophe connection', () => {
       { ns: 'urn:xmpp:blocking', name: 'iq', type: 'set' },
       { ns: 'urn:xmpp:ping', name: 'iq', type: 'get' },
       { ns: 'http://jabber.org/protocol/disco#info', name: 'iq', type: 'get' },
-      { ns: 'http://jabber.org/protocol/disco#items', name: 'iq', type: 'get' }
+      { ns: 'http://jabber.org/protocol/disco#items', name: 'iq', type: 'get' },
+      { ns: 'urn:xmpp:jingle:1', name: 'iq', type: 'set' }
     ])
 
     const iqs = sendIQ.mock.calls.map((c) => c[0].toString())

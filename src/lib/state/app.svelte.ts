@@ -6,6 +6,7 @@ import { settings } from '$lib/state/settings.svelte'
 import { bareJid } from '$lib/utils/jid'
 
 import { accounts, type Account } from './accounts.svelte'
+import { calls } from './call/call.svelte'
 import type { DeepLink } from './links'
 import type { SharePayload } from '$lib/core/storage/share'
 import { ChatStore, type ChatMessage } from './chats.svelte'
@@ -265,6 +266,12 @@ class AppStore {
       sessions.noteJoinError(error)
     })
 
+    // XEP-0166: inbound jingle actions route to the call store, which
+    // owns the session fsm and the webrtc side
+    account.connection.events.on('jingle', (packet) => {
+      calls.notePacket(account, packet)
+    })
+
     account.connection.events.on(
       'message',
       messageHandler(account, store, () => this.activePeer)
@@ -304,6 +311,7 @@ class AppStore {
   // wait for it before deleting the account's persisted data.
   releaseAccount(jid: string): Promise<void> {
     this.bound.delete(jid)
+    calls.releaseAccount(jid)
     this.roomSessions.get(jid)?.dispose()
     this.roomSessions.delete(jid)
     const store = this.chats.get(jid)

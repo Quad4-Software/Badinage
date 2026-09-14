@@ -534,7 +534,26 @@ const pt = {
   extensionTrustAccept: 'Confiar e instalar',
   extensionTrustReject: 'Rejeitar',
   extensionConfigure: 'Configurar {name:string}',
-  extensionNoSettings: 'Esta extensão não declara definições.'
+  extensionNoSettings: 'Esta extensão não declara definições.',
+  callAudio: 'Chamada de voz',
+  callVideo: 'Chamada de vídeo',
+  callIncoming: 'Chamada recebida',
+  callAccept: 'Atender',
+  callDecline: 'Recusar',
+  callHangUp: 'Desligar',
+  callMute: 'Silenciar',
+  callUnmute: 'Reativar som',
+  callCameraOff: 'Desligar a câmera',
+  callCameraOn: 'Ligar a câmera',
+  callDialing: 'Chamando...',
+  callRinging: 'Tocando...',
+  callConnecting: 'Conectando...',
+  callEnded: 'Chamada encerrada',
+  callBusy: 'Ocupado',
+  callDeclined: 'Recusada',
+  callNoAnswer: 'Sem resposta',
+  callFailed: 'A chamada falhou',
+  callMediaError: 'Microfone ou câmera indisponíveis'
 }
 
 export default pt

@@ -7,6 +7,7 @@ import { $iq } from 'strophe.js'
 import type { Emitter } from '$lib/core/events'
 import { bareJid } from '$lib/utils/jid'
 
+import { parseJingle } from '../jingle/stanzas'
 import { NS } from '../ns'
 import {
   parseBlockPush,
@@ -158,6 +159,24 @@ export function handlePing(
   conn: XmppTransport
 ): boolean {
   replyResult(stanza, conn)
+  return true
+}
+
+// XEP-0166: inbound jingle iqs get an iq-level ack and are handed to
+// the call layer through the jingle event. Malformed payloads get a
+// stanza error instead of leaving the sender waiting on a result
+export function handleJingle(
+  stanza: Element,
+  events: Emitter<ConnectionEvents>,
+  conn: XmppTransport
+): boolean {
+  const packet = parseJingle(stanza)
+  if (!packet) {
+    replyError(stanza, conn, 'bad-request')
+    return true
+  }
+  replyResult(stanza, conn)
+  events.emit('jingle', packet)
   return true
 }
 

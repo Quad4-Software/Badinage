@@ -23,10 +23,10 @@
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { presenceClass, presenceLabel } from '$lib/ui/presence'
   import { cn } from '$lib/utils/cn'
-
   import { Sheet } from '$lib/ui/primitives/sheet'
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
+  import CallButtons from '../call/call-buttons.svelte'
   import ChangeNickDialog from '../dialogs/change-nick-dialog.svelte'
   import InviteUserDialog from '../dialogs/invite-user-dialog.svelte'
   import RoomConfigDialog from '../dialogs/room-config-dialog.svelte'
@@ -78,7 +78,6 @@
   )
   const splitRooms = $derived(splitChoices.filter((c) => c.room))
   const splitDms = $derived(splitChoices.filter((c) => !c.room))
-
   let showOccupants = $state(false)
   let confirmBlock = $state(false)
   let dragOver = $state(false)
@@ -429,6 +428,7 @@
               </Button>
             {/if}
             {#if !isRoom}
+              <CallButtons {account} conversation={conv} />
               <OptionsMenu
                 conversation={conv}
                 room={false}

@@ -43,6 +43,13 @@ export const DISCO_FEATURES: readonly string[] = [
   NS.RTT,
   NS.GEOLOC,
   NS.EPHEMERAL,
+  // XEP-0166/0167/0176: jingle rtp calls over ice-udp. Advertising is
+  // what lets peers offer us audio and video sessions
+  NS.JINGLE,
+  NS.JINGLE_RTP,
+  NS.JINGLE_RTP_AUDIO,
+  NS.JINGLE_RTP_VIDEO,
+  NS.JINGLE_ICE,
   // PEP auto-subscription: advertising +notify makes the server send us
   // bookmark and displayed-marker changes made by our other clients
   `${NS.BOOKMARKS}+notify`,

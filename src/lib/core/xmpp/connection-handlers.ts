@@ -10,6 +10,7 @@ import {
   handleBlockPush,
   handleDiscoInfoGet,
   handleDiscoItemsGet,
+  handleJingle,
   handleMessage,
   handlePing,
   handlePresence,
@@ -87,4 +88,6 @@ export function registerStanzaHandlers(
   // in presence into a feature list
   conn.addHandler((stanza) => handleDiscoInfoGet(stanza, transport), NS.DISCO_INFO, 'iq', 'get')
   conn.addHandler((stanza) => handleDiscoItemsGet(stanza, transport), NS.DISCO_ITEMS, 'iq', 'get')
+  // XEP-0166: jingle session actions arrive as iq set stanzas
+  conn.addHandler((stanza) => handleJingle(stanza, events, transport), NS.JINGLE, 'iq', 'set')
 }

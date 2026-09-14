@@ -530,7 +530,26 @@ const zh = {
   extensionTrustAccept: '信任并安装',
   extensionTrustReject: '拒绝',
   extensionConfigure: '配置 {name:string}',
-  extensionNoSettings: '此扩展未声明任何设置。'
+  extensionNoSettings: '此扩展未声明任何设置。',
+  callAudio: '语音通话',
+  callVideo: '视频通话',
+  callIncoming: '来电',
+  callAccept: '接听',
+  callDecline: '拒绝',
+  callHangUp: '挂断',
+  callMute: '静音',
+  callUnmute: '取消静音',
+  callCameraOff: '关闭摄像头',
+  callCameraOn: '打开摄像头',
+  callDialing: '正在呼叫...',
+  callRinging: '正在响铃...',
+  callConnecting: '正在连接...',
+  callEnded: '通话已结束',
+  callBusy: '忙线中',
+  callDeclined: '已拒绝',
+  callNoAnswer: '无人接听',
+  callFailed: '通话失败',
+  callMediaError: '麦克风或摄像头不可用'
 }
 
 export default zh

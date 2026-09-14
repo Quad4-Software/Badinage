@@ -56,7 +56,11 @@ Status: done | partial | planned | deferred
 | XEP-0493      | OAuth client login         | done     | empty-token probe, discovery, registration, PKCE, OAUTHBEARER                      |
 | XEP-0147      | XMPP URI scheme            | done     | xmpp: link parsing, web+xmpp protocol handler, deep links                          |
 | XEP-0080      | User location              | done     | geoloc send/receive, envelope-carrying, tile preview card                          |
-| XEP-0166/0267 | Jingle / file transfer     | deferred | call signaling research done, implementation open                                  |
+| XEP-0166      | Jingle                     | done     | session initiate/accept/terminate, transport-info trickle, IQ acks                 |
+| XEP-0167      | Jingle RTP sessions        | done     | audio/video contents, SDP mapping, rtp info (ringing/active)                       |
+| XEP-0176/0320 | Jingle ICE-UDP / DTLS-SRTP | done     | candidate trickle, fingerprint transport                                           |
+| XEP-0215      | External service discovery | done     | STUN/TURN from the server feed WebRTC ICE config, no bundled relay                 |
+| XEP-0267      | Jingle file transfer       | deferred | signaling layer exists, file contents not implemented                              |
 | XEP-0186      | Invisible command          | done     | privacy-list presence-out deny, presence picker toggle                             |
 | XEP-0224      | Attention                  | done     | buzz send/receive, notification + sound, per-chat gate                             |
 | XEP-0301      | In-band real time text     | partial  | send/apply ops, live preview in header, no cursor tracking                         |

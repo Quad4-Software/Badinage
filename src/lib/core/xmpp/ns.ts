@@ -91,6 +91,20 @@ export const NS = {
   PRIVACY: 'jabber:iq:privacy',
   // XEP-0433 extended channel search iq payload
   CHANNEL_SEARCH: 'urn:xmpp:channel-search:0:search',
+  // XEP-0166 jingle session signaling
+  JINGLE: 'urn:xmpp:jingle:1',
+  // XEP-0167 rtp payload descriptions and media feature strings
+  JINGLE_RTP: 'urn:xmpp:jingle:apps:rtp:1',
+  JINGLE_RTP_AUDIO: 'urn:xmpp:jingle:apps:rtp:audio',
+  JINGLE_RTP_VIDEO: 'urn:xmpp:jingle:apps:rtp:video',
+  // XEP-0176 ice-udp transport inside jingle contents
+  JINGLE_ICE: 'urn:xmpp:jingle:transports:ice-udp:1',
+  // XEP-0320 dtls fingerprint inside the ice transport
+  JINGLE_DTLS: 'urn:xmpp:jingle:apps:dtls:0',
+  // XEP-0166 jingle-specific error conditions
+  JINGLE_ERRORS: 'urn:xmpp:jingle:errors:1',
+  // XEP-0215 external service discovery for stun and turn
+  EXTDISCO: 'urn:xmpp:extdisco:2',
   // RFC 6120 stanza error conditions
   STANZA_ERROR: 'urn:ietf:params:xml:ns:xmpp-stanzas'
 } as const

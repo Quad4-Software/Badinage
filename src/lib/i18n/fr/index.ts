@@ -534,7 +534,26 @@ const fr = {
   extensionTrustAccept: 'Faire confiance et installer',
   extensionTrustReject: 'Refuser',
   extensionConfigure: 'Configurer {name:string}',
-  extensionNoSettings: "Cette extension ne déclare aucun réglage."
+  extensionNoSettings: "Cette extension ne déclare aucun réglage.",
+  callAudio: 'Appel audio',
+  callVideo: 'Appel vidéo',
+  callIncoming: 'Appel entrant',
+  callAccept: 'Accepter',
+  callDecline: 'Refuser',
+  callHangUp: 'Raccrocher',
+  callMute: 'Couper le micro',
+  callUnmute: 'Réactiver le micro',
+  callCameraOff: 'Couper la caméra',
+  callCameraOn: 'Activer la caméra',
+  callDialing: 'Appel en cours...',
+  callRinging: 'Ça sonne...',
+  callConnecting: 'Connexion...',
+  callEnded: 'Appel terminé',
+  callBusy: 'Occupé',
+  callDeclined: 'Refusé',
+  callNoAnswer: 'Pas de réponse',
+  callFailed: "Échec de l'appel",
+  callMediaError: 'Micro ou caméra indisponible'
 }
 
 export default fr

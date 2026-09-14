@@ -26,6 +26,7 @@
   import ShareDialog from '$lib/ui/components/dialogs/share-dialog.svelte'
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
+  import CallOverlay from '$lib/ui/components/call/call-overlay.svelte'
   import CommandPalette from '$lib/ui/components/shell/command-palette.svelte'
   import ContextMenuHost from '$lib/ui/components/context-menu/host.svelte'
   import CrashView from '$lib/ui/components/shell/crash-view.svelte'
@@ -257,6 +258,7 @@
   {/if}
   <CommandPalette />
   <ContextMenuHost />
+  <CallOverlay />
 
   <Dialog bind:open={app.loginOpen}>
     <DialogContent>

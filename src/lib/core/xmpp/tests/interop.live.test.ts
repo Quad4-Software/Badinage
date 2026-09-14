@@ -11,6 +11,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { XmppConnection } from '../connection'
 import { RegisterError, registerAccount } from '../register'
+import { servicesToIceServers, type ExtService } from '../jingle/extdisco'
+import { jingleIq } from '../jingle/stanzas'
+import type { JinglePacket } from '../jingle/types'
 import type { ConnectionStatus } from '../types'
 import type { IncomingMessage, MucOccupant } from '../stanzas'
 
@@ -21,6 +24,8 @@ const MUC = process.env.XMPP_INTEROP_MUC ?? `conference.${DOMAIN}`
 // ejabberd isolate it on anon.localhost, openfire allows it on the
 // main domain
 const ANON = process.env.XMPP_INTEROP_ANON ?? ''
+// set when the server under test advertises XEP-0215 services
+const EXTDISCO = process.env.XMPP_INTEROP_EXTDISCO === '1'
 const PASS = 'interop-pass'
 const TIMEOUT = 20_000
 
@@ -141,5 +146,60 @@ describe.skipIf(!WS)('XmppConnection interop', () => {
     const message = await inbound
     expect(message.type).toBe('groupchat')
     expect(message.from).toBe(`${room}/a`)
+  })
+
+  it('delivers a jingle session-initiate between clients', { timeout: 40_000 }, async () => {
+    const a = await client(alice)
+    const b = await client(bob)
+    const received = new Promise<JinglePacket>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('jingle timed out')), TIMEOUT)
+      const off = b.events.on('jingle', (packet) => {
+        if (packet.action === 'session-initiate') {
+          clearTimeout(timer)
+          off()
+          resolve(packet)
+        }
+      })
+    })
+    // jingle needs a full jid: the interop resource is fixed in client()
+    const acked = new Promise<boolean>((resolve) => {
+      a.sendJingle?.(
+        jingleIq(a, `${bob}@${DOMAIN}/interop`, {
+          action: 'session-initiate',
+          sid: `s-${run}`,
+          initiator: `${alice}@${DOMAIN}/interop`,
+          contents: [
+            {
+              name: '0',
+              media: 'audio',
+              creator: 'initiator',
+              senders: 'both',
+              payloads: [{ id: '111', name: 'opus', clockrate: '48000' }],
+              transport: { ufrag: 'u', pwd: 'p', candidates: [] }
+            }
+          ]
+        }),
+        resolve
+      )
+    })
+    const packet = await received
+    expect(packet.sid).toBe(`s-${run}`)
+    expect(packet.from).toBe(`${alice}@${DOMAIN}/interop`)
+    // the responder acked the iq: our jingle handler replied result
+    expect(await acked).toBe(true)
+  })
+
+  it.skipIf(!EXTDISCO)('discovers stun services over XEP-0215', { timeout: 40_000 }, async () => {
+    const a = await client(alice)
+    const services = await new Promise<ExtService[]>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('extdisco timed out')), TIMEOUT)
+      a.externalServices?.((found) => {
+        clearTimeout(timer)
+        resolve(found)
+      })
+    })
+    expect(services.length).toBeGreaterThan(0)
+    const ice = servicesToIceServers(services)
+    expect(ice.some((s) => String(s.urls).startsWith('stun:'))).toBe(true)
   })
 })

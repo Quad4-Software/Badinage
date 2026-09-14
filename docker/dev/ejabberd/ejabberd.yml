@@ -90,6 +90,16 @@ modules:
   mod_roster:
     versioning: true
   mod_stream_mgmt: {}
+  mod_stun_disco:
+    # dev only: advertises a public stun so XEP-0215 discovery is
+    # exercisable. No local relay is run.
+    access: all
+    secret: "dev-secret"
+    services:
+      - type: stun
+        host: stun.l.google.com
+        port: 19302
+        restricted: false
   mod_time: {}
   mod_vcard: {}
   mod_version:

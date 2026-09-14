@@ -15,11 +15,14 @@
 #
 # ejabberd listens on 15280 (WebSocket at /websocket, same shape as
 # prosody: register in-band at login or sign in anonymously on the
-# anon.localhost host). Openfire listens on 17070 (WebSocket at /ws/,
-# BOSH at /http-bind/). It self-provisions from openfire.xml on first
-# boot: domain localhost, embedded database, anonymous auth enabled.
+# anon.localhost host). Its mod_stun_disco advertises a public stun
+# server over XEP-0215 for the calls feature. Openfire listens on
+# 17070 (WebSocket at /ws/, BOSH at /http-bind/). It self-provisions
+# from openfire.xml on first boot: domain localhost, embedded
+# database, anonymous auth enabled.
 # The xmpp interop vitest suite exercises all three:
 #   XMPP_INTEROP_WS=ws://localhost:15280/websocket \
+#     XMPP_INTEROP_EXTDISCO=1 \
 #     pnpm vitest run src/lib/core/xmpp/tests/interop.live.test.ts
 
 services:

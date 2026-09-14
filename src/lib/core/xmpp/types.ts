@@ -7,6 +7,9 @@
 import type { Emitter } from '$lib/core/events'
 
 import type { PepPublishOptions } from './features/pep/pep'
+import type { StanzaBuilder } from './features/transport'
+import type { ExtService } from './jingle/extdisco'
+import type { JinglePacket } from './jingle/types'
 import type { RttEvent, RttOp } from '$lib/utils/protocol/rtt'
 
 import type {
@@ -62,10 +65,8 @@ export interface TransportCapabilities {
   registration: boolean
 }
 
-interface SubscriptionRequest {
-  from: string
-  status: string
-}
+// chat = dm, groupchat = muc message type on the wire
+export type ChatKind = 'chat' | 'groupchat'
 
 // XEP-0461 reply target: id is the replied-to stanza id, plus its author
 // jid. The author can be named to (wire attribute style) or from (the
@@ -104,7 +105,7 @@ export type ConnectionEvents = {
   roster: RosterItem[]
   rosterUpdate: RosterItem
   rosterRemove: string
-  subscriptionRequest: SubscriptionRequest
+  subscriptionRequest: { from: string; status: string }
   occupant: MucOccupant
   // XEP-0191 pushes: jids the server added to or removed from the
   // blocklist. An empty unblocked list means the list was cleared.
@@ -129,6 +130,8 @@ export type ConnectionEvents = {
   // IRC draft/read-marker: another client moved the read cursor to this
   // timestamp (ms). stanza-id based markers come through mds instead
   readMarker: { peer: string; timestamp: number }
+  // XEP-0166 jingle session actions, iq-level acked on receipt
+  jingle: JinglePacket
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
@@ -143,19 +146,9 @@ export interface ChatConnection {
   connect(jid: string, password: string): void
   disconnect(): void
   uniqueId(prefix: string): string
-  sendChatMessage(
-    to: string,
-    body: string,
-    type?: 'chat' | 'groupchat',
-    opts?: SendMessageOptions
-  ): string
-  sendReaction(to: string, targetId: string, emojis: string[], type?: 'chat' | 'groupchat'): void
-  sendAttachment(
-    to: string,
-    url: string,
-    type?: 'chat' | 'groupchat',
-    meta?: AttachmentMeta
-  ): string
+  sendChatMessage(to: string, body: string, type?: ChatKind, opts?: SendMessageOptions): string
+  sendReaction(to: string, targetId: string, emojis: string[], type?: ChatKind): void
+  sendAttachment(to: string, url: string, type?: ChatKind, meta?: AttachmentMeta): string
   // Optional on the interface because demo mode has no upload service to
   // discover. RequestUploadSlot covers the whole flow.
   discoverUploadService?(onDone: (serviceJid: string | null) => void): void
@@ -172,7 +165,7 @@ export interface ChatConnection {
     onProgress?: (fraction: number) => void,
     signal?: AbortSignal
   ): Promise<void>
-  sendChatState(to: string, state: ChatState, type?: 'chat' | 'groupchat'): void
+  sendChatState(to: string, state: ChatState, type?: ChatKind): void
   sendReceipt(to: string, id: string): void
   sendMarker(to: string, id: string, marker: MarkerType): void
   sendPresence(show?: string, status?: string): void
@@ -202,7 +195,7 @@ export interface ChatConnection {
   // OMEMO: send a pre-encrypted message stanza. encryptedXml is the
   // serialized <encrypted> element produced by the omemo service. Replies
   // and corrections travel inside its SCE envelope, never in the clear.
-  sendEncryptedMessage(to: string, encryptedXml: string, type?: 'chat' | 'groupchat'): string
+  sendEncryptedMessage(to: string, encryptedXml: string, type?: ChatKind): string
   // OMEMO: send a bare encrypted payload with no fallback body - used for
   // key transports, reactions and chat states in encrypted conversations.
   sendEncryptedNotification(to: string, encryptedXml: string): void
@@ -257,7 +250,7 @@ export interface ChatConnection {
   // XEP-0424: retract a message we sent. targetId is the stanza id
   // attribute for a dm, the room stanza-id (or origin-id when the room
   // does not assign them) for a muc message.
-  sendRetraction(to: string, targetId: string, type?: 'chat' | 'groupchat'): void
+  sendRetraction(to: string, targetId: string, type?: ChatKind): void
   // XEP-0030 service discovery. discoInfo resolves null on error or
   // timeout. A node of the form base#ver is served from the entity-caps
   // cache when the verification string was already resolved before.
@@ -270,7 +263,7 @@ export interface ChatConnection {
   removeBookmark(jid: string, onDone?: (ok: boolean) => void): void
   // XEP-0224: send an attention request. No body - the stanza is a pure
   // signal and receivers rate-limit it.
-  sendAttention(to: string, type?: 'chat' | 'groupchat'): void
+  sendAttention(to: string, type?: ChatKind): void
   // XEP-0301: send one real-time text update. seq increments per edit of
   // the same composed message. Event and ops carry the delta.
   sendRtt(to: string, seq: number, event: RttEvent, ops: RttOp[]): void
@@ -288,6 +281,12 @@ export interface ChatConnection {
   // XEP-0301: one disco#info probe resolving whether the peer advertises
   // real-time text support. Results cache in the disco layer.
   rttSupported(jid: string, onDone: (supported: boolean) => void): void
+  // XEP-0166 jingle calls. Optional on the interface because IRC and
+  // demo place no calls - the ui hides call controls when absent
+  sendJingle?(stanza: StanzaBuilder, onDone?: (ok: boolean) => void): void
+  jingleSupported?(jid: string, onDone: (supported: boolean) => void): void
+  // XEP-0215: stun and turn relays our own server advertises
+  externalServices?(onDone: (services: ExtService[]) => void): void
   // XEP-0433: fetch the search form a channel search service offers, or
   // null when the jid does not run the protocol
   channelSearchForm(service: string, onDone: (form: DataForm | null) => void): void
