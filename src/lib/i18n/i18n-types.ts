@@ -516,6 +516,14 @@ type RootTranslation = {
 	 */
 	copyMessage: string
 	/**
+	 * C​o​p​y​ ​l​i​n​k
+	 */
+	copyLink: string
+	/**
+	 * O​p​e​n​ ​l​i​n​k
+	 */
+	openLink: string
+	/**
 	 * M​e​s​s​a​g​e​ ​a​c​t​i​o​n​s
 	 */
 	messageActions: string
@@ -2346,6 +2354,14 @@ export type TranslationFunctions = {
 	 * Copy message text
 	 */
 	copyMessage: () => LocalizedString
+	/**
+	 * Copy link
+	 */
+	copyLink: () => LocalizedString
+	/**
+	 * Open link
+	 */
+	openLink: () => LocalizedString
 	/**
 	 * Message actions
 	 */

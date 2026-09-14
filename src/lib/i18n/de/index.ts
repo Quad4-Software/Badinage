@@ -127,6 +127,8 @@ const de = {
   uploading: 'Anhang wird hochgeladen',
   cancelUpload: 'Upload abbrechen',
   copyMessage: 'Nachrichtentext kopieren',
+  copyLink: 'Link kopieren',
+  openLink: 'Link öffnen',
   messageActions: 'Nachrichtenaktionen',
   scrollToLatest: 'Zur neuesten Nachricht springen',
   attachFile: 'Datei anhängen',

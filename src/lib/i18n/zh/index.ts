@@ -125,6 +125,8 @@ const zh = {
   uploading: '正在上传附件',
   cancelUpload: '取消上传',
   copyMessage: '复制消息文本',
+  copyLink: '复制链接',
+  openLink: '打开链接',
   messageActions: '消息操作',
   scrollToLatest: '跳到最新消息',
   attachFile: '添加文件',

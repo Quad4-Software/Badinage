@@ -41,6 +41,8 @@
   import { createChatActions } from './chat-view/actions'
   import { ephemeralLabel } from './chat-view/ephemeral'
   import OptionsMenu from './chat-view/options-menu.svelte'
+  import { contextArea } from '../context-menu/area'
+  import { conversationMenu } from './sidebar/row-menu.svelte'
 
   // peer: which conversation this pane shows. split: true when rendered in a
   // secondary pane (has its own conversation picker + close button).
@@ -261,7 +263,15 @@
             {$LL.dropToSend()}
           </div>
         {/if}
-        <div class="flex items-center gap-2 p-3">
+        <div
+          class="flex items-center gap-2 p-3"
+          {@attach contextArea({
+            section: 'chat.header',
+            payload: { jid: conv.peerJid, kind: conv.kind },
+            items: () => conversationMenu(conv, account),
+            skip: (t) => t.closest('button, a') !== null
+          })}
+        >
           {#if !split}
             <Button
               variant="ghost"

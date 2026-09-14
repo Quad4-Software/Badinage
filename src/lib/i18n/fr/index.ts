@@ -125,6 +125,8 @@ const fr = {
   uploading: 'Envoi de la pièce jointe',
   cancelUpload: 'Annuler l\'envoi',
   copyMessage: 'Copier le texte du message',
+  copyLink: 'Copier le lien',
+  openLink: 'Ouvrir le lien',
   messageActions: 'Actions du message',
   scrollToLatest: 'Aller au dernier message',
   attachFile: 'Joindre un fichier',

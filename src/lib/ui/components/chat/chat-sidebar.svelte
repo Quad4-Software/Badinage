@@ -16,7 +16,13 @@
   import ContactRow from './sidebar/contact-row.svelte'
   import ConversationRow from './sidebar/conversation-row.svelte'
   import RoomInvites from './sidebar/room-invites.svelte'
-  import { conversationMenu } from './sidebar/row-menu.svelte'
+  import { contextArea } from '../context-menu/area'
+  import {
+    bookmarkMenu,
+    contactMenu,
+    conversationMenu,
+    sidebarMenu
+  } from './sidebar/row-menu.svelte'
   import SidebarHeader from './sidebar/sidebar-header.svelte'
   import SidebarSection from './sidebar/sidebar-section.svelte'
   import SubscriptionRequests from './sidebar/subscription-requests.svelte'
@@ -103,7 +109,16 @@
   <Separator />
 
   <ScrollArea class="flex-1">
-    <nav class="flex flex-col gap-0.5 p-2" aria-label={$LL.conversations()}>
+    <nav
+      class="flex flex-col gap-0.5 p-2"
+      aria-label={$LL.conversations()}
+      {@attach contextArea({
+        section: 'sidebar.background',
+        items: sidebarMenu,
+        // rows and section buttons own their clicks, bare space only
+        skip: (t) => t.closest('button, a, input') !== null
+      })}
+    >
       <SubscriptionRequests requests={subscriptions} />
       <RoomInvites invites={roomInvites} />
 
@@ -154,7 +169,11 @@
       {#if bookmarks.length > 0}
         <SidebarSection title={$LL.bookmarks()} bind:expanded={showBookmarks}>
           {#each bookmarks as bookmark (bookmark.jid)}
-            <BookmarkRow {bookmark} onSelect={() => openBookmark(bookmark)} />
+            <BookmarkRow
+              {bookmark}
+              onSelect={() => openBookmark(bookmark)}
+              menuItems={() => bookmarkMenu(bookmark, account)}
+            />
           {/each}
         </SidebarSection>
       {/if}
@@ -176,6 +195,7 @@
             {contact}
             blocked={account?.isBlocked(contact.jid) ?? false}
             onSelect={() => open(contact.jid)}
+            menuItems={() => contactMenu(contact, account)}
           />
         {:else}
           {#if q}

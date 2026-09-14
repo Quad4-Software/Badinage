@@ -3,8 +3,20 @@
 // every other dictionary lazy-loads on first pick.
 
 import { setLocale } from '$lib/i18n/i18n-svelte'
-import type { Locales } from '$lib/i18n/i18n-types'
-import { loadLocaleAsync } from '$lib/i18n/i18n-util.async'
+import type { Locales, Translations } from '$lib/i18n/i18n-types'
+import { loadedLocales } from '$lib/i18n/i18n-util'
+import { loadFormatters, loadLocaleAsync } from '$lib/i18n/i18n-util.async'
+
+import en from './en/index'
+
+// registers the bundled base dictionary at boot. The generated sync
+// loader statically imports every locale, which would drag them all
+// into the entry chunk and defeat the lazy ones
+export function initBaseLocale(): void {
+  if (loadedLocales.en) return
+  loadedLocales.en = en as unknown as Translations
+  loadFormatters('en')
+}
 
 // languages the app ships dictionaries for, labeled by endonym so the
 // picker reads the same in every language

@@ -125,6 +125,8 @@ const pt = {
   uploading: 'Enviando anexo',
   cancelUpload: 'Cancelar envio',
   copyMessage: 'Copiar texto da mensagem',
+  copyLink: 'Copiar link',
+  openLink: 'Abrir link',
   messageActions: 'Ações da mensagem',
   scrollToLatest: 'Ir para a mensagem mais recente',
   attachFile: 'Anexar arquivo',

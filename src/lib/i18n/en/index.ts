@@ -125,6 +125,8 @@ const en = {
   uploading: 'Uploading attachment',
   cancelUpload: 'Cancel upload',
   copyMessage: 'Copy message text',
+  copyLink: 'Copy link',
+  openLink: 'Open link',
   messageActions: 'Message actions',
   scrollToLatest: 'Jump to latest message',
   attachFile: 'Attach file',

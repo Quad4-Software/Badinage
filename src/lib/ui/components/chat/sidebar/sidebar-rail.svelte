@@ -16,7 +16,7 @@
   import PeerAvatar from '../peer-avatar.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
   import LanguageMenu from './language-menu.svelte'
-  import { conversationMenu } from './row-menu.svelte'
+  import { accountMenu, conversationMenu } from './row-menu.svelte'
 
   const account = $derived(accounts.active)
   const isIrc = $derived(account?.options.protocol === 'irc')
@@ -82,20 +82,6 @@
       )
     }
     return items
-  }
-
-  function accountMenu(): MenuItem[] {
-    if (!account) return []
-    const jid = account.jid
-    return [
-      { id: 'copy', label: $LL.copyAddress(), icon: Copy, run: () => void copyText(jid) },
-      {
-        id: 'settings',
-        label: $LL.openSettings(),
-        icon: Settings,
-        run: () => (app.settingsOpen = true)
-      }
-    ]
   }
 </script>
 
@@ -206,7 +192,7 @@
         {@attach contextArea({
           section: 'sidebar.account',
           payload: { jid: account.jid },
-          items: accountMenu
+          items: () => accountMenu(account)
         })}
       >
         <PeerAvatar
@@ -227,7 +213,7 @@
         {@attach contextArea({
           section: 'sidebar.account',
           payload: { jid: account.jid },
-          items: accountMenu
+          items: () => accountMenu(account)
         })}
       >
         <PeerAvatar

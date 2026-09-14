@@ -13,6 +13,8 @@
 
   import { presenceLabel, presenceRingClass } from '$lib/ui/presence'
 
+  import { contextArea } from '../context-menu/area'
+  import { accountMenu } from '../chat/sidebar/row-menu.svelte'
   import PeerAvatar from '../chat/peer-avatar.svelte'
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PresenceMenu from '../presence/presence-menu.svelte'
@@ -22,7 +24,14 @@
   let confirmRemove = $state<string | null>(null)
 </script>
 
-<div class="flex items-center gap-2">
+<div
+  class="flex items-center gap-2"
+  {@attach contextArea({
+    section: 'sidebar.account',
+    payload: { jid: active?.jid },
+    items: () => accountMenu(active)
+  })}
+>
   <DropdownMenu.Root bind:open={menuOpen}>
     <DropdownMenu.Trigger class="min-w-0 flex-1">
       {#snippet child({ props })}

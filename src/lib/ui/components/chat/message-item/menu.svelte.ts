@@ -13,6 +13,7 @@ import type { MenuItem } from '$lib/state/app/menus.svelte'
 import { copyText } from '$lib/ui/clipboard'
 
 import { contextArea } from '../../context-menu/area'
+import { linkMenuItems } from '../../context-menu/link-items.svelte'
 
 export interface MessageMenuHandlers {
   onReply?: ((message: ChatMessage) => void) | undefined
@@ -37,7 +38,9 @@ export function messageMenu(
       outgoing: message.outgoing,
       body: message.body
     },
-    items: () => buildItems(message, canModerate, el, openPicker, cb)
+    items: () => buildItems(message, canModerate, el, openPicker, cb),
+    // links inside the body get copy/open rather than the message menu
+    link: (href) => ({ section: 'chat.link', payload: { url: href }, items: linkMenuItems(href) })
   })
 }
 

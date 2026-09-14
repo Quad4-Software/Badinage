@@ -24,6 +24,9 @@
     const index = items.indexOf(document.activeElement as HTMLElement)
     if (event.key === 'Escape') {
       event.preventDefault()
+      // keep the global keymap from seeing this, or Escape would
+      // also close the active conversation behind the menu
+      event.stopPropagation()
       menus.close()
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
@@ -45,12 +48,13 @@
 
   $effect(() => {
     if (!open) return
-    window.addEventListener('keydown', onKeydown)
+    // capture so a consumed key never reaches the global keymap
+    window.addEventListener('keydown', onKeydown, true)
     window.addEventListener('pointerdown', onPointerDown, true)
     window.addEventListener('resize', menus.close)
     window.addEventListener('blur', menus.close)
     return () => {
-      window.removeEventListener('keydown', onKeydown)
+      window.removeEventListener('keydown', onKeydown, true)
       window.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('resize', menus.close)
       window.removeEventListener('blur', menus.close)
@@ -102,6 +106,8 @@
         >
           {#if Icon}
             <Icon class="size-4 shrink-0" />
+          {:else}
+            <span class="size-4 shrink-0"></span>
           {/if}
           <span class="flex-1 truncate">{item.label}</span>
         </button>

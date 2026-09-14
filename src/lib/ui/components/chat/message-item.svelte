@@ -101,11 +101,9 @@
   const actionClass =
     'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded'
 
-  // picker state is shared between the action bar trigger and the
-  // reaction-row trigger, so it lives here and binds into the child.
-  // The picker itself portals to body and anchors to the trigger rect:
-  // inside the scrollable list an absolute wrapper got clipped against
-  // the composer and could stack under sibling panes
+  // the picker portals to body and anchors to the trigger rect: inside
+  // the scrollable list an absolute wrapper got clipped against the
+  // composer and could stack under sibling panes
   let pickerOpen = $state(false)
   let pickerStyle = $state('')
   let pickerTrigger = $state<HTMLElement | null>(null)
@@ -114,10 +112,7 @@
   const menuHandlers = $derived({ onReply, onEdit, onRetract, onModerate, onDismiss })
 
   function openPicker(anchor: 'top' | 'bottom', trigger: HTMLElement) {
-    if (pickerOpen) {
-      closePicker()
-      return
-    }
+    if (pickerOpen) return closePicker()
     pickerTrigger = trigger
     pickerStyle = anchorStyle(trigger.getBoundingClientRect(), {
       anchor,
@@ -158,7 +153,10 @@
   {/if}
 {/snippet}
 
-<div class={cn('group flex items-end gap-2', message.outgoing && 'justify-end')}>
+<div
+  class={cn('group flex items-end gap-2', message.outgoing && 'justify-end')}
+  {@attach messageMenu(message, canModerate, () => bubbleEl, openPicker, menuHandlers)}
+>
   {#if !message.outgoing}
     {#if showAvatar}
       <PeerAvatar jid={avatarJid} fallback={initials} force={avatarForce} class="size-7" />
@@ -188,7 +186,6 @@
       {@attach longPress(() => {
         if (!message.retracted && !message.pending) onLongPress?.(message)
       })}
-      {@attach messageMenu(message, canModerate, () => bubbleEl, openPicker, menuHandlers)}
     >
       <div
         class={cn(

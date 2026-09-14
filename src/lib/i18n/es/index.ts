@@ -126,6 +126,8 @@ const es = {
   uploading: 'Subiendo adjunto',
   cancelUpload: 'Cancelar subida',
   copyMessage: 'Copiar texto del mensaje',
+  copyLink: 'Copiar enlace',
+  openLink: 'Abrir enlace',
   messageActions: 'Acciones del mensaje',
   scrollToLatest: 'Ir al último mensaje',
   attachFile: 'Adjuntar archivo',
