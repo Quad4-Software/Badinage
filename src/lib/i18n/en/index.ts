@@ -465,6 +465,30 @@ const en = {
   autoAway: 'Auto-away when idle',
   autoAwayHint:
     'Sets your presence to away after ten minutes without input and restores it on the next keystroke or click.',
+  off: 'Off',
+  appLock: 'App lock',
+  appLockHint:
+    'Seals local keys, history and saved sessions behind a passphrase. Required after every reload or manual lock.',
+  appLockDialogHint:
+    'The passphrase protects this device only. There is no recovery if it is lost.',
+  lockNow: 'Lock now',
+  setPassphrase: 'Set passphrase',
+  changePassphrase: 'Change passphrase',
+  disableLock: 'Disable',
+  disableLockHint:
+    'Local data returns to device-key protection and sessions are stored unsealed.',
+  passphrase: 'Passphrase',
+  passphraseNew: 'New passphrase',
+  passphraseCurrent: 'Current passphrase',
+  passphraseConfirm: 'Confirm passphrase',
+  passphraseWrong: 'Incorrect passphrase',
+  passphraseMismatch: 'Passphrases do not match',
+  passphraseShort: 'Use at least {min:number} characters',
+  unlock: 'Unlock',
+  unlocking: 'Unlocking',
+  lockScreenHint: 'Enter your passphrase to continue',
+  autoLock: 'Auto-lock after idle',
+  autoLockMinutes: '{minutes:number} min',
 
   cmdUnknown: 'Unknown command: /{name:string}',
   cmdRoomOnly: '/{name:string} only works inside a room',

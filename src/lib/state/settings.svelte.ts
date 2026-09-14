@@ -84,6 +84,9 @@ interface Settings {
   // flip presence to away after IDLE_AWAY_MS without input, and back on
   // the next keystroke or pointer event
   autoAway: boolean
+  // app lock: relock after this many idle minutes. 0 means only manual
+  // locks and reloads seal the profile
+  lockAfterMinutes: number
   // ui language as a typesafe-i18n locale code. Empty means follow the
   // browser's navigator.language
   locale: string
@@ -118,6 +121,7 @@ const DEFAULT_SETTINGS: Settings = {
   mapPreviews: false,
   xmppLinkHandler: false,
   autoAway: true,
+  lockAfterMinutes: 0,
   locale: '',
   allowUnsignedExtensions: false,
   theme: 'default',

@@ -163,6 +163,11 @@ export const GEOLOC_TILE_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.
 export const IDLE_AWAY_MS = 10 * 60 * 1000
 export const IDLE_CHECK_MS = 30_000
 
+// app lock: PBKDF2-SHA-256 work factor for the passphrase KEK and the
+// plaintext the canary record must decrypt to
+export const LOCK_PBKDF2_ITERATIONS = 210_000
+export const LOCK_CANARY_TEXT = 'badinage-lock-v1'
+
 // app icon url: root-relative paths 404 when the static build is served
 // under a subpath, so every icon reference goes through BASE_URL
 export const APP_ICON_192 = `${import.meta.env.BASE_URL}icons/icon-192.png`

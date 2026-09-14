@@ -469,6 +469,30 @@ const es = {
   autoAway: 'Ausencia automática al estar inactivo',
   autoAwayHint:
     'Establece tu presencia como ausente tras diez minutos sin actividad y la restaura con la siguiente tecla o clic.',
+  off: 'Desactivado',
+  appLock: 'Bloqueo de la app',
+  appLockHint:
+    'Sella las claves locales, el historial y las sesiones guardadas con una frase de contraseña. Necesaria tras cada recarga o bloqueo manual.',
+  appLockDialogHint:
+    'La frase de contraseña solo protege este dispositivo. No hay recuperación si se pierde.',
+  lockNow: 'Bloquear ahora',
+  setPassphrase: 'Establecer frase de contraseña',
+  changePassphrase: 'Cambiar frase de contraseña',
+  disableLock: 'Desactivar',
+  disableLockHint:
+    'Los datos locales vuelven a la protección con clave del dispositivo y las sesiones se guardan sin sellar.',
+  passphrase: 'Frase de contraseña',
+  passphraseNew: 'Nueva frase de contraseña',
+  passphraseCurrent: 'Frase de contraseña actual',
+  passphraseConfirm: 'Confirmar frase de contraseña',
+  passphraseWrong: 'Frase de contraseña incorrecta',
+  passphraseMismatch: 'Las frases de contraseña no coinciden',
+  passphraseShort: 'Usa al menos {min:number} caracteres',
+  unlock: 'Desbloquear',
+  unlocking: 'Desbloqueando',
+  lockScreenHint: 'Introduce tu frase de contraseña para continuar',
+  autoLock: 'Bloqueo automático por inactividad',
+  autoLockMinutes: '{minutes:number} min',
 
   cmdUnknown: 'Comando desconocido: /{name}',
   cmdRoomOnly: '/{name} solo funciona dentro de una sala',

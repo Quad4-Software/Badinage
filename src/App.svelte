@@ -15,6 +15,7 @@
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
   import { extensions } from '$lib/state/app/extensions.svelte'
   import { app } from '$lib/state/app.svelte'
+  import { appLock } from '$lib/state/app/lock/lock.svelte'
   import { parseDeepLink, shareInbox } from '$lib/state/links'
   import { settings } from '$lib/state/settings.svelte'
   import AddContactDialog from '$lib/ui/components/dialogs/add-contact-dialog.svelte'
@@ -30,6 +31,7 @@
   import CrashView from '$lib/ui/components/shell/crash-view.svelte'
   import DemoBadge from '$lib/ui/components/shell/demo-badge.svelte'
   import Keyboard from '$lib/ui/components/shell/keyboard.svelte'
+  import LockScreen from '$lib/ui/components/shell/lock-screen/lock-screen.svelte'
   import LoginForm from '$lib/ui/components/shell/login-form.svelte'
   import Notifications from '$lib/ui/components/shell/notifications.svelte'
   import StatusToasts from '$lib/ui/components/shell/status-toasts.svelte'
@@ -42,7 +44,8 @@
   } from '$lib/ui/primitives/dialog'
   import { Sonner } from '$lib/ui/primitives/sonner'
   import { TooltipProvider } from '$lib/ui/primitives/tooltip'
-  import { watchIdleAway } from '$lib/ui/idle-away'
+  import { watchIdleAway } from '$lib/ui/idle/away'
+  import { watchIdleLock } from '$lib/ui/idle/lock'
   import {
     currentPrompt,
     queuePrompts,
@@ -89,6 +92,37 @@
     }
   })
 
+  // session boot waits for the app lock: a locked profile restores
+  // nothing until the passphrase lands a KEK in memory
+  let sessionsBooted = $state(false)
+  $effect(() => {
+    if (!appLock.ready || appLock.locked || sessionsBooted) return
+    sessionsBooted = true
+    void (async () => {
+      // XEP-0493 callback: the authorization server redirected back here
+      // with ?code&state. Finish the flow before any session restore so
+      // a remembered password login cannot steal the slot
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      const state = params.get('state')
+      const oauthError = params.get('error')
+      if (code || state || oauthError) {
+        // strip the query so a reload cannot replay a spent code
+        window.history.replaceState(null, '', window.location.pathname)
+        if (code && state) {
+          const result = await accounts.completeOAuth(code, state)
+          if (!result.ok) toast.error($LL.oauthFailed())
+        } else {
+          toast.error($LL.oauthFailed())
+        }
+      } else {
+        for (const options of await restoreSessions()) {
+          void accounts.add(options)
+        }
+      }
+    })()
+  })
+
   onMount(() => {
     // the base dictionary is bundled and stays warm for instant render.
     // A saved pick or the browser language loads its dictionary async
@@ -100,28 +134,8 @@
     // enabled extensions respawn their workers each session
     extensions.hydrate()
 
-    // XEP-0493 callback: the authorization server redirected back here
-    // with ?code&state. Finish the flow before any session restore so a
-    // remembered password login cannot steal the slot
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    const state = params.get('state')
-    const oauthError = params.get('error')
-    if (code || state || oauthError) {
-      // strip the query so a reload cannot replay a spent code
-      window.history.replaceState(null, '', window.location.pathname)
-      if (code && state) {
-        void accounts.completeOAuth(code, state).then((result) => {
-          if (!result.ok) toast.error($LL.oauthFailed())
-        })
-      } else {
-        toast.error($LL.oauthFailed())
-      }
-    } else {
-      for (const options of restoreSessions()) {
-        void accounts.add(options)
-      }
-    }
+    // read the lock config before anything touches sealed storage
+    void appLock.init()
     // XEP-0147 deep links: the web+xmpp protocol handler (manifest or
     // registerProtocolHandler) lands on ?uri=, the in-app form uses
     // #/xmpp/<encoded-uri>. Either way the parsed action waits in
@@ -209,6 +223,10 @@
   // auto-away: flips connected 'online' accounts to 'away' after
   // IDLE_AWAY_MS without input. The next activity restores them
   $effect(() => watchIdleAway())
+
+  // auto-lock: seals the profile after lockAfterMinutes of idle when
+  // the app lock is armed
+  $effect(() => watchIdleLock())
 </script>
 
 <TooltipProvider delayDuration={250}>
@@ -255,7 +273,11 @@
       <CrashView {error} {reset} />
     {/snippet}
 
-    {#if accounts.list.length === 0}
+    {#if !appLock.ready}
+      <main class="h-full"></main>
+    {:else if appLock.locked}
+      <LockScreen />
+    {:else if accounts.list.length === 0}
       <main class="h-full">
         <LoginForm />
       </main>

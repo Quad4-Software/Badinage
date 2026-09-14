@@ -466,6 +466,30 @@ const fr = {
   autoAway: 'Absence automatique en cas d\'inactivité',
   autoAwayHint:
     'Définit votre présence sur absent après dix minutes sans saisie et la restaure à la prochaine frappe ou au prochain clic.',
+  off: 'Désactivé',
+  appLock: "Verrouillage de l'app",
+  appLockHint:
+    'Scelle les clés locales, l’historique et les sessions enregistrées derrière une phrase de passe. Requise après chaque rechargement ou verrouillage manuel.',
+  appLockDialogHint:
+    'La phrase de passe ne protège que cet appareil. Aucune récupération en cas de perte.',
+  lockNow: 'Verrouiller',
+  setPassphrase: 'Définir la phrase de passe',
+  changePassphrase: 'Changer la phrase de passe',
+  disableLock: 'Désactiver',
+  disableLockHint:
+    'Les données locales repassent à la protection par clé d’appareil et les sessions sont stockées non scellées.',
+  passphrase: 'Phrase de passe',
+  passphraseNew: 'Nouvelle phrase de passe',
+  passphraseCurrent: 'Phrase de passe actuelle',
+  passphraseConfirm: 'Confirmer la phrase de passe',
+  passphraseWrong: 'Phrase de passe incorrecte',
+  passphraseMismatch: 'Les phrases de passe ne correspondent pas',
+  passphraseShort: 'Utilisez au moins {min:number} caractères',
+  unlock: 'Déverrouiller',
+  unlocking: 'Déverrouillage',
+  lockScreenHint: 'Saisissez votre phrase de passe pour continuer',
+  autoLock: 'Verrouillage automatique après inactivité',
+  autoLockMinutes: '{minutes:number} min',
 
   cmdUnknown: 'Commande inconnue : /{name}',
   cmdRoomOnly: '/{name} ne fonctionne que dans un salon',

@@ -469,6 +469,30 @@ const de = {
   autoAway: 'Automatisch abwesend bei Inaktivität',
   autoAwayHint:
     'Setzt deinen Status nach zehn Minuten ohne Eingabe auf abwesend und stellt ihn beim nächsten Tastendruck oder Klick wieder her.',
+  off: 'Aus',
+  appLock: 'App-Sperre',
+  appLockHint:
+    'Versiegelt lokale Schlüssel, Verlauf und gespeicherte Sitzungen mit einer Passphrase. Nach jedem Neuladen oder manuellen Sperren erforderlich.',
+  appLockDialogHint:
+    'Die Passphrase schützt nur dieses Gerät. Bei Verlust gibt es keine Wiederherstellung.',
+  lockNow: 'Jetzt sperren',
+  setPassphrase: 'Passphrase festlegen',
+  changePassphrase: 'Passphrase ändern',
+  disableLock: 'Deaktivieren',
+  disableLockHint:
+    'Lokale Daten kehren zum Geräteschlüssel-Schutz zurück und Sitzungen werden unversiegelt gespeichert.',
+  passphrase: 'Passphrase',
+  passphraseNew: 'Neue Passphrase',
+  passphraseCurrent: 'Aktuelle Passphrase',
+  passphraseConfirm: 'Passphrase bestätigen',
+  passphraseWrong: 'Falsche Passphrase',
+  passphraseMismatch: 'Passphrasen stimmen nicht überein',
+  passphraseShort: 'Mindestens {min:number} Zeichen verwenden',
+  unlock: 'Entsperren',
+  unlocking: 'Entsperren',
+  lockScreenHint: 'Gib deine Passphrase ein, um fortzufahren',
+  autoLock: 'Automatisch sperren bei Inaktivität',
+  autoLockMinutes: '{minutes:number} Min.',
 
   cmdUnknown: 'Unbekannter Befehl: /{name}',
   cmdRoomOnly: '/{name} funktioniert nur innerhalb eines Raums',

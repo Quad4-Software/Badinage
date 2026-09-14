@@ -4,6 +4,7 @@
   import SampleReport from '$lib/ui/components/prompts/sample-report.svelte'
   import { Switch } from '$lib/ui/primitives/switch'
 
+  import LockControls from './lock/lock-controls.svelte'
   import { matchesQuery } from './match'
   import { settingsSearch } from './search-state.svelte'
   import SettingSection from './setting-section.svelte'
@@ -42,7 +43,16 @@
       $LL.privacy()
     )
   )
-  const hits = $derived(items.length + (showCrashReporting ? 1 : 0))
+  const showLock = $derived(
+    matchesQuery(
+      q,
+      $LL.appLock(),
+      $LL.appLockHint(),
+      'lock passphrase security vault seal auto-lock',
+      $LL.privacy()
+    )
+  )
+  const hits = $derived(items.length + (showCrashReporting ? 1 : 0) + (showLock ? 1 : 0))
   const visible = $derived(hits > 0)
 
   $effect(() => {
@@ -60,6 +70,9 @@
       <Switch checked={settings.current[key]} onCheckedChange={(v) => settings.set(key, v)} />
     </label>
   {/each}
+  {#if showLock}
+    <LockControls />
+  {/if}
   {#if showCrashReporting}
     <div class="flex flex-col gap-1">
       <label class="flex items-center justify-between gap-4 text-sm">

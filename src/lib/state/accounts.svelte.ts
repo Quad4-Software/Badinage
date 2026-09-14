@@ -519,7 +519,7 @@ class AccountsStore {
         this.list.push(account)
         this.applyOrder()
         this.activeJid ??= account.jid
-        saveSession(options)
+        void saveSession(options)
       } else if (status === 'authfail' || status === 'error' || status === 'disconnected') {
         off()
         // without this a failed first connect would auto-reconnect forever

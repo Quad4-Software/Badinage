@@ -466,6 +466,30 @@ const pt = {
   autoAway: 'Ausência automática quando ocioso',
   autoAwayHint:
     'Define sua presença como ausente após dez minutos sem atividade e a restaura na próxima tecla ou clique.',
+  off: 'Desativado',
+  appLock: 'Bloqueio do app',
+  appLockHint:
+    'Sela chaves locais, histórico e sessões salvas com uma frase-senha. Necessária após cada recarga ou bloqueio manual.',
+  appLockDialogHint:
+    'A frase-senha protege apenas este dispositivo. Não há recuperação se for perdida.',
+  lockNow: 'Bloquear agora',
+  setPassphrase: 'Definir frase-senha',
+  changePassphrase: 'Alterar frase-senha',
+  disableLock: 'Desativar',
+  disableLockHint:
+    'Os dados locais voltam à proteção por chave do dispositivo e as sessões são salvas sem selo.',
+  passphrase: 'Frase-senha',
+  passphraseNew: 'Nova frase-senha',
+  passphraseCurrent: 'Frase-senha atual',
+  passphraseConfirm: 'Confirmar frase-senha',
+  passphraseWrong: 'Frase-senha incorreta',
+  passphraseMismatch: 'As frases-senha não coincidem',
+  passphraseShort: 'Use pelo menos {min:number} caracteres',
+  unlock: 'Desbloquear',
+  unlocking: 'Desbloqueando',
+  lockScreenHint: 'Digite sua frase-senha para continuar',
+  autoLock: 'Bloqueio automático por inatividade',
+  autoLockMinutes: '{minutes:number} min',
 
   cmdUnknown: 'Comando desconhecido: /{name}',
   cmdRoomOnly: '/{name} só funciona dentro de uma sala',

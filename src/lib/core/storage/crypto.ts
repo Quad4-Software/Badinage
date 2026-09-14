@@ -14,6 +14,48 @@
 import { base64Decode, base64Encode, randomBytes } from '@quad4-software/badinage-omemo'
 
 import { idb } from './idb'
+import { globalKey } from './keys'
+
+// App lock: when a lock config exists the per-slot wrap keys are stored
+// KEK-wrapped and the KEK lives only in memory between unlock and lock.
+export const LOCK_KV_KEY = globalKey('lock')
+
+export interface LockConfig {
+  v: 1
+  salt: string
+  iter: number
+  canary: WrappedRecord
+}
+
+// A wrap key stored encrypted under the passphrase-derived KEK instead
+// of as a structured-cloned CryptoKey.
+export interface WrappedKeyRecord {
+  __key: 1
+  iv: string
+  data: string
+}
+
+export function isWrappedKeyRecord(value: unknown): value is WrappedKeyRecord {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as WrappedKeyRecord).__key === 1 &&
+    typeof (value as WrappedKeyRecord).iv === 'string' &&
+    typeof (value as WrappedKeyRecord).data === 'string'
+  )
+}
+
+// The passphrase-derived key encryption key. Module memory only - a
+// reload or an explicit lock drops it and every slot key stays sealed.
+let kek: CryptoKey | undefined
+
+export function setKek(key: CryptoKey | undefined): void {
+  kek = key
+}
+
+export function getKek(): CryptoKey | undefined {
+  return kek
+}
 
 // Envelope shape: version tag, base64 iv, base64 ciphertext. Records
 // without the tag predate wrapping and are treated as plaintext so old
@@ -57,16 +99,69 @@ export function decodeRecord<T>(text: string): T {
 // plaintext storage is acceptable or the record must be dropped.
 // Callers pass a fully scoped key (scopedKey(jid, ...)) so every
 // account gets its own key.
+//
+// When the app lock is enabled the slot holds a KEK-wrapped key blob
+// instead of a CryptoKey. While locked (no KEK in memory) this returns
+// undefined so every wrapped record stays sealed. A legacy plaintext
+// CryptoKey under lock means a migration is pending - it is returned
+// so its records stay readable until the unlock path re-keys them.
 export async function loadWrapKey(kvKey: string): Promise<CryptoKey | undefined> {
   const subtle = globalThis.crypto?.subtle
   if (!subtle) return undefined
-  const existing = await idb.get<CryptoKey>('kv', kvKey)
-  if (existing) return existing
+  const locked = (await idb.get<LockConfig>('kv', LOCK_KV_KEY)) !== undefined
+  const existing = await idb.get<CryptoKey | WrappedKeyRecord>('kv', kvKey)
+  if (locked) {
+    if (!kek) return undefined
+    if (isWrappedKeyRecord(existing)) return unwrapSlotKey(existing, kek)
+    if (existing) return existing
+    return generateSlotKey(kvKey)
+  }
+  if (existing && !isWrappedKeyRecord(existing)) return existing
   const generated = await subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
     'encrypt',
     'decrypt'
   ])
   await idb.set('kv', kvKey, generated)
+  return generated
+}
+
+// Unwrap a slot key blob with the given KEK. The result is marked
+// extractable only when rewrapping for a passphrase change - record
+// use keeps it non-extractable.
+export async function unwrapSlotKey(
+  record: WrappedKeyRecord,
+  kek: CryptoKey,
+  extractable = false
+): Promise<CryptoKey> {
+  return crypto.subtle.unwrapKey(
+    'raw',
+    base64Decode(record.data) as BufferSource,
+    kek,
+    { name: 'AES-GCM', iv: base64Decode(record.iv) as BufferSource },
+    { name: 'AES-GCM', length: 256 },
+    extractable,
+    ['encrypt', 'decrypt']
+  )
+}
+
+// Wrap a slot key for storage under the given KEK.
+export async function wrapSlotKey(key: CryptoKey, kek: CryptoKey): Promise<WrappedKeyRecord> {
+  const iv = randomBytes(12)
+  const data = await crypto.subtle.wrapKey('raw', key, kek, {
+    name: 'AES-GCM',
+    iv: iv as BufferSource
+  })
+  return { __key: 1, iv: base64Encode(iv), data: base64Encode(new Uint8Array(data)) }
+}
+
+// Generate a fresh extractable slot key, persist it KEK-wrapped and
+// return it for immediate use.
+async function generateSlotKey(kvKey: string): Promise<CryptoKey> {
+  const generated = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, [
+    'encrypt',
+    'decrypt'
+  ])
+  await idb.set('kv', kvKey, await wrapSlotKey(generated, kek as CryptoKey))
   return generated
 }
 

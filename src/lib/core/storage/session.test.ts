@@ -37,8 +37,8 @@ afterEach(() => {
 })
 
 describe('saveSession', () => {
-  it('persists options under the scoped session key when remember is set', () => {
-    saveSession({ jid: 'romeo@example.net/web', password: 'secret', remember: true })
+  it('persists options under the scoped session key when remember is set', async () => {
+    await saveSession({ jid: 'romeo@example.net/web', password: 'secret', remember: true })
     const raw = session.getItem('badinage:romeo@example.net:session')
     expect(raw).not.toBeNull()
     expect(JSON.parse(raw ?? '')).toMatchObject({
@@ -47,21 +47,21 @@ describe('saveSession', () => {
     })
   })
 
-  it('writes nothing without remember or for demo sessions', () => {
-    saveSession({ jid: 'a@x.org', password: 'p' })
-    saveSession({ jid: 'b@x.org', password: 'p', remember: true, demo: true })
+  it('writes nothing without remember or for demo sessions', async () => {
+    await saveSession({ jid: 'a@x.org', password: 'p' })
+    await saveSession({ jid: 'b@x.org', password: 'p', remember: true, demo: true })
     expect(session.length).toBe(0)
   })
 
-  it('writes nothing for untrusted logins even when remember is set', () => {
-    saveSession({ jid: 'c@x.org', password: 'p', remember: true, untrusted: true })
+  it('writes nothing for untrusted logins even when remember is set', async () => {
+    await saveSession({ jid: 'c@x.org', password: 'p', remember: true, untrusted: true })
     expect(session.length).toBe(0)
-    expect(restoreSessions()).toEqual([])
+    expect(await restoreSessions()).toEqual([])
   })
 })
 
 describe('restoreSessions', () => {
-  it('returns saved sessions and ignores unrelated keys', () => {
+  it('returns saved sessions and ignores unrelated keys', async () => {
     session.setItem(
       'badinage:romeo@example.net:session',
       JSON.stringify({ jid: 'romeo@example.net', password: 'p' })
@@ -69,15 +69,15 @@ describe('restoreSessions', () => {
     session.setItem('badinage:romeo@example.net:other', 'noise')
     session.setItem('unrelated:thing', 'noise')
 
-    const restored = restoreSessions()
+    const restored = await restoreSessions()
     expect(restored).toEqual([{ jid: 'romeo@example.net', password: 'p' }])
   })
 
-  it('drops malformed entries instead of failing the whole restore', () => {
+  it('drops malformed entries instead of failing the whole restore', async () => {
     session.setItem('badinage:a@x.org:session', JSON.stringify({ jid: 'a@x.org', password: 'p' }))
     session.setItem('badinage:b@x.org:session', 'not json{')
 
-    expect(restoreSessions()).toEqual([{ jid: 'a@x.org', password: 'p' }])
+    expect(await restoreSessions()).toEqual([{ jid: 'a@x.org', password: 'p' }])
     expect(session.getItem('badinage:b@x.org:session')).toBeNull()
   })
 })

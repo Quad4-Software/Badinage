@@ -1739,6 +1739,92 @@ type RootTranslation = {
 	 */
 	autoAwayHint: string
 	/**
+	 * O​f​f
+	 */
+	off: string
+	/**
+	 * A​p​p​ ​l​o​c​k
+	 */
+	appLock: string
+	/**
+	 * S​e​a​l​s​ ​l​o​c​a​l​ ​k​e​y​s​,​ ​h​i​s​t​o​r​y​ ​a​n​d​ ​s​a​v​e​d​ ​s​e​s​s​i​o​n​s​ ​b​e​h​i​n​d​ ​a​ ​p​a​s​s​p​h​r​a​s​e​.​ ​R​e​q​u​i​r​e​d​ ​a​f​t​e​r​ ​e​v​e​r​y​ ​r​e​l​o​a​d​ ​o​r​ ​m​a​n​u​a​l​ ​l​o​c​k​.
+	 */
+	appLockHint: string
+	/**
+	 * T​h​e​ ​p​a​s​s​p​h​r​a​s​e​ ​p​r​o​t​e​c​t​s​ ​t​h​i​s​ ​d​e​v​i​c​e​ ​o​n​l​y​.​ ​T​h​e​r​e​ ​i​s​ ​n​o​ ​r​e​c​o​v​e​r​y​ ​i​f​ ​i​t​ ​i​s​ ​l​o​s​t​.
+	 */
+	appLockDialogHint: string
+	/**
+	 * L​o​c​k​ ​n​o​w
+	 */
+	lockNow: string
+	/**
+	 * S​e​t​ ​p​a​s​s​p​h​r​a​s​e
+	 */
+	setPassphrase: string
+	/**
+	 * C​h​a​n​g​e​ ​p​a​s​s​p​h​r​a​s​e
+	 */
+	changePassphrase: string
+	/**
+	 * D​i​s​a​b​l​e
+	 */
+	disableLock: string
+	/**
+	 * L​o​c​a​l​ ​d​a​t​a​ ​r​e​t​u​r​n​s​ ​t​o​ ​d​e​v​i​c​e​-​k​e​y​ ​p​r​o​t​e​c​t​i​o​n​ ​a​n​d​ ​s​e​s​s​i​o​n​s​ ​a​r​e​ ​s​t​o​r​e​d​ ​u​n​s​e​a​l​e​d​.
+	 */
+	disableLockHint: string
+	/**
+	 * P​a​s​s​p​h​r​a​s​e
+	 */
+	passphrase: string
+	/**
+	 * N​e​w​ ​p​a​s​s​p​h​r​a​s​e
+	 */
+	passphraseNew: string
+	/**
+	 * C​u​r​r​e​n​t​ ​p​a​s​s​p​h​r​a​s​e
+	 */
+	passphraseCurrent: string
+	/**
+	 * C​o​n​f​i​r​m​ ​p​a​s​s​p​h​r​a​s​e
+	 */
+	passphraseConfirm: string
+	/**
+	 * I​n​c​o​r​r​e​c​t​ ​p​a​s​s​p​h​r​a​s​e
+	 */
+	passphraseWrong: string
+	/**
+	 * P​a​s​s​p​h​r​a​s​e​s​ ​d​o​ ​n​o​t​ ​m​a​t​c​h
+	 */
+	passphraseMismatch: string
+	/**
+	 * U​s​e​ ​a​t​ ​l​e​a​s​t​ ​{​m​i​n​}​ ​c​h​a​r​a​c​t​e​r​s
+	 * @param {number} min
+	 */
+	passphraseShort: RequiredParams<'min'>
+	/**
+	 * U​n​l​o​c​k
+	 */
+	unlock: string
+	/**
+	 * U​n​l​o​c​k​i​n​g
+	 */
+	unlocking: string
+	/**
+	 * E​n​t​e​r​ ​y​o​u​r​ ​p​a​s​s​p​h​r​a​s​e​ ​t​o​ ​c​o​n​t​i​n​u​e
+	 */
+	lockScreenHint: string
+	/**
+	 * A​u​t​o​-​l​o​c​k​ ​a​f​t​e​r​ ​i​d​l​e
+	 */
+	autoLock: string
+	/**
+	 * {​m​i​n​u​t​e​s​}​ ​m​i​n
+	 * @param {number} minutes
+	 */
+	autoLockMinutes: RequiredParams<'minutes'>
+	/**
 	 * U​n​k​n​o​w​n​ ​c​o​m​m​a​n​d​:​ ​/​{​n​a​m​e​}
 	 * @param {string} name
 	 */
@@ -3580,6 +3666,90 @@ export type TranslationFunctions = {
 	 * Sets your presence to away after ten minutes without input and restores it on the next keystroke or click.
 	 */
 	autoAwayHint: () => LocalizedString
+	/**
+	 * Off
+	 */
+	off: () => LocalizedString
+	/**
+	 * App lock
+	 */
+	appLock: () => LocalizedString
+	/**
+	 * Seals local keys, history and saved sessions behind a passphrase. Required after every reload or manual lock.
+	 */
+	appLockHint: () => LocalizedString
+	/**
+	 * The passphrase protects this device only. There is no recovery if it is lost.
+	 */
+	appLockDialogHint: () => LocalizedString
+	/**
+	 * Lock now
+	 */
+	lockNow: () => LocalizedString
+	/**
+	 * Set passphrase
+	 */
+	setPassphrase: () => LocalizedString
+	/**
+	 * Change passphrase
+	 */
+	changePassphrase: () => LocalizedString
+	/**
+	 * Disable
+	 */
+	disableLock: () => LocalizedString
+	/**
+	 * Local data returns to device-key protection and sessions are stored unsealed.
+	 */
+	disableLockHint: () => LocalizedString
+	/**
+	 * Passphrase
+	 */
+	passphrase: () => LocalizedString
+	/**
+	 * New passphrase
+	 */
+	passphraseNew: () => LocalizedString
+	/**
+	 * Current passphrase
+	 */
+	passphraseCurrent: () => LocalizedString
+	/**
+	 * Confirm passphrase
+	 */
+	passphraseConfirm: () => LocalizedString
+	/**
+	 * Incorrect passphrase
+	 */
+	passphraseWrong: () => LocalizedString
+	/**
+	 * Passphrases do not match
+	 */
+	passphraseMismatch: () => LocalizedString
+	/**
+	 * Use at least {min} characters
+	 */
+	passphraseShort: (arg: { min: number }) => LocalizedString
+	/**
+	 * Unlock
+	 */
+	unlock: () => LocalizedString
+	/**
+	 * Unlocking
+	 */
+	unlocking: () => LocalizedString
+	/**
+	 * Enter your passphrase to continue
+	 */
+	lockScreenHint: () => LocalizedString
+	/**
+	 * Auto-lock after idle
+	 */
+	autoLock: () => LocalizedString
+	/**
+	 * {minutes} min
+	 */
+	autoLockMinutes: (arg: { minutes: number }) => LocalizedString
 	/**
 	 * Unknown command: /{name}
 	 */
