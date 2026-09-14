@@ -44,6 +44,24 @@ export interface VcardApi {
 export type ConnectionStatus =
   'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'authfail' | 'error'
 
+// What a transport can actually do. XMPP transports leave capabilities
+// undefined and get the full feature set. IRC declares a narrower one so
+// the ui can hide controls that would dead-end. Every flag reads as
+// `capabilities?.x !== false` so an absent field means supported.
+export interface TransportCapabilities {
+  // OMEMO e2ee, HTTP upload, roster, presence subscriptions, vcard
+  // profile editing, MUC owner config forms, in-band registration.
+  // IRC: plaintext only, no upload, MONITOR approximates a roster, no
+  // subscriptions, no profile store, ChanServ config, NickServ register.
+  e2ee: boolean
+  upload: boolean
+  roster: boolean
+  subscriptions: boolean
+  profile: boolean
+  roomConfig: boolean
+  registration: boolean
+}
+
 interface SubscriptionRequest {
   from: string
   status: string
@@ -109,6 +127,10 @@ export type ConnectionEvents = {
   // XEP-0490 PEP notification: our other resources advanced the
   // displayed marker for these conversations
   mds: MdsDisplayed[]
+  // IRC draft/read-marker: another of our clients moved the read cursor
+  // in this conversation to this timestamp (ms). stanza-id based
+  // markers come through mds instead
+  readMarker: { peer: string; timestamp: number }
 }
 
 // The transport surface the state layer depends on. XmppConnection is the
@@ -117,6 +139,9 @@ export interface ChatConnection {
   readonly events: Emitter<ConnectionEvents>
   readonly connected: boolean
   readonly jid: string
+  // transports that cannot do the full feature set declare it here.
+  // Undefined means everything is supported (XMPP, demo)
+  readonly capabilities?: TransportCapabilities | undefined
   connect(jid: string, password: string): void
   disconnect(): void
   uniqueId(prefix: string): string

@@ -2,7 +2,8 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
-  import { isValidUserJid } from '$lib/utils/jid'
+  import { isValidIrcNick } from '$lib/utils/irc'
+  import { isValidUserJid, jidDomain } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
   import {
     Dialog,
@@ -17,7 +18,10 @@
   let jid = $state('')
   let name = $state('')
 
-  const jidValid = $derived(isValidUserJid(jid))
+  const account = $derived(accounts.active)
+  const isIrc = $derived(account?.options.protocol === 'irc')
+  // contacts are nicks on IRC, full jids on XMPP
+  const jidValid = $derived(isIrc ? isValidIrcNick(jid.trim()) : isValidUserJid(jid))
 
   // an xmpp:...?roster or bare xmpp:jid deep link prefills the dialog
   $effect(() => {
@@ -30,9 +34,9 @@
 
   function submit(event: SubmitEvent) {
     event.preventDefault()
-    const account = accounts.active
     if (!account || !jidValid) return
-    account.addContact(jid, name.trim())
+    const address = isIrc ? `${jid.trim()}@${jidDomain(account.jid)}` : jid
+    account.addContact(address, name.trim())
     app.addContactOpen = false
     jid = ''
     name = ''
@@ -46,11 +50,11 @@
     </DialogHeader>
     <form onsubmit={submit} class="flex flex-col gap-4">
       <div class="grid gap-2">
-        <Label for="contact-jid">{$LL.contactJid()}</Label>
+        <Label for="contact-jid">{isIrc ? $LL.ircNick() : $LL.contactJid()}</Label>
         <Input
           id="contact-jid"
           bind:value={jid}
-          placeholder={$LL.jidPlaceholder()}
+          placeholder={isIrc ? $LL.ircNickPlaceholder() : $LL.jidPlaceholder()}
           aria-invalid={jid.length > 0 && !jidValid}
           required
         />

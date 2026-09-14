@@ -215,9 +215,14 @@
   const files = createFileSend({ account: () => account, peer: () => peerJid, kind: () => kind })
   const { sendFile, onFiles, onPaste } = files
 
+  // IRC and friends report upload:false: hide every affordance that
+  // would dead-end on a missing upload service
+  const canUpload = $derived(account?.caps.upload !== false)
+
   // the accept filter lands on the shared input before the picker opens,
   // so the attach sheet can offer image and video specific pickers
   function attach(accept = '') {
+    if (!canUpload) return
     if (fileEl) fileEl.accept = accept
     fileEl?.click()
   }
@@ -259,26 +264,28 @@
     />
     <!-- mobile: one button opens the attach sheet. Desktop keeps the
          separate row buttons -->
-    <Button
-      variant="ghost"
-      size="icon"
-      class="max-md:size-10 md:hidden"
-      onclick={() => (attachOpen = true)}
-      aria-label={$LL.attachFile()}
-      disabled={voice.recording}
-    >
-      <Plus class="size-5" />
-    </Button>
-    <Button
-      variant="ghost"
-      size="icon"
-      class="hidden md:inline-flex"
-      onclick={() => attach()}
-      aria-label={$LL.attachFile()}
-      disabled={voice.recording}
-    >
-      <Paperclip class="size-4" />
-    </Button>
+    {#if canUpload}
+      <Button
+        variant="ghost"
+        size="icon"
+        class="max-md:size-10 md:hidden"
+        onclick={() => (attachOpen = true)}
+        aria-label={$LL.attachFile()}
+        disabled={voice.recording}
+      >
+        <Plus class="size-5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        class="hidden md:inline-flex"
+        onclick={() => attach()}
+        aria-label={$LL.attachFile()}
+        disabled={voice.recording}
+      >
+        <Paperclip class="size-4" />
+      </Button>
+    {/if}
     <div class="relative min-w-0 flex-1">
       {#if mentionCandidates.length > 0}
         <div
@@ -331,7 +338,7 @@
           rtt.maybeSend()
           mentionIndex = 0
         }}
-        onpaste={onPaste}
+        onpaste={canUpload ? onPaste : undefined}
         {placeholder}
         aria-label={placeholder}
         disabled={voice.recording}
@@ -383,7 +390,7 @@
       >
         <SendHorizontal class="size-4" />
       </Button>
-    {:else}
+    {:else if canUpload}
       <Button
         variant="ghost"
         size="icon"

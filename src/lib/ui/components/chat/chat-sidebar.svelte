@@ -21,6 +21,7 @@
   import SubscriptionRequests from './sidebar/subscription-requests.svelte'
 
   const account = $derived(accounts.active)
+  const isIrc = $derived(account?.options.protocol === 'irc')
   const store = $derived(account ? app.chatsFor(account.jid) : undefined)
   const roster = $derived(account?.roster ?? [])
   const subscriptions = $derived(account?.subscriptions ?? [])
@@ -64,8 +65,10 @@
   // roster names keyed by jid so list rendering is not O(conv x roster)
   const rosterNames = $derived(new Map(roster.map((c) => [c.jid, c.name])))
 
+  // unrostered peers show the jid on XMPP. On IRC the domain is
+  // synthetic noise, so the bare nick reads better
   function displayName(peerJid: string): string {
-    return rosterNames.get(peerJid) || peerJid
+    return rosterNames.get(peerJid) || (isIrc ? (peerJid.split('@')[0] ?? peerJid) : peerJid)
   }
 
   function open(peerJid: string) {

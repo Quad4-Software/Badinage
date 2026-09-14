@@ -1,8 +1,14 @@
-# Dev stack: Vite dev server plus a local Prosody for testing.
+# Dev stack: Vite dev server plus local chat servers for testing.
 #   docker compose -f docker/dev/compose.yaml up
 #
 # Prosody listens on 5280 (BOSH+WS over http). Register an account at
 # login with any jid like test@localhost since in-band registration is on.
+#
+# Ergo listens on 6667 (plain IRC) and 8097 (WebSocket). Log in at the
+# client with the IRC protocol, ws://localhost:8097, any nick and an
+# optional SASL password. Register an account first with
+# /msg NickServ REGISTER <password> from any IRC client, or connect
+# anonymously without a password.
 
 services:
   app:
@@ -16,6 +22,7 @@ services:
       - node_modules:/app/node_modules
     depends_on:
       - prosody
+      - ergo
 
   prosody:
     image: prosody/prosody:latest@sha256:984d473833c8401e049c63039b93a6fd1cdffa1f4abe3e93d005f34b3c87b893
@@ -27,6 +34,18 @@ services:
       - ./prosody.cfg.lua:/etc/prosody/prosody.cfg.lua:ro
     restart: unless-stopped
 
+  ergo:
+    image: ghcr.io/ergochat/ergo:stable@sha256:72db5b93b437ea0512fb79d9d4d035f0916ccba07ed736dec19e8d5b5a73f972
+    entrypoint: /ircd-bin/ergo run --conf /ircd-conf/ircd.yaml
+    ports:
+      - '6667:6667'
+      - '8097:8097'
+    volumes:
+      - ergo_data:/ircd
+      - ./ergo/ircd.yaml:/ircd-conf/ircd.yaml:ro
+    restart: unless-stopped
+
 volumes:
   node_modules:
   prosody_data:
+  ergo_data:

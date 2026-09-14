@@ -37,6 +37,7 @@ import {
   canBuzz,
   hydrateConversation,
   isDuplicate,
+  markDisplayedBefore,
   markDisplayedRemote,
   noteBuzz,
   saveMeta,
@@ -164,8 +165,14 @@ export class ChatStore {
     return findIn(this.conversations, peer, ref)
   }
 
-  applyReaction(peer: string, sender: string, targetId: string, emojis: string[]): void {
-    reactStored(this.conversations, peer, sender, targetId, emojis)
+  applyReaction(
+    peer: string,
+    sender: string,
+    targetId: string,
+    emojis: string[],
+    subtract = false
+  ): void {
+    reactStored(this.conversations, peer, sender, targetId, emojis, subtract)
   }
 
   retract(peer: string, targetId: string): void {
@@ -259,7 +266,13 @@ export class ChatStore {
       return
     }
     if (message.reactionTo) {
-      this.applyReaction(peer, reactionSender, message.reactionTo.id, message.reactionTo.emojis)
+      this.applyReaction(
+        peer,
+        reactionSender,
+        message.reactionTo.id,
+        message.reactionTo.emojis,
+        message.reactionTo.remove
+      )
     }
     applyContentSignals(this.typing, conversation, message, sender, outgoing, (c) =>
       this.saveMeta(c)
@@ -408,6 +421,11 @@ export class ChatStore {
   // conversation, so nothing before it counts as unread here anymore.
   markDisplayedRemote(peer: string, stanzaId: string): void {
     markDisplayedRemote(this.conversations, this.persistence, peer, stanzaId)
+  }
+
+  // IRC read-marker variant: the cursor is a timestamp, not a stanza id
+  markDisplayedBefore(peer: string, timestamp: number): void {
+    markDisplayedBefore(this.conversations, this.persistence, peer, timestamp)
   }
 
   // A stanza that failed to decrypt on arrival succeeded on retry: patch

@@ -14,6 +14,10 @@
   always() step. Locally: docker compose -f docker/dev/compose.yaml
   up -d prosody, register the two users the same way, then
   E2E_PROSODY=1 pnpm test:e2e.
+  The irc-interop job brings up the dev ergo container the same way,
+  waits for the websocket port on 8097, and runs
+  src/lib/core/irc/tests/ergo.live.test.ts with
+  ERGO_WS=ws://localhost:8097.
   pnpm store is cached through setup-node.
   PR runs cancel in progress on new pushes, main never cancels.
 - perf.yml: PRs, weekly cron plus manual dispatch. Builds dist and runs

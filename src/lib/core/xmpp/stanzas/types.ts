@@ -67,8 +67,10 @@ export interface IncomingMessage {
   // jid in from. quote is the text recovered from the body fallback.
   replyTo?: { id: string; from: string; quote?: string | undefined } | undefined
   // XEP-0444: reactions targeting the stanza with this id. An empty emojis
-  // list retracts all previous reactions from this sender.
-  reactionTo?: { id: string; emojis: string[] } | undefined
+  // list retracts all previous reactions from this sender. remove=true
+  // drops only the named emojis (IRC +draft/unreact cannot express a
+  // full replacement set)
+  reactionTo?: { id: string; emojis: string[]; remove?: boolean | undefined } | undefined
   // XEP-0308: this body replaces the stanza with this id.
   replaceId?: string | undefined
   // XEP-0424: this stanza asks receivers to retract the message whose id

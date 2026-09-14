@@ -10,6 +10,10 @@ import { scopedKey } from '$lib/core/storage/keys'
 export interface SessionOptions {
   jid: string
   password: string
+  // wire protocol. Absent means xmpp for backward compatibility with
+  // sessions persisted before the field existed. irc builds an
+  // IrcConnection, demo keeps using the demo flag
+  protocol?: 'xmpp' | 'irc' | undefined
   websocketUrl?: string | undefined
   boshUrl?: string | undefined
   remember?: boolean | undefined

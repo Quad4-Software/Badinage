@@ -80,6 +80,24 @@ export function markDisplayedRemote(
   persistence.schedule(conversation)
 }
 
+// IRC draft/read-marker: another of our clients advanced the read
+// cursor to a timestamp rather than a stanza id. There is no anchor
+// message to distrust, so the timestamp is the ordering
+export function markDisplayedBefore(
+  conversations: SvelteMap<string, Conversation>,
+  persistence: ConversationPersistence,
+  peer: string,
+  timestamp: number
+): void {
+  const conversation = conversations.get(bareJid(peer))
+  if (!conversation) return
+  for (const m of conversation.messages) {
+    if (!m.outgoing && !m.read && m.timestamp <= timestamp) m.read = true
+  }
+  conversation.unread = conversation.messages.filter((m) => !m.outgoing && !m.read).length
+  persistence.schedule(conversation)
+}
+
 // Dedup on every candidate id a stanza can carry: a live delivery has
 // no stanza-id while its MAM copy adds the archive id.
 export function isDuplicate(seen: Map<string, Set<string>>, peer: string, ids: string[]): boolean {

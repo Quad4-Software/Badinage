@@ -32,6 +32,8 @@ import {
   type ChatConnection,
   type ConnectionStatus
 } from '$lib/core/xmpp/connection'
+import type { TransportCapabilities } from '$lib/core/xmpp/types'
+import { IrcConnection } from '$lib/core/irc/connection'
 import { DemoConnection } from '$lib/core/xmpp/demo'
 import { RegisterError, registerAccount } from '$lib/core/xmpp/register'
 import type { MucDecline, MucInvite, RosterItem } from '$lib/core/xmpp/stanzas'
@@ -96,11 +98,25 @@ export class Account {
   // our own advertised presence, re-sent after every reconnect
   presence = $state('online')
   presenceStatus = $state('')
-  // XEP-0186: invisibility via a deny-presence-out privacy list.
-  // Persisted per account and reapplied on every connect. Caveat the ui
-  // surfaces: presence-out also carries MUC joins, so rooms cannot be
-  // entered while invisible.
+  // XEP-0186: invisibility via a deny-presence-out privacy list, persisted
+  // and reapplied on connect. Caveat: it also carries MUC joins
   invisible = $state(false)
+
+  // protocol feature gates for the ui: the transport capability map
+  // resolved so components read plain booleans, absent means supported
+  get caps(): Required<TransportCapabilities> {
+    const c = this.connection.capabilities
+    const on = (v: boolean | undefined) => v !== false
+    return {
+      e2ee: on(c?.e2ee),
+      upload: on(c?.upload),
+      roster: on(c?.roster),
+      subscriptions: on(c?.subscriptions),
+      profile: on(c?.profile),
+      roomConfig: on(c?.roomConfig),
+      registration: on(c?.registration)
+    }
+  }
 
   setInvisible(on: boolean): void {
     setInvisible(this, on)
@@ -144,16 +160,33 @@ export class Account {
     this.jid = options.jid
     this.connection = options.demo
       ? new DemoConnection()
-      : new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '', undefined, {
-          oauth: options.oauth
-        })
-    this.registry.register(omemoModule)
+      : options.protocol === 'irc'
+        ? new IrcConnection(options.websocketUrl ?? '', jidDomain(options.jid), {
+            persist: !options.untrusted
+          })
+        : new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '', undefined, {
+            oauth: options.oauth
+          })
+    // omemo only exists on transports that can carry it. IRC
+    // connections report e2ee=false and get no module
+    if (this.connection.capabilities?.e2ee !== false) this.registry.register(omemoModule)
     this.bind()
   }
 
   async connect(): Promise<void> {
     if (this.options.demo) {
       this.connection.connect(this.jid, this.options.password)
+      return
+    }
+    if (this.options.protocol === 'irc') {
+      // no endpoint discovery on irc: the websocket url is required and
+      // the synthetic jid maps to nick + network domain
+      if (!this.options.websocketUrl) {
+        this.status = 'error'
+        this.lastError = 'error'
+      } else {
+        this.connection.connect(bareJid(this.jid), this.options.password)
+      }
       return
     }
     if (!this.options.websocketUrl && !this.options.boshUrl) {
@@ -183,8 +216,6 @@ export class Account {
     this.connection.setClientActive(active)
   }
 
-  // ---- contacts -------------------------------------------------------------
-
   addContact(jid: string, name = ''): void {
     addContact(this, jid, name)
   }
@@ -201,13 +232,9 @@ export class Account {
     denySubscription(this, from)
   }
 
-  // ---- presence -------------------------------------------------------------
-
   setPresence(show: string, status?: string): void {
     setPresence(this, show, status)
   }
-
-  // ---- blocking (XEP-0191) ----------------------------------------------------
 
   isBlocked(jid: string): boolean {
     return this.blocked.has(bareJid(jid))
@@ -224,8 +251,6 @@ export class Account {
   unblockAll(): void {
     unblockAll(this)
   }
-
-  // ---- OMEMO ----------------------------------------------------------------
 
   // creation promise is cached so callers can await the in-flight init
   // instead of racing it and sending a first message unencrypted
@@ -275,8 +300,6 @@ export class Account {
     for (const account of accounts.list) account.omemo?.setBlindTrust(enabled)
   }
 
-  // ---- rooms -----------------------------------------------------------------
-
   joinRoom(room: string, nick: string, password?: string): void {
     this.connection.joinRoom(bareJid(room), nick, password)
   }
@@ -293,23 +316,18 @@ export class Account {
   }
 
   dismissRoomInvite(invite: PendingInvite): void {
-    this.roomInvites = this.roomInvites.filter(
-      (i) => !(i.room === invite.room && i.from === invite.from)
-    )
+    const { room, from } = invite
+    this.roomInvites = this.roomInvites.filter((i) => i.room !== room || i.from !== from)
   }
 
-  // ---- avatars (XEP-0153 + vcard-temp) --------------------------------------
-
-  // True when presence advertised a non-empty photo hash for this address.
-  // Rows that only want an avatar when one provably exists gate on this so
-  // a roster render never fans out into vcard queries.
+  // True when presence advertised a photo hash: rows gate on this so a
+  // roster render never fans out into vcard queries.
   avatarHint(jid: string): boolean {
     return avatarHint(this.avatarHashes, jid)
   }
 
-  // Lazily resolve an avatar into the avatars map. Without force the fetch
-  // only runs when presence hinted at a photo. Forced callers (open
-  // conversation, own account, room) fetch regardless.
+  // Lazily resolve an avatar into the avatars map. Unforced fetches only
+  // run when presence hinted at a photo. Forced callers fetch regardless.
   ensureAvatar(jid: string, force = false): void {
     ensureAvatar(
       {
@@ -324,14 +342,11 @@ export class Account {
     )
   }
 
-  // Called when presence or occupant updates carry a vcard-temp:x:update
-  // photo hash: a changed hash drops the cached image so mounted rows
-  // refetch, an empty hash pins the jid to no-avatar.
+  // Called when presence or occupant updates carry a vcard photo hash:
+  // a changed hash drops the cache, an empty hash pins no-avatar.
   noteAvatarHash(jid: string, hash: string | undefined): void {
     noteAvatarHash(this.avatarHashes, this.avatars, this.avatarRequested, jid, hash)
   }
-
-  // ---- bookmarks (XEP-0402) --------------------------------------------------
 
   isBookmarked(jid: string): boolean {
     return this.bookmarks.has(bareJid(jid))
@@ -424,12 +439,10 @@ export class Account {
     })
     this.connection.events.on('rosterUpdate', (item) => {
       const index = this.roster.findIndex((c) => c.jid === item.jid)
-      const patch = { ...item, presence: 'offline', presenceStatus: '' }
-      const existing = index === -1 ? undefined : this.roster[index]
-      if (existing) {
-        this.roster[index] = { ...existing, ...patch }
-      } else {
-        this.roster.push(patch)
+      const patch = { ...item, presence: 'offline' as const, presenceStatus: '' }
+      this.roster[index === -1 ? this.roster.length : index] = {
+        ...this.roster[index],
+        ...patch
       }
     })
     this.connection.events.on('rosterRemove', (jid) => {
@@ -456,15 +469,12 @@ export class Account {
     })
     this.connection.events.on('subscriptionRequest', (request) => {
       if (this.blocked.has(request.from)) return
-      if (!this.subscriptions.some((s) => s.from === request.from)) {
-        this.subscriptions.push(request)
-      }
+      if (!this.subscriptions.some((s) => s.from === request.from)) this.subscriptions.push(request)
     })
     this.connection.events.on('roomInvite', (invite) => {
       if (this.blocked.has(bareJid(invite.from))) return
-      if (!this.roomInvites.some((i) => i.room === invite.room && i.from === invite.from)) {
-        this.roomInvites.push(invite)
-      }
+      const dupe = this.roomInvites.some((i) => i.room === invite.room && i.from === invite.from)
+      if (!dupe) this.roomInvites.push(invite)
     })
     this.connection.events.on('roomDecline', (decline) => {
       this.lastDecline = decline
@@ -478,9 +488,8 @@ class AccountsStore {
 
   private removeListeners: ((jid: string) => void | Promise<void>)[] = []
 
-  // subscribers (the app store) get a chance to flush and unbind before
-  // the account leaves the list. Returned promises are awaited before
-  // the account's persisted data is deleted
+  // subscribers get a chance to flush and unbind before the account
+  // leaves the list. Returned promises are awaited before data deletion
   onRemoved(fn: (jid: string) => void | Promise<void>): void {
     this.removeListeners.push(fn)
   }
@@ -522,19 +531,15 @@ class AccountsStore {
   }
 
   // XEP-0077 in-band registration on a throwaway websocket, then the
-  // caller logs in through the normal add() path. Resolves with the
-  // machine-readable failure reason instead of throwing so the ui can
-  // pick a locale string without importing core types.
+  // caller logs in through add(). Resolves a machine-readable reason so
+  // the ui can pick a locale string without importing core types.
   async register(
     jid: string,
     password: string,
     server?: string
   ): Promise<{ ok: true } | { ok: false; reason: string }> {
     try {
-      let websocketUrl = server
-      if (!websocketUrl) {
-        websocketUrl = (await discoverEndpoints(jidDomain(jid))).websocket
-      }
+      const websocketUrl = server ?? (await discoverEndpoints(jidDomain(jid))).websocket
       if (!websocketUrl) return { ok: false, reason: 'unsupported' }
       await registerAccount(websocketUrl, jid, password)
       return { ok: true }
@@ -543,11 +548,10 @@ class AccountsStore {
     }
   }
 
-  // XEP-0493 oauth login, phase one: probe the xmpp server for the
-  // OAUTHBEARER mechanism, harvest the authorization server discovery
-  // url from the rfc 7628 error reply, register the client if needed and
-  // hand back the authorize url for the ui to redirect to. The pending
-  // flow is stashed in sessionStorage so the callback can pick it up.
+  // XEP-0493 oauth login, phase one: probe the server for OAUTHBEARER,
+  // harvest the authorization server discovery url from the rfc 7628
+  // error reply, register the client if needed and return the authorize
+  // url. The pending flow is stashed in sessionStorage for the callback.
   async startOAuth(
     jid: string,
     options: {
@@ -558,10 +562,8 @@ class AccountsStore {
     }
   ): Promise<{ ok: true; url: string } | { ok: false; reason: string }> {
     try {
-      let websocketUrl = options.websocketUrl
-      if (!websocketUrl) {
-        websocketUrl = (await discoverEndpoints(jidDomain(jid))).websocket
-      }
+      const websocketUrl =
+        options.websocketUrl ?? (await discoverEndpoints(jidDomain(jid))).websocket
       if (!websocketUrl) return { ok: false, reason: 'unreachable' }
       const probe = await probeOauthSupport(websocketUrl, jid)
       if (!probe.supported) return { ok: false, reason: 'unsupported' }

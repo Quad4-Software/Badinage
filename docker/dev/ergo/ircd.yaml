@@ -1,0 +1,168 @@
+# Ergo dev config for the Badinage dev stack. Plaintext IRC on 6667 and
+# a WebSocket listener on 8097 for the browser client. Registration is
+# open and unthrottled, history is in-memory. Not for production.
+
+network:
+    name: BadinageDev
+
+server:
+    name: irc.badinage.test
+
+    listeners:
+        ":6667":
+        ":8097":
+            websocket: true
+
+    websockets:
+        # dev only: the vite server and test runners use unpredictable
+        # origins, so do not restrict. Restrict in production
+        allowed-origins:
+
+    casemapping: "rfc1459"
+
+    enforce-utf8: true
+
+    lookup-hostnames: false
+    forward-confirm-hostnames: false
+
+    # dev only: treat private nets as secure so SASL is offered on
+    # plaintext listeners. Loopback is always secure
+    secure-nets:
+        - "10.0.0.0/8"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+
+    max-sendq: 96k
+
+    sts:
+        enabled: false
+
+    check-ident: false
+
+    relaymsg:
+        enabled: true
+        available-to-chanops: true
+        available-to-all-users: true
+
+    compatibility:
+        send-trailing: false
+        force-trailing: true
+
+datastore:
+    path: ircd.db
+    autoupgrade: true
+
+accounts:
+    registration:
+        enabled: true
+        allow-before-connect: true
+        throttling:
+            enabled: false
+        bcrypt-cost: 4
+        verify-timeout: "32h"
+        email-verification:
+            enabled: false
+
+    authentication-enabled: true
+
+    multiclient:
+        enabled: true
+        allowed-by-default: true
+        always-on: "opt-out"
+        auto-away: "opt-in"
+
+    require-sasl:
+        enabled: false
+        exemptions:
+            - "localhost"
+
+    skip-server-password: false
+
+    nick-reservation:
+        enabled: true
+        method: "strict"
+        additional-nick-length: 9
+
+channels:
+    registration:
+        enabled: true
+        max-channels-per-account: 15
+        operator-only: false
+
+limits:
+    nicklen: 32
+    identlen: 20
+    realnamelen: 150
+    channellen: 64
+    awaylen: 390
+    kicklen: 390
+    topiclen: 390
+    monitor-entries: 100
+    whowas-entries: 100
+    chan-list-modes: 100
+    registration-messages: 1024
+    multiline:
+        max-bytes: 4096
+        max-lines: 100
+
+fakelag:
+    enabled: false
+
+history:
+    enabled: true
+    channel-length: 2048
+    client-length: 256
+    autoresize-window: 3d
+    autoreplay-on-join: 25
+    chathistory-maxmessages: 1000
+    znc-maxmessages: 2048
+    restrictions:
+        expire-time: 1w
+        query-cutoff: 'none'
+        grace-period: 1h
+    persistent:
+        enabled: false
+        unregistered-channels: false
+    tagmsg-storage:
+        default: true
+        whitelist: ["+draft/react", "+react"]
+    retention:
+        allow-individual-delete: false
+
+roleplay:
+    enabled: false
+
+lock-file: "ircd.lock"
+
+opers:
+    admin:
+        hidden: true
+        class: "server-admin"
+        whois-line: "server admin"
+        password: "$2a$04$0123456789abcdef0123456789abcdef0123456789abcdef01234"
+
+oper-classes:
+    "server-admin":
+        title: "Server Admin"
+        capabilities:
+            - "accreg"
+            - "sajoin"
+            - "samode"
+            - "vhosts"
+            - "chanreg"
+            - "history"
+            - "kill"
+            - "rehash"
+
+logging:
+    -
+        method: stderr
+        type: "* -userinput -useroutput"
+        level: info
+
+debug:
+    recover-from-errors: true
+
+languages:
+    path: /ircd-bin/languages
+    default: en

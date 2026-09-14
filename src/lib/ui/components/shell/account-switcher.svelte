@@ -44,6 +44,13 @@
               <span class="sr-only">{presenceLabel(shown)}</span>
             {/if}
             <span class="truncate">{active?.jid ?? ''}</span>
+            {#if active?.options.protocol === 'irc'}
+              <span
+                class="bg-muted text-muted-foreground shrink-0 rounded px-1 py-px text-[0.6rem] font-medium uppercase"
+              >
+                {$LL.protocolIrc()}
+              </span>
+            {/if}
           </span>
           <ChevronsUpDown class="me-1 size-4 shrink-0 opacity-50" />
         </Button>
@@ -78,6 +85,13 @@
               ></span>
             </span>
             <span class="min-w-0 flex-1 truncate">{account.jid}</span>
+            {#if account.options.protocol === 'irc'}
+              <span
+                class="bg-muted text-muted-foreground shrink-0 rounded px-1 py-px text-[0.6rem] font-medium uppercase"
+              >
+                {$LL.protocolIrc()}
+              </span>
+            {/if}
             {#if account.latency !== null}
               <span class="text-muted-foreground shrink-0 text-xs">
                 {$LL.latencyMs({ ms: account.latency })}
@@ -104,13 +118,15 @@
           {$LL.openSettings()}
         </DropdownMenu.Item>
         {#if active}
-          <DropdownMenu.Item
-            class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-            onSelect={() => (app.profileOpen = true)}
-          >
-            <UserPen class="size-4" />
-            {$LL.editProfile()}
-          </DropdownMenu.Item>
+          {#if active.caps.profile}
+            <DropdownMenu.Item
+              class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+              onSelect={() => (app.profileOpen = true)}
+            >
+              <UserPen class="size-4" />
+              {$LL.editProfile()}
+            </DropdownMenu.Item>
+          {/if}
           <DropdownMenu.Item
             class="text-destructive data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
             onSelect={() => (confirmRemove = active.jid)}

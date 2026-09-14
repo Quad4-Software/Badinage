@@ -33,7 +33,7 @@
   $effect(() => {
     if (!app.profileOpen) return
     const acc = account
-    if (!acc) return
+    if (!acc || !acc.caps.profile) return
     fn = ''
     nickname = ''
     desc = ''
@@ -84,7 +84,9 @@
     <DialogHeader>
       <DialogTitle>{$LL.editProfile()}</DialogTitle>
     </DialogHeader>
-    {#if account}
+    {#if account && !account.caps.profile}
+      <p class="text-muted-foreground text-sm">{$LL.profileUnsupported()}</p>
+    {:else if account}
       <form
         class="flex flex-col gap-4"
         onsubmit={(event) => {

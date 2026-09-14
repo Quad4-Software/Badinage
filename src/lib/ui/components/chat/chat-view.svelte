@@ -47,19 +47,35 @@
   let { peer, split = false }: { peer: string | null; split?: boolean } = $props()
 
   const account = $derived(accounts.active)
+  const isIrc = $derived(account?.options.protocol === 'irc')
   const store = $derived(account ? app.chatsFor(account.jid) : undefined)
   const conversation = $derived(peer && store ? store.open(peer) : undefined)
   const contact = $derived(account?.roster.find((c) => c.jid === peer))
   const isRoom = $derived(conversation?.kind === 'muc')
+  const rosterNames = $derived(new Map((account?.roster ?? []).map((c) => [c.jid, c.name])))
 
-  // conversations the split pane can show (everything but the primary peer)
+  // roster name or full jid on XMPP. On IRC the jid domain is
+  // synthetic noise, so the bare nick reads better
+  function displayName(jid: string): string {
+    return rosterNames.get(jid) || (isIrc ? (jid.split('@')[0] ?? jid) : jid)
+  }
+
+  // conversations the split pane can show: joined rooms and dms with
+  // traffic, everything but the primary peer. Rooms and dms are split
+  // into optgroups so the picker reads like the sidebar
   const splitChoices = $derived(
     store
       ? [...store.conversations.values()]
-          .filter((c) => c.messages.length > 0 && c.peerJid !== app.activePeer)
-          .map((c) => c.peerJid)
+          .filter((c) => (c.joined || c.messages.length > 0) && c.peerJid !== app.activePeer)
+          .map((c) => ({
+            jid: c.peerJid,
+            room: c.kind === 'muc',
+            name: c.kind === 'muc' ? (c.peerJid.split('@')[0] ?? c.peerJid) : displayName(c.peerJid)
+          }))
       : []
   )
+  const splitRooms = $derived(splitChoices.filter((c) => c.room))
+  const splitDms = $derived(splitChoices.filter((c) => !c.room))
 
   let showOccupants = $state(false)
   let confirmBlock = $state(false)
@@ -81,7 +97,11 @@
   )
   // XEP-0045: subject change is a moderator privilege by default
   const canEditSubject = $derived(selfOccupant?.role === 'moderator')
-  const canConfigure = $derived(selfOccupant?.affiliation === 'owner')
+  // owner configuration is an XMPP form. IRC channel config lives in
+  // ChanServ, so the button stays hidden on transports without it
+  const canConfigure = $derived(
+    selfOccupant?.affiliation === 'owner' && account?.caps.roomConfig === true
+  )
   const canModerate = $derived(isRoom && selfOccupant?.role === 'moderator')
 
   // the outgoing message awaiting a retract confirm
@@ -261,7 +281,7 @@
           <div class="min-w-0 flex-1">
             <h1 class="flex items-center gap-1.5 truncate font-medium">
               <span class="truncate">
-                {isRoom ? conv.peerJid.split('@')[0] : contact?.name || conv.peerJid}
+                {isRoom ? conv.peerJid.split('@')[0] : displayName(conv.peerJid)}
               </span>
               {#if !isRoom && conv.encrypted}
                 <Tooltip>
@@ -480,9 +500,20 @@
         aria-label={$LL.openInSplit()}
       >
         <option value="">{$LL.pickConversation()}</option>
-        {#each splitChoices as jid (jid)}
-          <option value={jid}>{jid}</option>
-        {/each}
+        {#if splitDms.length > 0}
+          <optgroup label={$LL.conversations()}>
+            {#each splitDms as choice (choice.jid)}
+              <option value={choice.jid}>{choice.name}</option>
+            {/each}
+          </optgroup>
+        {/if}
+        {#if splitRooms.length > 0}
+          <optgroup label={$LL.rooms()}>
+            {#each splitRooms as choice (choice.jid)}
+              <option value={choice.jid}>{choice.name}</option>
+            {/each}
+          </optgroup>
+        {/if}
       </select>
       <Button
         variant="ghost"

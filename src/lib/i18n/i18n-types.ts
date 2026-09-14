@@ -30,6 +30,62 @@ type RootTranslation = {
 	 */
 	signInTitle: string
 	/**
+	 * S​i​g​n​ ​i​n​ ​t​o​ ​a​n​ ​I​R​C​ ​n​e​t​w​o​r​k
+	 */
+	signInTitleIrc: string
+	/**
+	 * P​r​o​t​o​c​o​l
+	 */
+	protocol: string
+	/**
+	 * X​M​P​P
+	 */
+	protocolXmpp: string
+	/**
+	 * I​R​C
+	 */
+	protocolIrc: string
+	/**
+	 * N​i​c​k​n​a​m​e
+	 */
+	ircNick: string
+	/**
+	 * y​o​u​r​n​i​c​k
+	 */
+	ircNickPlaceholder: string
+	/**
+	 * T​h​e​ ​n​a​m​e​ ​o​t​h​e​r​s​ ​s​e​e​.​ ​C​h​a​n​g​e​ ​i​t​ ​l​a​t​e​r​ ​w​i​t​h​ ​/​n​i​c​k​.
+	 */
+	ircNickHint: string
+	/**
+	 * T​h​e​ ​I​R​C​v​3​ ​W​e​b​S​o​c​k​e​t​ ​e​n​d​p​o​i​n​t​,​ ​f​o​r​ ​e​x​a​m​p​l​e​ ​a​n​ ​E​r​g​o​ ​l​i​s​t​e​n​e​r
+	 */
+	ircServerHint: string
+	/**
+	 * O​p​t​i​o​n​a​l​.​ ​W​h​e​n​ ​s​e​t​,​ ​t​h​e​ ​c​l​i​e​n​t​ ​a​u​t​h​e​n​t​i​c​a​t​e​s​ ​w​i​t​h​ ​S​A​S​L​ ​a​s​ ​t​h​i​s​ ​n​i​c​k​n​a​m​e​.
+	 */
+	ircPasswordHint: string
+	/**
+	 * J​o​i​n​ ​a​ ​c​h​a​n​n​e​l
+	 */
+	joinChannel: string
+	/**
+	 * C​h​a​n​n​e​l
+	 */
+	channelName: string
+	/**
+	 * #​c​h​a​n​n​e​l
+	 */
+	channelPlaceholder: string
+	/**
+	 * C​h​a​n​n​e​l​ ​k​e​y​ ​(​o​p​t​i​o​n​a​l​)
+	 */
+	channelKeyOptional: string
+	/**
+	 * R​e​m​e​m​b​e​r​ ​c​h​a​n​n​e​l​ ​(​a​u​t​o​-​j​o​i​n​)
+	 */
+	bookmarkChannel: string
+	/**
 	 * X​M​P​P​ ​a​d​d​r​e​s​s
 	 */
 	jid: string
@@ -1039,6 +1095,10 @@ type RootTranslation = {
 	 */
 	profilePublishFailed: string
 	/**
+	 * T​h​i​s​ ​p​r​o​t​o​c​o​l​ ​h​a​s​ ​n​o​ ​e​d​i​t​a​b​l​e​ ​p​r​o​f​i​l​e​.
+	 */
+	profileUnsupported: string
+	/**
 	 * C​o​u​l​d​ ​n​o​t​ ​r​e​a​d​ ​t​h​a​t​ ​i​m​a​g​e
 	 */
 	avatarReadFailed: string
@@ -1692,6 +1752,62 @@ export type TranslationFunctions = {
 	 * Sign in to your XMPP account
 	 */
 	signInTitle: () => LocalizedString
+	/**
+	 * Sign in to an IRC network
+	 */
+	signInTitleIrc: () => LocalizedString
+	/**
+	 * Protocol
+	 */
+	protocol: () => LocalizedString
+	/**
+	 * XMPP
+	 */
+	protocolXmpp: () => LocalizedString
+	/**
+	 * IRC
+	 */
+	protocolIrc: () => LocalizedString
+	/**
+	 * Nickname
+	 */
+	ircNick: () => LocalizedString
+	/**
+	 * yournick
+	 */
+	ircNickPlaceholder: () => LocalizedString
+	/**
+	 * The name others see. Change it later with /nick.
+	 */
+	ircNickHint: () => LocalizedString
+	/**
+	 * The IRCv3 WebSocket endpoint, for example an Ergo listener
+	 */
+	ircServerHint: () => LocalizedString
+	/**
+	 * Optional. When set, the client authenticates with SASL as this nickname.
+	 */
+	ircPasswordHint: () => LocalizedString
+	/**
+	 * Join a channel
+	 */
+	joinChannel: () => LocalizedString
+	/**
+	 * Channel
+	 */
+	channelName: () => LocalizedString
+	/**
+	 * #channel
+	 */
+	channelPlaceholder: () => LocalizedString
+	/**
+	 * Channel key (optional)
+	 */
+	channelKeyOptional: () => LocalizedString
+	/**
+	 * Remember channel (auto-join)
+	 */
+	bookmarkChannel: () => LocalizedString
 	/**
 	 * XMPP address
 	 */
@@ -2676,6 +2792,10 @@ export type TranslationFunctions = {
 	 * The server refused the profile update
 	 */
 	profilePublishFailed: () => LocalizedString
+	/**
+	 * This protocol has no editable profile.
+	 */
+	profileUnsupported: () => LocalizedString
 	/**
 	 * Could not read that image
 	 */

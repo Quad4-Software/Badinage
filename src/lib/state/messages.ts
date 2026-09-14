@@ -4,8 +4,29 @@
 
 import type { ChatMessage } from './conversation.svelte'
 
-// Each sender's new reaction set replaces their previous one.
-export function applyReactions(target: ChatMessage, sender: string, emojis: string[]): void {
+// Each sender's new reaction set replaces their previous one. With
+// subtract the emojis are removed from the sender's existing set
+// instead: IRC +draft/unreact names single emojis and cannot express
+// a replacement set
+export function applyReactions(
+  target: ChatMessage,
+  sender: string,
+  emojis: string[],
+  subtract = false
+): void {
+  if (subtract) {
+    for (const emoji of emojis) {
+      const senders = (target.reactions[emoji] ?? []).filter((s) => s !== sender)
+      if (senders.length === 0) {
+        const { [emoji]: _gone, ...rest } = target.reactions
+        void _gone
+        target.reactions = rest
+      } else {
+        target.reactions[emoji] = senders
+      }
+    }
+    return
+  }
   for (const [emoji, senders] of Object.entries(target.reactions)) {
     const next = senders.filter((s) => s !== sender)
     target.reactions[emoji] = next

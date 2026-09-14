@@ -94,10 +94,11 @@ export function reactStored(
   peer: string,
   sender: string,
   targetId: string,
-  emojis: string[]
+  emojis: string[],
+  subtract = false
 ): void {
   const target = findIn(conversations, peer, targetId)
-  if (target) applyReactions(target, sender, emojis)
+  if (target) applyReactions(target, sender, emojis, subtract)
 }
 
 export function correctStored(

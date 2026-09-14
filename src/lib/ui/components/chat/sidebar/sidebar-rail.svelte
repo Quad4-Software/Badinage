@@ -14,6 +14,7 @@
   import ThemeToggle from '../../shell/theme-toggle.svelte'
 
   const account = $derived(accounts.active)
+  const isIrc = $derived(account?.options.protocol === 'irc')
   const store = $derived(account ? app.chatsFor(account.jid) : undefined)
   const roster = $derived(account?.roster ?? [])
 
@@ -39,8 +40,10 @@
   // roster names keyed by jid so list rendering is not O(conv x roster)
   const rosterNames = $derived(new Map(roster.map((c) => [c.jid, c.name])))
 
+  // unrostered peers show the jid on XMPP. On IRC the domain is
+  // synthetic noise, so the bare nick reads better
   function displayName(peerJid: string): string {
-    return rosterNames.get(peerJid) || peerJid
+    return rosterNames.get(peerJid) || (isIrc ? (peerJid.split('@')[0] ?? peerJid) : peerJid)
   }
 
   function roomName(peerJid: string): string {
@@ -102,7 +105,7 @@
           <span class="relative block">
             <PeerAvatar
               jid={room.peerJid}
-              fallback={`#${name.slice(0, 1)}`}
+              fallback={`#${name.replace(/^[#&]+/, '').slice(0, 1)}`}
               force
               class={cn('size-9', app.activePeer === room.peerJid && 'ring-primary ring-2')}
             />
@@ -136,23 +139,39 @@
 
   {#if account}
     {@const shown = account.status === 'connected' ? account.presence : 'offline'}
-    <button
-      class="relative rounded-full"
-      onclick={() => (app.profileOpen = true)}
-      aria-label={`${account.jid}: ${account.invisible ? $LL.invisible() : presenceLabel(shown)}`}
-      title={$LL.editProfile()}
-    >
-      <PeerAvatar
-        jid={bareJid(account.jid)}
-        fallback={account.jid.slice(0, 2)}
-        {account}
-        force
-        class={cn(
-          'ring-offset-background size-9 ring-2 ring-offset-2',
-          presenceRingClass(account.invisible ? 'offline' : shown)
-        )}
-      />
-    </button>
+    {@const presenceNote = `${account.jid}: ${account.invisible ? $LL.invisible() : presenceLabel(shown)}`}
+    {#if account.caps.profile}
+      <button
+        class="relative rounded-full"
+        onclick={() => (app.profileOpen = true)}
+        aria-label={presenceNote}
+        title={$LL.editProfile()}
+      >
+        <PeerAvatar
+          jid={bareJid(account.jid)}
+          fallback={account.jid.slice(0, 2)}
+          {account}
+          force
+          class={cn(
+            'ring-offset-background size-9 ring-2 ring-offset-2',
+            presenceRingClass(account.invisible ? 'offline' : shown)
+          )}
+        />
+      </button>
+    {:else}
+      <span class="relative rounded-full" title={presenceNote}>
+        <PeerAvatar
+          jid={bareJid(account.jid)}
+          fallback={account.jid.slice(0, 2)}
+          {account}
+          force
+          class={cn(
+            'ring-offset-background size-9 ring-2 ring-offset-2',
+            presenceRingClass(account.invisible ? 'offline' : shown)
+          )}
+        />
+      </span>
+    {/if}
   {/if}
   <Button
     variant="ghost"

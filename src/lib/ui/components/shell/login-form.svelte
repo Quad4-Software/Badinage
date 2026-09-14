@@ -1,5 +1,6 @@
 <script lang="ts">
   import { LOGIN_STATUS_POLL_MS } from '$lib/constants'
+  import { isValidIrcNick } from '$lib/utils/irc'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, loginBackoffRemaining, type AccountOptions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
@@ -7,15 +8,18 @@
   import { isWebSocketUrl } from '$lib/utils/url'
   import { Button } from '$lib/ui/primitives/button'
   import { Checkbox } from '$lib/ui/primitives/checkbox'
-  import { Input } from '$lib/ui/primitives/input'
-  import { Label } from '$lib/ui/primitives/label'
   import { LoaderCircle } from '@lucide/svelte'
 
+  import LoginFields from './login-form/fields.svelte'
   import ThemeToggle from './theme-toggle.svelte'
 
   let { embedded = false }: { embedded?: boolean } = $props()
 
-  let jid = $state('')
+  // the wire protocol this form produces. xmpp is the default. irc
+  // swaps the jid field for a nickname and requires the websocket url
+  let protocol = $state<'xmpp' | 'irc'>('xmpp')
+  // the jid for xmpp, the nickname for irc
+  let identity = $state('')
   let password = $state('')
   let server = $state('')
   let remember = $state(false)
@@ -30,8 +34,20 @@
   let cooldownUntil = $state(0)
   let now = $state(Date.now())
 
-  const jidValid = $derived(isValidUserJid(jid))
+  const isIrc = $derived(protocol === 'irc')
+  const identityValid = $derived(isIrc ? isValidIrcNick(identity) : isValidUserJid(identity))
+  const serverValid = $derived(!isIrc || isWebSocketUrl(server))
+  const title = $derived(
+    mode === 'register' ? $LL.registerTitle() : isIrc ? $LL.signInTitleIrc() : $LL.signInTitle()
+  )
   const cooldownLeft = $derived(Math.ceil(Math.max(0, cooldownUntil - now) / 1000))
+
+  // the synthetic jid an irc login produces: nick@network-host. The
+  // host keeps same-nick accounts on different networks apart
+  function ircJid(): string {
+    const host = URL.parse(server)?.host.replace(':', '-') ?? 'irc.invalid'
+    return `${identity}@${host}`
+  }
 
   $effect(() => {
     if (cooldownUntil <= Date.now()) return
@@ -60,7 +76,7 @@
   async function startSso() {
     error = ''
     submitting = true
-    const result = await accounts.startOAuth(jid, {
+    const result = await accounts.startOAuth(identity, {
       websocketUrl: isWebSocketUrl(server) ? server : undefined,
       redirectUri: `${window.location.origin}/`,
       remember,
@@ -77,7 +93,8 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     error = ''
-    const wait = loginBackoffRemaining(jid)
+    const loginJid = isIrc ? ircJid() : identity
+    const wait = loginBackoffRemaining(loginJid)
     if (wait > 0) {
       cooldownUntil = Date.now() + wait
       return
@@ -85,8 +102,11 @@
     submitting = true
     // remember stays in the options so the session layer can prove the
     // untrusted flag wins over it
-    const options: AccountOptions = { jid, password, remember, untrusted }
-    if (server) {
+    const options: AccountOptions = { jid: loginJid, password, remember, untrusted }
+    if (isIrc) {
+      options.protocol = 'irc'
+      options.websocketUrl = server
+    } else if (server) {
       if (isWebSocketUrl(server)) {
         options.websocketUrl = server
       } else {
@@ -96,7 +116,7 @@
     if (mode === 'register') {
       // registration runs over websocket only: a bosh url falls through to
       // endpoint discovery on the jid domain
-      const result = await accounts.register(jid, password, options.websocketUrl)
+      const result = await accounts.register(identity, password, options.websocketUrl)
       if (!result.ok) {
         submitting = false
         error = registerError(result.reason)
@@ -117,7 +137,7 @@
         clearInterval(timer)
         submitting = false
         error = account.lastError === 'authfail' ? $LL.authFailed() : $LL.connectionError()
-        cooldownUntil = Date.now() + loginBackoffRemaining(jid)
+        cooldownUntil = Date.now() + loginBackoffRemaining(loginJid)
         accounts.remove(account.jid)
       } else if (started && account.status === 'disconnected') {
         clearInterval(timer)
@@ -152,54 +172,24 @@
       <div class="flex flex-col gap-1">
         <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
         <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
-        <p class="text-muted-foreground text-sm">
-          {mode === 'register' ? $LL.registerTitle() : $LL.signInTitle()}
-        </p>
+        <p class="text-muted-foreground text-sm">{title}</p>
       </div>
     {:else}
-      <p class="text-muted-foreground text-sm">
-        {mode === 'register' ? $LL.registerTitle() : $LL.signInTitle()}
-      </p>
+      <p class="text-muted-foreground text-sm">{title}</p>
     {/if}
 
-    <div class="grid gap-2">
-      <Label for="jid">{$LL.jid()}</Label>
-      <Input
-        id="jid"
-        name="jid"
-        type="text"
-        bind:value={jid}
-        placeholder={$LL.jidPlaceholder()}
-        autocomplete="username"
-        aria-invalid={jid.length > 0 && !jidValid}
-        required
-      />
-      <p class="text-muted-foreground text-xs">{$LL.jidHint()}</p>
-    </div>
-
-    <div class="grid gap-2">
-      <Label for="password">{$LL.password()}</Label>
-      <Input
-        id="password"
-        name="password"
-        type="password"
-        bind:value={password}
-        autocomplete="current-password"
-        required
-      />
-    </div>
-
-    <div class="grid gap-2">
-      <Label for="server">{$LL.server()}</Label>
-      <Input
-        id="server"
-        name="server"
-        type="url"
-        bind:value={server}
-        placeholder={$LL.serverPlaceholder()}
-      />
-      <p class="text-muted-foreground text-xs">{$LL.serverHint()}</p>
-    </div>
+    <LoginFields
+      bind:protocol
+      bind:identity
+      bind:password
+      bind:server
+      {identityValid}
+      {serverValid}
+      onprotocolchange={() => {
+        mode = 'login'
+        error = ''
+      }}
+    />
 
     <label class="flex items-center gap-2 text-sm">
       <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
@@ -225,7 +215,14 @@
       </p>
     {/if}
 
-    <Button type="submit" disabled={submitting || !jidValid || !password || cooldownLeft > 0}>
+    <Button
+      type="submit"
+      disabled={submitting ||
+        !identityValid ||
+        !serverValid ||
+        (!isIrc && !password) ||
+        cooldownLeft > 0}
+    >
       {#if submitting}
         <LoaderCircle class="size-4 animate-spin" />
         {mode === 'register' ? $LL.registering() : $LL.connecting()}
@@ -234,24 +231,26 @@
       {/if}
     </Button>
 
-    <Button
-      type="button"
-      variant="link"
-      class="h-auto min-h-6 p-0"
-      onclick={() => {
-        mode = mode === 'login' ? 'register' : 'login'
-        error = ''
-      }}
-    >
-      {mode === 'login' ? $LL.createAccount() : $LL.signIn()}
-    </Button>
+    {#if !isIrc}
+      <Button
+        type="button"
+        variant="link"
+        class="h-auto min-h-6 p-0"
+        onclick={() => {
+          mode = mode === 'login' ? 'register' : 'login'
+          error = ''
+        }}
+      >
+        {mode === 'login' ? $LL.createAccount() : $LL.signIn()}
+      </Button>
+    {/if}
 
-    {#if mode === 'login'}
+    {#if mode === 'login' && !isIrc}
       <Button
         type="button"
         variant="outline"
         class="w-full"
-        disabled={submitting || !jidValid || cooldownLeft > 0}
+        disabled={submitting || !identityValid || cooldownLeft > 0}
         onclick={startSso}
       >
         {#if submitting}

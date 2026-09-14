@@ -255,6 +255,11 @@ class AppStore {
       for (const entry of items) store.markDisplayedRemote(entry.peer, entry.stanzaId)
     })
 
+    // IRC draft/read-marker: the same signal as mds but timestamped
+    account.connection.events.on('readMarker', ({ peer, timestamp }) => {
+      store.markDisplayedBefore(peer, timestamp)
+    })
+
     account.connection.events.on('presenceError', (error) => {
       sessions.noteJoinError(error)
     })

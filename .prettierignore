@@ -6,3 +6,4 @@ docker/
 packages/omemo/docs/
 test-results/
 playwright-report/
+src/lib/core/xmpp/demo-data.ts

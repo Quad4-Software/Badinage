@@ -3,7 +3,8 @@
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
   import { explore } from '$lib/state/explore'
-  import { bareJid, isValidBareJid } from '$lib/utils/jid'
+  import { isValidIrcChannel, ircChannelJid } from '$lib/utils/irc'
+  import { bareJid, isValidBareJid, jidDomain } from '$lib/utils/jid'
   import { Button } from '$lib/ui/primitives/button'
   import { Checkbox } from '$lib/ui/primitives/checkbox'
   import {
@@ -21,8 +22,12 @@
   let password = $state('')
   let saveBookmark = $state(false)
 
-  const roomValid = $derived(isValidBareJid(room))
-  const canJoin = $derived(roomValid && nick.trim().length > 0)
+  const account = $derived(accounts.active)
+  const isIrc = $derived(account?.options.protocol === 'irc')
+  const roomValid = $derived(isIrc ? isValidIrcChannel(room.trim()) : isValidBareJid(room))
+  // the nick is global on IRC so the field is hidden there and the
+  // account nick is used. XMPP still asks for a per-room nick
+  const canJoin = $derived(roomValid && (isIrc || nick.trim().length > 0))
 
   // default nick: the local part of the account JID. A room address
   // handed over by the explore dialog or an xmpp:?join link prefills
@@ -43,12 +48,13 @@
 
   function submit(event: SubmitEvent) {
     event.preventDefault()
-    const account = accounts.active
     if (!account || !canJoin) return
-    const bare = bareJid(room)
+    const bare = isIrc ? ircChannelJid(room.trim(), jidDomain(account.jid)) : bareJid(room)
+    // connection.jid tracks the live nick, including a 433 fallback
+    const roomNick = isIrc ? (account.connection.jid.split('@')[0] ?? 'me') : nick.trim()
     // goes through the app store so nick and password are remembered
     // for watchdog rejoins and error-banner retries
-    app.joinRoom(bare, nick.trim(), password || undefined)
+    app.joinRoom(bare, roomNick, password || undefined)
     if (saveBookmark) {
       account.addBookmark({
         jid: bare,
@@ -71,31 +77,40 @@
 <Dialog bind:open={app.joinRoomOpen}>
   <DialogContent>
     <DialogHeader>
-      <DialogTitle>{$LL.joinRoom()}</DialogTitle>
+      <DialogTitle>{isIrc ? $LL.joinChannel() : $LL.joinRoom()}</DialogTitle>
     </DialogHeader>
     <form onsubmit={submit} class="flex flex-col gap-4">
       <div class="grid gap-2">
-        <Label for="room-jid">{$LL.roomJid()}</Label>
+        <Label for="room-jid">{isIrc ? $LL.channelName() : $LL.roomJid()}</Label>
         <Input
           id="room-jid"
           bind:value={room}
-          placeholder={$LL.roomJidPlaceholder()}
+          placeholder={isIrc ? $LL.channelPlaceholder() : $LL.roomJidPlaceholder()}
           aria-invalid={room.length > 0 && !roomValid}
           required
         />
       </div>
+      {#if !isIrc}
+        <div class="grid gap-2">
+          <Label for="room-nick">{$LL.nickname()}</Label>
+          <Input
+            id="room-nick"
+            bind:value={nick}
+            placeholder={$LL.nicknamePlaceholder()}
+            required
+          />
+        </div>
+      {/if}
       <div class="grid gap-2">
-        <Label for="room-nick">{$LL.nickname()}</Label>
-        <Input id="room-nick" bind:value={nick} placeholder={$LL.nicknamePlaceholder()} required />
-      </div>
-      <div class="grid gap-2">
-        <Label for="room-password">{$LL.roomPasswordOptional()}</Label>
+        <Label for="room-password"
+          >{isIrc ? $LL.channelKeyOptional() : $LL.roomPasswordOptional()}</Label
+        >
         <Input id="room-password" bind:value={password} type="password" />
       </div>
       <div class="flex items-center gap-2">
         <Checkbox id="room-bookmark" bind:checked={saveBookmark} />
         <Label for="room-bookmark" class="text-sm font-normal">
-          {$LL.bookmarkRoom()}
+          {isIrc ? $LL.bookmarkChannel() : $LL.bookmarkRoom()}
         </Label>
       </div>
       <DialogFooter>

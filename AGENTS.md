@@ -1,8 +1,10 @@
 # AGENTS.md
 
-Badinage is a self-hostable web XMPP client. It targets one-to-one chat and
-groupchat (MUC) with OMEMO encryption, multiple simultaneous accounts, and a
-static build that runs behind any web server.
+Badinage is a self-hostable web chat client for XMPP and IRC. It targets
+one-to-one chat and groupchat (MUC and channels) with OMEMO encryption on
+XMPP, multiple simultaneous accounts, and a static build that runs behind
+any web server. The IRC transport targets Ergo over WebSocket; see
+.agents/docs/irc.md.
 
 License: 0BSD. Copyright Quad4 Software.
 
@@ -50,7 +52,7 @@ License: 0BSD. Copyright Quad4 Software.
     packages/omemo/    @quad4-software/omemo, our own 0BSD OMEMO implementation
     e2e/               playwright specs including UI measurement tests
     docker/            prod Dockerfile + nginx + compose
-    docker/dev/        dev stack: vite server + local prosody
+    docker/dev/        dev stack: vite server + local prosody + ergo
     scripts/           build-time utilities (icon generation)
     public/            favicon, icons, og card
     .agents/docs/      architecture, XEP matrix, conventions, security, ci, testing
