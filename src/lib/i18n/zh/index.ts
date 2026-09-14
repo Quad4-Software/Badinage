@@ -337,6 +337,7 @@ const zh = {
     '消息将对房间内的所有人撤回。此操作无法撤销。',
   messageRemoved: '消息已移除',
   occupantOptions: '成员选项',
+  messageOccupant: '私信 {nick:string}',
   kick: '踢出',
   kickOccupantTitle: '踢出 {nick}？',
   kickOccupantDescription:

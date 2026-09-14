@@ -97,8 +97,11 @@
   const selfOccupant = $derived(
     conversation ? [...conversation.occupants.values()].find((o) => o.self) : undefined
   )
-  // XEP-0045: subject change is a moderator privilege by default
-  const canEditSubject = $derived(selfOccupant?.role === 'moderator')
+  // XEP-0045: subject change is a moderator privilege by default, but
+  // the room may open it to all occupants via muc#roominfo_changesubject
+  const canEditSubject = $derived(
+    selfOccupant?.role === 'moderator' || conversation?.roomInfo?.changeSubject === true
+  )
   // owner configuration is an XMPP form. IRC channel config lives in
   // ChanServ, so the button stays hidden on transports without it
   const canConfigure = $derived(
@@ -296,7 +299,7 @@
               <span class="truncate">
                 {isRoom ? conv.peerJid.split('@')[0] : displayName(conv.peerJid)}
               </span>
-              {#if !isRoom && conv.encrypted}
+              {#if conv.encrypted}
                 <Tooltip>
                   <TooltipTrigger>
                     {#snippet child({ props })}

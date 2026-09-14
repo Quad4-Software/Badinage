@@ -341,6 +341,7 @@ const de = {
     'Die Nachricht wird für alle im Raum zurückgezogen. Das kann nicht rückgängig gemacht werden.',
   messageRemoved: 'Nachricht entfernt',
   occupantOptions: 'Teilnehmeroptionen',
+  messageOccupant: 'Nachricht an {nick:string}',
   kick: 'Hinauswerfen',
   kickOccupantTitle: '{nick} hinauswerfen?',
   kickOccupantDescription:

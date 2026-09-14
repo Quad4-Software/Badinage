@@ -5,6 +5,7 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import type { Conversation, RoomOccupant } from '$lib/state/chats.svelte'
+  import { contextArea } from '$lib/ui/components/context-menu/area'
   import { Input } from '$lib/ui/primitives/input'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
   import { cn } from '$lib/utils/cn'
@@ -12,6 +13,7 @@
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import PeerAvatar from './peer-avatar.svelte'
+  import { occupantMenu } from './sidebar/row-menu.svelte'
 
   let { conversation }: { conversation: Conversation } = $props()
 
@@ -100,7 +102,14 @@
           {group.title} · {group.members.length}
         </li>
         {#each group.members as occupant (occupant.nick)}
-          <li class="group hover:bg-accent flex items-center gap-2.5 rounded-md px-2 py-1.5">
+          <li
+            class="group hover:bg-accent flex items-center gap-2.5 rounded-md px-2 py-1.5"
+            {@attach contextArea({
+              section: 'chat.occupant',
+              payload: occupant,
+              items: () => occupantMenu(occupant, conversation, account)
+            })}
+          >
             <PeerAvatar
               jid={`${conversation.peerJid}/${occupant.nick}`}
               fallback={occupant.nick.slice(0, 2)}

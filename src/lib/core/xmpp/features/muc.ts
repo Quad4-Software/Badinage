@@ -8,7 +8,7 @@ import { bareJid } from '$lib/utils/jid'
 import { childElements } from '$lib/utils/xml'
 
 import { NS } from '../ns'
-import { parseDataForm, type DataForm } from '../stanzas'
+import { parseDataForm, type DataForm, type DiscoInfo } from '../stanzas'
 import { appendSubmitForm } from './dataforms'
 import { ownCaps } from './caps'
 import { noop, type XmppTransport } from './transport'
@@ -57,6 +57,60 @@ export function changeRoomNick(
 
 export function setRoomSubject(conn: XmppTransport, room: string, subject: string): void {
   conn.send($msg({ to: room, type: 'groupchat' }).c('subject').t(subject))
+}
+
+// Room properties learned from the room's own disco#info answer,
+// probed on join. Drives OMEMO gating, subject edit affordances and
+// real-jid display.
+export interface RoomInfo {
+  // muc_membersonly: entry restricted to members
+  membersOnly: boolean
+  // anything other than muc_nonanonymous hides real jids from us
+  anonymous: boolean
+  // urn:xmpp:occupant-id:0 advertised
+  occupantIds: boolean
+  // muc#roominfo_changesubject: occupants may set the subject
+  changeSubject: boolean
+}
+
+// XEP-0045 section 15.4 room feature vars plus the section 16.4
+// roominfo extension form that carries the changesubject flag.
+const ROOM_FEATURE = {
+  membersOnly: 'muc_membersonly',
+  nonAnonymous: 'muc_nonanonymous',
+  occupantIds: NS.OCCUPANT_ID
+} as const
+const ROOMINFO_FORM = 'http://jabber.org/protocol/muc#roominfo'
+const ROOMINFO_CHANGE_SUBJECT = 'muc#roominfo_changesubject'
+
+// Map a room disco#info answer onto RoomInfo. Feature vars carry the
+// anonymity and membership facts. The roominfo form carries policy
+// like changesubject. Missing forms leave defaults per XEP-0045.
+export function parseRoomInfo(info: DiscoInfo | null): RoomInfo | undefined {
+  if (!info) return undefined
+  const features = new Set(info.features)
+  const form = info.forms.find((f) => f.formType === ROOMINFO_FORM)
+  const changeSubjectField = form?.fields.find((f) => f.var === ROOMINFO_CHANGE_SUBJECT)
+  const raw = changeSubjectField?.values[0]?.toLowerCase()
+  return {
+    membersOnly: features.has(ROOM_FEATURE.membersOnly),
+    anonymous: !features.has(ROOM_FEATURE.nonAnonymous),
+    occupantIds: features.has(ROOM_FEATURE.occupantIds),
+    // XEP-0045 table 10: when the form does not say otherwise, anyone
+    // may change the subject
+    changeSubject: raw === undefined ? true : raw === '1' || raw === 'true'
+  }
+}
+
+// XEP-0045 admin grant: affiliation member on a bare jid, the piece a
+// members-only room actually needs to admit an invitee.
+export function grantMembership(conn: XmppTransport, room: string, jid: string): void {
+  conn.sendIq(
+    $iq({ type: 'set', to: room })
+      .c('query', { xmlns: NS.MUC_ADMIN })
+      .c('item', { affiliation: 'member', jid: bareJid(jid) }),
+    noop
+  )
 }
 
 // XEP-0045: answer a 201 status by accepting the default room

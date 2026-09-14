@@ -8,6 +8,8 @@ import {
   parseMdsItem,
   parsePepEvent
 } from '..'
+import { sendEncryptedMessage } from '../../features/pep/pep'
+import type { StanzaBuilder, XmppTransport } from '../../features/transport'
 
 const parser = new DOMParser()
 
@@ -129,5 +131,40 @@ describe('parseChannelSearchItems', () => {
       nusers: 42,
       isOpen: true
     })
+  })
+})
+
+describe('sendEncryptedMessage', () => {
+  const PAYLOAD = `<encrypted xmlns="urn:xmpp:omemo:2"><header sid="1"/><payload>AA</payload></encrypted>`
+
+  function capture(): { conn: XmppTransport; sent: string[] } {
+    const sent: string[] = []
+    const conn: XmppTransport = {
+      sendIq: () => undefined,
+      send: (stanza: StanzaBuilder) => {
+        sent.push(String(stanza))
+      },
+      uniqueId: (prefix) => `${prefix}-1`,
+      jid: 'me@example.net/res'
+    }
+    return { conn, sent }
+  }
+
+  it('requests a receipt on chat stanzas', () => {
+    const { conn, sent } = capture()
+    sendEncryptedMessage(conn, 'peer@example.net', PAYLOAD, 'chat')
+    expect(sent[0]).toContain('type="chat"')
+    expect(sent[0]).toContain('urn:xmpp:receipts')
+    expect(sent[0]).toContain('urn:xmpp:omemo:2')
+  })
+
+  it('omits the receipt request on groupchat stanzas', () => {
+    const { conn, sent } = capture()
+    sendEncryptedMessage(conn, 'room@conference.example.net', PAYLOAD, 'groupchat')
+    expect(sent[0]).toContain('type="groupchat"')
+    // receipts are a one-to-one concept: requesting one per occupant
+    // would flood the sender with acks
+    expect(sent[0]).not.toContain('urn:xmpp:receipts')
+    expect(sent[0]).toContain('urn:xmpp:omemo:2')
   })
 })

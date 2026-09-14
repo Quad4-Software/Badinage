@@ -90,12 +90,13 @@ export function pepPublish(
 export function sendEncryptedMessage(
   conn: XmppTransport,
   to: string,
-  encryptedXml: string
+  encryptedXml: string,
+  type: 'chat' | 'groupchat' = 'chat'
 ): string {
   const id = conn.uniqueId('msg')
   const originId = conn.uniqueId('origin')
   const encrypted = domFromXml(encryptedXml)
-  const stanza = $msg({ to, type: 'chat', id })
+  const stanza = $msg({ to, type, id })
     .c('body')
     .t(OMEMO_FALLBACK_BODY)
     .up()
@@ -108,8 +109,8 @@ export function sendEncryptedMessage(
     })
     .up()
     .c('store', { xmlns: NS.HINTS })
-    .up()
-    .c('request', { xmlns: NS.RECEIPTS })
+  // delivery receipts do not apply to groupchat
+  if (type === 'chat') stanza.up().c('request', { xmlns: NS.RECEIPTS })
   if (!encrypted) return id
   stanza.cnode(encrypted)
   conn.send(stanza)

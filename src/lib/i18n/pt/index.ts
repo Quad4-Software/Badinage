@@ -338,6 +338,7 @@ const pt = {
     'A mensagem é retirada para todos na sala. Isso não pode ser desfeito.',
   messageRemoved: 'Mensagem removida',
   occupantOptions: 'Opções do ocupante',
+  messageOccupant: 'Mensagem para {nick:string}',
   kick: 'Expulsar',
   kickOccupantTitle: 'Expulsar {nick}?',
   kickOccupantDescription:

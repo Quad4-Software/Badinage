@@ -340,6 +340,7 @@ const es = {
     'El mensaje se retracta para todos en la sala. Esta acción no se puede deshacer.',
   messageRemoved: 'Mensaje eliminado',
   occupantOptions: 'Opciones del ocupante',
+  messageOccupant: 'Mensaje a {nick:string}',
   kick: 'Expulsar',
   kickOccupantTitle: '¿Expulsar a {nick}?',
   kickOccupantDescription:

@@ -292,7 +292,7 @@ export class ChatStore {
       }
       // target unknown: fall through and show it as a normal message
     }
-    if (message.encrypted && conversation.kind === 'dm') conversation.encrypted = true
+    if (message.encrypted) conversation.encrypted = true
     // tombstones carry no body. Store them so the placeholder renders
     if (
       !message.body &&
@@ -526,6 +526,8 @@ export class ChatStore {
         return
       }
       conversation.joined = false
+      // re-probe room properties on rejoin, they may have changed
+      conversation.roomInfo = undefined
       if (occupant.codes.includes(SELF_BANNED_CODE)) {
         conversation.banned = true
         conversation.kicked = false

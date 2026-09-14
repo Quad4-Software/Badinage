@@ -37,7 +37,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   // spoiler with the bracketed hint, "/spoiler text" is hintless. A
   // plain "/me ..." stays literal on the wire. The render side splits it.
   const spoiler = parseSpoilerCommand(text)
-  const sendText = spoiler?.body ?? text
+  const body = spoiler?.body ?? text
 
   if (ctx.editing) {
     const ref = ctx.editing.wireId ?? ctx.editing.id
@@ -48,7 +48,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
         try {
           // the correction rides inside the SCE envelope. The wire
           // stanza never carries a cleartext replace element
-          const xml = await omemo.encryptBody(peerJid, sendText, {
+          const xml = await omemo.encryptBody(peerJid, body, {
             replaceId: ref,
             spoilerHint: spoiler?.hint,
             ephemeral: conversation?.ephemeralTimer
@@ -65,7 +65,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
       }
     }
     if (!sent) {
-      account.connection.sendChatMessage(peerJid, sendText, type, {
+      account.connection.sendChatMessage(peerJid, body, type, {
         replaceId: ref,
         spoilerHint: spoiler?.hint,
         ephemeral: conversation?.ephemeralTimer
@@ -73,7 +73,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
     }
     app
       .chatsFor(account.jid)
-      .applyCorrection(peerJid, ctx.editing.id, sendText, Date.now(), spoiler?.hint)
+      .applyCorrection(peerJid, ctx.editing.id, body, Date.now(), spoiler?.hint)
     return true
   }
 
@@ -93,12 +93,25 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
       : undefined
   // XEP-0372 mention references (muc) and the XEP-0466 timer the
   // conversation currently negotiates ride on both send paths
-  const references = mentionRefs(conversation, kind, sendText)
+  const references = mentionRefs(conversation, kind, body)
   const ephemeral = conversation?.ephemeralTimer
+  // group omemo needs a members-only non-anonymous room: members-only
+  // keeps the recipient set bounded to affiliated users and real jids
+  // are how their devices are enumerated. The disco probe may not have
+  // landed yet, in which case the room still sends plaintext
+  const members = [...(conversation?.occupants.values() ?? [])].filter((o) => !o.self)
+  const roomEncrypted =
+    kind === 'muc' &&
+    conversation?.roomInfo?.membersOnly === true &&
+    conversation.roomInfo.anonymous === false &&
+    members.length > 0 &&
+    // every occupant must expose a real jid: anyone missing could not
+    // read the stanza, so partial coverage sends plaintext instead
+    members.every((o) => o.jid !== undefined)
   // encrypt when the peer publishes omemo devices. Falls back to
   // plaintext when there are none or every device is distrusted
   let encryptedXml: string | null = null
-  if (type === 'chat') {
+  if (type === 'chat' || roomEncrypted) {
     // await the in-flight service creation so a message sent right
     // after connect is still encrypted
     const omemo = account.omemo ?? (await account.omemoService())
@@ -107,12 +120,21 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
         // null means the peer publishes no usable devices. A thrown
         // error is a real failure and must not downgrade to plaintext.
         // The reply reference and spoiler marker travel inside the
-        // envelope with the body.
-        encryptedXml = await omemo.encryptBody(peerJid, sendText, {
-          replyTo: replyRef,
-          spoilerHint: spoiler?.hint,
-          ephemeral
-        })
+        // envelope with the body. For rooms the recipient set is every
+        // member's real jid and null also covers members without
+        // usable devices, which cannot read the stanza anyway
+        encryptedXml = roomEncrypted
+          ? await omemo.encryptRoomBody(
+              peerJid,
+              members.map((o) => o.jid ?? ''),
+              body,
+              { replyTo: replyRef, spoilerHint: spoiler?.hint, ephemeral }
+            )
+          : await omemo.encryptBody(peerJid, body, {
+              replyTo: replyRef,
+              spoilerHint: spoiler?.hint,
+              ephemeral
+            })
       } catch {
         toast.error(get(LL).encryptFailed())
         return false
@@ -121,8 +143,8 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   }
   const encrypted = encryptedXml !== null
   const id = encryptedXml
-    ? account.connection.sendEncryptedMessage(peerJid, encryptedXml)
-    : account.connection.sendChatMessage(peerJid, sendText, type, {
+    ? account.connection.sendEncryptedMessage(peerJid, encryptedXml, type)
+    : account.connection.sendChatMessage(peerJid, body, type, {
         replyTo: replyRef,
         spoilerHint: spoiler?.hint,
         references,
@@ -132,12 +154,12 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   const conv = store.open(peerJid)
   // keep the flag honest: a peer that removed its device list drops
   // the conversation back to plaintext
-  if (type === 'chat') conv.encrypted = encrypted
+  conv.encrypted = encrypted
   store.push(peerJid, {
     id,
     wireId: id,
     peerJid,
-    body: sendText,
+    body,
     outgoing: true,
     timestamp: Date.now(),
     encrypted,

@@ -382,6 +382,11 @@ export class DemoConnection implements ChatConnection {
     void reason
   }
 
+  grantMembership(room: string, jid: string): void {
+    void room
+    void jid
+  }
+
   kickOccupant(room: string, nick: string, reason?: string): void {
     demoKickOccupant(this.events, room, nick, reason)
   }

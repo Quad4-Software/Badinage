@@ -113,6 +113,16 @@ export function createChatActions(deps: ChatActionDeps) {
       reason: reason || undefined,
       password: conversation.password
     })
+    // members-only rooms do not admit invitees by invitation alone.
+    // An admin or owner grant of member affiliation is what actually
+    // lets them past the door
+    const self = [...conversation.occupants.values()].find((o) => o.self)
+    if (
+      conversation.roomInfo?.membersOnly === true &&
+      (self?.affiliation === 'admin' || self?.affiliation === 'owner')
+    ) {
+      account.connection.grantMembership(conversation.peerJid, jid)
+    }
     toast.success(get(LL).inviteSent())
   }
 

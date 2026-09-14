@@ -202,7 +202,7 @@ export interface ChatConnection {
   // OMEMO: send a pre-encrypted message stanza. encryptedXml is the
   // serialized <encrypted> element produced by the omemo service. Replies
   // and corrections travel inside its SCE envelope, never in the clear.
-  sendEncryptedMessage(to: string, encryptedXml: string): string
+  sendEncryptedMessage(to: string, encryptedXml: string, type?: 'chat' | 'groupchat'): string
   // OMEMO: send a bare encrypted payload with no fallback body - used for
   // key transports, reactions and chat states in encrypted conversations.
   sendEncryptedNotification(to: string, encryptedXml: string): void

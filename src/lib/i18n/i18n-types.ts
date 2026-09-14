@@ -1314,6 +1314,11 @@ type RootTranslation = {
 	 */
 	occupantOptions: string
 	/**
+	 * M​e​s​s​a​g​e​ ​{​n​i​c​k​}
+	 * @param {string} nick
+	 */
+	messageOccupant: RequiredParams<'nick'>
+	/**
 	 * K​i​c​k
 	 */
 	kick: string
@@ -3154,6 +3159,10 @@ export type TranslationFunctions = {
 	 * Occupant options
 	 */
 	occupantOptions: () => LocalizedString
+	/**
+	 * Message {nick}
+	 */
+	messageOccupant: (arg: { nick: string }) => LocalizedString
 	/**
 	 * Kick
 	 */

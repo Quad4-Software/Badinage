@@ -9,6 +9,7 @@ import {
   Copy,
   Hash,
   LogOut,
+  MessageCircle,
   Search,
   Settings,
   UserMinus,
@@ -22,6 +23,7 @@ import type { Bookmark } from '$lib/core/xmpp/connection'
 import type { Account, RosterContact } from '$lib/state/accounts.svelte'
 import { app } from '$lib/state/app.svelte'
 import type { Conversation } from '$lib/state/chats.svelte'
+import type { RoomOccupant } from '$lib/state/conversation.svelte'
 import { explore } from '$lib/state/explore'
 import type { MenuItem } from '$lib/state/app/menus.svelte'
 import { copyText } from '$lib/ui/clipboard'
@@ -94,6 +96,46 @@ export function contactMenu(contact: RosterContact, account: Account | undefined
         icon: UserMinus,
         danger: true,
         run: () => account.removeContact(contact.jid)
+      }
+    )
+  }
+  return items
+}
+
+// occupant rows in a MUC member list. Messaging and adding the person
+// need their real jid, which only non-anonymous rooms disclose, so the
+// copy target falls back to the room nick form
+export function occupantMenu(
+  occupant: RoomOccupant,
+  room: Conversation,
+  account: Account | undefined
+): MenuItem[] {
+  const items: MenuItem[] = [
+    {
+      id: 'copy',
+      label: get(LL).copyAddress(),
+      icon: Copy,
+      run: () => void copyText(occupant.jid ?? `${room.peerJid}/${occupant.nick}`)
+    }
+  ]
+  if (occupant.jid && !occupant.self && account) {
+    const jid = occupant.jid
+    items.unshift({
+      id: 'message',
+      label: get(LL).messageOccupant({ nick: occupant.nick }),
+      icon: MessageCircle,
+      run: () => app.selectPeer(jid)
+    })
+    items.push(
+      { id: 'sep', label: '', separator: true },
+      {
+        id: 'add-contact',
+        label: get(LL).addContact(),
+        icon: UserPlus,
+        run: () => {
+          app.pendingLink = { kind: 'roster', jid, name: occupant.nick }
+          app.addContactOpen = true
+        }
       }
     )
   }

@@ -262,8 +262,8 @@ export class XmppConnection implements ChatConnection {
     pepPublish(this.transport, node, itemId, payloadXml, options, onDone)
   }
 
-  sendEncryptedMessage(to: string, encryptedXml: string): string {
-    return sendEncryptedMessage(this.transport, to, encryptedXml)
+  sendEncryptedMessage(to: string, encryptedXml: string, type?: 'chat' | 'groupchat'): string {
+    return sendEncryptedMessage(this.transport, to, encryptedXml, type)
   }
   sendEncryptedNotification(to: string, encryptedXml: string): void {
     sendEncryptedNotification(this.transport, to, encryptedXml)

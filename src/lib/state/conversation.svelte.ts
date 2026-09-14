@@ -4,6 +4,7 @@
 
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
+import type { RoomInfo } from '$lib/core/xmpp/features/muc'
 import type { Attachment, ChatState, Geoloc, NotifySetting } from '$lib/core/xmpp/stanzas'
 
 export type ConversationKind = 'dm' | 'muc'
@@ -125,6 +126,8 @@ export interface Conversation {
   ourOccupantId?: string | undefined
   // room password remembered for rejoins
   password?: string | undefined
+  // muc only: disco#info properties for the room, probed after join
+  roomInfo?: RoomInfo | undefined
   // last join failure, shown as a banner with retry affordances
   joinError?: JoinError | undefined
   // self-presence codes 307 and 301: kicked triggers bounded

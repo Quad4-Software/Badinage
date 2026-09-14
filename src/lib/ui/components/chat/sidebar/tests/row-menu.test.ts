@@ -27,7 +27,7 @@ vi.stubGlobal('sessionStorage', fakeStorage())
 
 const { app } = await import('$lib/state/app.svelte')
 const { createConversation } = await import('$lib/state/conversation.svelte')
-const { accountMenu, bookmarkMenu, contactMenu, conversationMenu, sidebarMenu } =
+const { accountMenu, bookmarkMenu, contactMenu, conversationMenu, occupantMenu, sidebarMenu } =
   await import('../row-menu.svelte')
 
 const calls: string[] = []
@@ -104,6 +104,36 @@ describe('contactMenu', () => {
     expect(items.find((i) => i.id === 'remove')?.danger).toBe(true)
     run('remove', items)
     expect(calls).toEqual(['remove:pal@x.example'])
+  })
+})
+
+describe('occupantMenu', () => {
+  const room = createConversation('room@conf.x.example', 'muc')
+  const withJid = {
+    nick: 'pal',
+    jid: 'pal@x.example',
+    role: 'participant',
+    affiliation: 'member',
+    presence: 'online',
+    self: false,
+    codes: [] as string[]
+  }
+
+  it('copies the real jid and offers message and add contact', () => {
+    const items = occupantMenu(withJid, room, account)
+    expect(items.map((i) => i.id)).toEqual(['message', 'copy', 'sep', 'add-contact'])
+    run('add-contact', items)
+    expect(app.addContactOpen).toBe(true)
+    expect(app.pendingLink).toEqual({ kind: 'roster', jid: 'pal@x.example', name: 'pal' })
+    app.pendingLink = null
+  })
+
+  it('hides real-jid actions for anonymous rooms and the self row', () => {
+    const anon = { ...withJid, jid: undefined }
+    const items = occupantMenu(anon, room, account)
+    expect(items.map((i) => i.id)).toEqual(['copy'])
+    const self = occupantMenu({ ...withJid, self: true }, room, account)
+    expect(self.map((i) => i.id)).toEqual(['copy'])
   })
 })
 

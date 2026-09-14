@@ -338,6 +338,7 @@ const fr = {
     'Le message est retiré pour tous les occupants du salon. Cette action est irréversible.',
   messageRemoved: 'Message supprimé',
   occupantOptions: 'Options de l\'occupant',
+  messageOccupant: 'Message à {nick:string}',
   kick: 'Expulser',
   kickOccupantTitle: 'Expulser {nick} ?',
   kickOccupantDescription:

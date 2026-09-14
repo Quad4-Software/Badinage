@@ -337,6 +337,7 @@ const en = {
     'The message is retracted for everyone in the room. This cannot be undone.',
   messageRemoved: 'Message removed',
   occupantOptions: 'Occupant options',
+  messageOccupant: 'Message {nick:string}',
   kick: 'Kick',
   kickOccupantTitle: 'Kick {nick:string}?',
   kickOccupantDescription:

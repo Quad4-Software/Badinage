@@ -327,17 +327,29 @@ export class OmemoService {
     return recipients
   }
 
-  // Encrypt an SCE envelope (omemo:2 only) for the peer and our own
-  // devices. Null when the peer publishes no usable omemo:2 devices.
   private async encryptEnvelope(jid: string, content: XmlElement[]): Promise<string | null> {
-    const bare = bareJid(jid)
-    const peer = await this.peerRecipients('omemo2', bare)
-    if (peer.length === 0) return null
-    const recipients = [...peer, ...(await this.ownRecipients('omemo2'))]
+    return this.encryptEnvelopeFor(jid, [jid], content)
+  }
+
+  // Envelope addressed to toJid with keys covering every member plus
+  // our own devices. Null when any member lacks a usable device, the
+  // caller falls back to plaintext for everyone
+  private async encryptEnvelopeFor(
+    toJid: string,
+    memberJids: string[],
+    content: XmlElement[]
+  ): Promise<string | null> {
+    const peers: EncryptRecipient[] = []
+    for (const member of memberJids) {
+      const recipients = await this.peerRecipients('omemo2', bareJid(member))
+      if (recipients.length === 0) return null
+      peers.push(...recipients)
+    }
+    const recipients = [...peers, ...(await this.ownRecipients('omemo2'))]
     const envelope = serializeSceEnvelope({
       content,
       from: this.ownJid,
-      to: bare,
+      to: bareJid(toJid),
       time: new Date()
     })
     const encrypted = await this.crypto.encrypt('omemo2', {
@@ -380,6 +392,28 @@ export class OmemoService {
       plaintext: utf8ToBytes(body)
     })
     return serializeXml(encrypted)
+  }
+
+  // Group OMEMO: one groupchat stanza whose keys cover every member's
+  // devices, null when any member lacks usable devices
+  async encryptRoomBody(
+    roomJid: string,
+    memberJids: string[],
+    body: string,
+    opts?: {
+      replaceId?: string
+      replyTo?: { id: string; to: string } | undefined
+      spoilerHint?: string | undefined
+      ephemeral?: number | undefined
+    }
+  ): Promise<string | null> {
+    const content = textEnvelope(body, [
+      ...(opts?.replaceId ? [replaceNode(opts.replaceId)] : []),
+      ...(opts?.replyTo ? [replyNode(opts.replyTo)] : []),
+      ...(opts?.spoilerHint !== undefined ? [spoilerNode(opts.spoilerHint)] : []),
+      ...(opts?.ephemeral !== undefined ? [ephemeralNode(opts.ephemeral)] : [])
+    ]).content
+    return this.encryptEnvelopeFor(bareJid(roomJid), memberJids, content)
   }
 
   // Encrypt an attachment announcement inside an envelope. The url is
@@ -442,9 +476,10 @@ export class OmemoService {
   // records the sender's device fingerprint so key changes surface in
   // the UI. The report names the device and whether a key transport
   // might help, even when decryption itself failed.
-  async decryptInto(message: IncomingMessage): Promise<DecryptReport> {
+  async decryptInto(message: IncomingMessage, senderJid?: string): Promise<DecryptReport> {
     if (!message.encryptedXml) return { status: 'none' }
-    const sender = bareJid(message.from)
+    // sessions key on the sender's real jid, not a room nick
+    const sender = bareJid(senderJid ?? message.from)
 
     let element: XmlElement | undefined
     let ns: Namespace | undefined

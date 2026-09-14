@@ -1,4 +1,5 @@
 import { NS } from '$lib/core/xmpp/ns'
+import { parseRoomInfo } from '$lib/core/xmpp/features/muc'
 import { parseMdsItem, type IncomingMessage } from '$lib/core/xmpp/stanzas'
 import { childElements } from '$lib/utils/xml'
 import { settings } from '$lib/state/settings.svelte'
@@ -285,6 +286,15 @@ class AppStore {
         newNick: occupant.newNick,
         reason: occupant.reason
       })
+      // room properties come from the room's own disco#info answer.
+      // Probe once per join: OMEMO gating, subject editing and jid
+      // visibility all read it
+      const conversation = store.conversations.get(occupant.room)
+      if (conversation?.joined === true && conversation.roomInfo === undefined) {
+        account.connection.discoInfo(occupant.room, undefined, (info) => {
+          conversation.roomInfo = parseRoomInfo(info)
+        })
+      }
     })
   }
 
