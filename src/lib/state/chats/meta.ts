@@ -22,15 +22,14 @@ export function sweepExpired(
 ): void {
   const now = Date.now()
   for (const conversation of conversations.values()) {
-    if (conversation.messages.length > 0) {
-      const before = conversation.messages.length
+    // skip the filter allocation outright unless a row actually
+    // expired - most conversations carry no ephemeral messages at all
+    if (conversation.messages.some((m) => m.expiresAt !== undefined && m.expiresAt <= now)) {
       conversation.messages = conversation.messages.filter(
         (m) => m.expiresAt === undefined || m.expiresAt > now
       )
-      if (conversation.messages.length !== before) {
-        conversation.unread = conversation.messages.filter((m) => !m.outgoing && !m.read).length
-        persistence.schedule(conversation)
-      }
+      conversation.unread = conversation.messages.filter((m) => !m.outgoing && !m.read).length
+      persistence.schedule(conversation)
     }
     for (const [sender, live] of conversation.liveText) {
       if (now - live.at > RTT_TTL_MS) conversation.liveText.delete(sender)

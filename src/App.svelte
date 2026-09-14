@@ -8,7 +8,7 @@
 
   import { reportError } from '$lib/core/telemetry'
   import { detectLocale } from '$lib/i18n/i18n-util'
-  import { loadLocale } from '$lib/i18n/i18n-util.sync'
+  import { initBaseLocale } from '$lib/i18n/languages'
   import { setLocale } from '$lib/i18n/i18n-svelte'
   import { applyLocale, asLocale } from '$lib/i18n/languages'
   import LL from '$lib/i18n/i18n-svelte'
@@ -92,7 +92,7 @@
   onMount(() => {
     // the base dictionary is bundled and stays warm for instant render.
     // A saved pick or the browser language loads its dictionary async
-    loadLocale('en')
+    initBaseLocale()
     setLocale('en')
     const wanted = asLocale(settings.current.locale) ?? detectLocale(navigatorDetector)
     if (wanted !== 'en') void applyLocale(wanted)

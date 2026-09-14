@@ -8,15 +8,26 @@
 // enables it the SDK is never initialized, so no listeners attach and
 // no network traffic is generated at all.
 
-import type { Breadcrumb, ErrorEvent } from '@sentry/browser'
-import {
+import type {
+  Breadcrumb,
+  ErrorEvent,
   browserTracingIntegration,
   captureException,
-  init as sentryInit,
+  init,
   withScope
 } from '@sentry/browser'
 
 import { DEFAULT_TELEMETRY_DSN } from '$lib/constants'
+
+// the SDK is a heavy chunk and reporting is opt-in, so it only loads
+// over the wire the first time a user actually enables it
+interface Sentry {
+  init: typeof init
+  withScope: typeof withScope
+  captureException: typeof captureException
+  browserTracingIntegration: typeof browserTracingIntegration
+}
+let sentryLoading: Promise<Sentry> | undefined
 
 const ENV_DSN = import.meta.env.VITE_SENTRY_DSN?.trim()
 const DSN = ENV_DSN === 'off' ? '' : ENV_DSN || DEFAULT_TELEMETRY_DSN
@@ -159,32 +170,40 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
 // every event in the beforeSend gates and makes reportError a no-op.
 export function setTelemetryEnabled(enabled: boolean): void {
   reportingEnabled = enabled
-  if (enabled) initTelemetry()
+  if (enabled) void initTelemetry()
 }
 
 // Captures an error explicitly, e.g. from a svelte:boundary onerror
 // handler where the SDK global handlers cannot see it. Global error and
 // unhandledrejection events are already covered by the SDK defaults.
 export function reportError(error: unknown, context?: Record<string, unknown>): void {
-  if (!initialized || !reportingEnabled) return
-  withScope((scope) => {
-    for (const [key, value] of Object.entries(context ?? {})) {
-      scope.setExtra(key, typeof value === 'string' ? scrubText(value) : value)
-    }
-    captureException(error)
+  if (!reportingEnabled) return
+  void initTelemetry().then((sdk) => {
+    if (!sdk || !reportingEnabled) return
+    sdk.withScope((scope) => {
+      for (const [key, value] of Object.entries(context ?? {})) {
+        scope.setExtra(key, typeof value === 'string' ? scrubText(value) : value)
+      }
+      sdk.captureException(error)
+    })
   })
 }
 
-// Attaches the SDK global handlers and tracing. Runs lazily the first
-// time reporting is enabled. Does nothing while opted out or without a
-// DSN.
-function initTelemetry(): void {
-  if (!DSN || !reportingEnabled || initialized) return
+// Loads the SDK on first use, then attaches the global handlers and
+// tracing. Does nothing while opted out or without a DSN. Errors that
+// arrive while the chunk is still loading still report: callers await
+// this before capturing.
+async function initTelemetry(): Promise<Sentry | undefined> {
+  if (!DSN || !reportingEnabled || initialized) return undefined
+  sentryLoading ??= import('@sentry/browser')
+  const sdk = await sentryLoading
+  // the toggle may have flipped off while the chunk was in flight
+  if (!reportingEnabled || initialized) return sdk
   initialized = true
-  sentryInit({
+  sdk.init({
     dsn: DSN,
     sendDefaultPii: false,
-    integrations: [browserTracingIntegration()],
+    integrations: [sdk.browserTracingIntegration()],
     tracesSampleRate: TRACES_SAMPLE_RATE,
     // benign browser noise, not app bugs
     ignoreErrors: [

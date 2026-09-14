@@ -26,6 +26,12 @@ export function avatarHint(hashes: SvelteMap<string, string>, jid: string): bool
 // conversation, own account, room) fetch regardless. In-flight and
 // failed lookups are deduped for the session by the transport layer and
 // the requested set.
+// bounds the session cache: a busy room can churn thousands of
+// occupants and every one of them would otherwise pin a data uri for
+// the whole session. Eviction also frees the requested slot so a
+// still-visible row can refetch
+const AVATAR_CACHE_CAP = 2048
+
 export function ensureAvatar(deps: AvatarDeps, jid: string, force = false): void {
   const hash = deps.hashes.get(jid)
   if (hash === '') return
@@ -34,7 +40,15 @@ export function ensureAvatar(deps: AvatarDeps, jid: string, force = false): void
   if (!deps.connected) return
   deps.requested.add(jid)
   deps.connection.fetchAvatar(jid, (uri) => {
-    if (uri) deps.avatars.set(jid, uri)
+    if (!uri) return
+    if (deps.avatars.size >= AVATAR_CACHE_CAP) {
+      const oldest = deps.avatars.keys().next().value
+      if (oldest !== undefined) {
+        deps.avatars.delete(oldest)
+        deps.requested.delete(oldest)
+      }
+    }
+    deps.avatars.set(jid, uri)
   })
 }
 

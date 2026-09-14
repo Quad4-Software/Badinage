@@ -175,8 +175,10 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [x] App-wide context menu: registry in state, contextArea attachment
       per section, keyboard navigation, viewport clamping, touch
       long-press dedup, native menu kept on links, inputs and selections
-- [x] Menu sections on message bubbles, sidebar conversations and rail
-      accounts; extension items merge per section at open time
+- [x] Menu sections on message rows, links, attachments, the chat
+      header, sidebar conversations, contacts, bookmarks, bare nav
+      space, rail accounts and the account switcher; extension items
+      merge per section at open time
 - [x] Extension packages: manifest validation, Ed25519 signatures via
       WebCrypto, publisher trust prompts, key-change approval that
       retires stale keys, signed-to-unsigned downgrade rejection
@@ -230,7 +232,11 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       POST via service worker inbox
 - [x] Badging API unread count on the installed icon
 - [x] XEP-0392 consistent contact/nick colors for avatar fallbacks
+- [x] Bundle splitting: sentry SDK and non-base locales lazy-load on
+      first use, emoji data already lazy. Entry chunk down ~77k gzip
 - [ ] Message list virtualization (long history perf)
+- [ ] OMEMO decrypt in a worker: noble ops run on the main thread,
+      fine per message but a large encrypted MAM page can jank
 - [ ] Onboarding: server discovery hints, Tor/i2p notes for self-hosters
 - [ ] PWA manifest + service worker, installable
 
