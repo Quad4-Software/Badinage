@@ -23,6 +23,9 @@ export interface SendOpts {
   conversation: Conversation | undefined
   ctx: ComposerContext
   text: string
+  // set on the recursion an extension command produces: extension
+  // dispatch only runs at depth 0 so a returned body can never loop
+  depth?: number
 }
 
 export async function sendText(opts: SendOpts): Promise<boolean> {
@@ -32,7 +35,11 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   // /invite, /join) act on the room or store and never become a body.
   // /me and /spoiler fall through to the normal send path
   const command = parseSlashCommand(text)
-  if (command && runSlashCommand(opts, command)) return true
+  if (command) {
+    const result = await runSlashCommand(opts, command)
+    if (result === true) return true
+    if (result !== false) return sendText({ ...opts, text: result.body, depth: 1 })
+  }
   // XEP-0382 slash command: "/spoiler [hint] text" hides text behind a
   // spoiler with the bracketed hint, "/spoiler text" is hintless. A
   // plain "/me ..." stays literal on the wire. The render side splits it.

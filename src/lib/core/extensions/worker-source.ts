@@ -27,6 +27,10 @@ const PERMS = __PERMS__
 const handlers = new Map()
 const pending = new Map()
 const menuItems = []
+const commands = []
+let settingsFields = []
+let settingsValues = {}
+let settingsCb = null
 let seq = 0
 
 function post(m) { self.postMessage(m) }
@@ -77,6 +81,41 @@ self.badinage = {
       return call('net.fetch', [String(url), init === undefined ? {} : init])
     }
   },
+  commands: {
+    add: function (command, handler) {
+      guard('commands')
+      if (!command || typeof command.name !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(command.name))
+        throw new Error('bad command name')
+      if (typeof handler !== 'function') throw new Error('command needs a handler')
+      if (commands.length >= 10) throw new Error('command limit reached')
+      handlers.set('cmd:' + command.name, handler)
+      commands.push({ id: command.name, name: command.name, description: String(command.description || '').slice(0, 120) })
+      post({ t: 'commands', items: commands })
+    }
+  },
+  settings: {
+    define: function (fields) {
+      guard('settings')
+      if (!Array.isArray(fields)) throw new Error('settings fields must be an array')
+      settingsFields = fields.slice(0, 20)
+      post({ t: 'settings', fields: settingsFields })
+    },
+    values: function () {
+      return settingsValues
+    },
+    onChange: function (cb) {
+      if (typeof cb !== 'function') throw new Error('onChange needs a callback')
+      settingsCb = cb
+    }
+  },
+  messages: {
+    decorate: function (fn) {
+      guard('messages.decorate')
+      if (typeof fn !== 'function') throw new Error('decorator needs a function')
+      handlers.set('decorate', fn)
+      post({ t: 'decorator' })
+    }
+  },
   log: function () {
     call('log', Array.prototype.slice.call(arguments).map(String).join(' ').slice(0, 500))
   }
@@ -98,6 +137,11 @@ self.onmessage = function (e) {
     pending.delete(m.id)
     if (m.t === 'callResult') p.resolve(m.value)
     else p.reject(new Error(m.error || 'api call failed'))
+  } else if (m.t === 'settings') {
+    settingsValues = (m.values && typeof m.values === 'object') ? m.values : {}
+    if (settingsCb) {
+      try { settingsCb(settingsValues) } catch (e) { post({ t: 'crash', error: String(e).slice(0, 200) }) }
+    }
   }
 }
 `

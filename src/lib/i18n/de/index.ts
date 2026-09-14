@@ -511,7 +511,9 @@ const de = {
   extensionKeyChangedDescription:
     '{name} wurde mit einem anderen Schlüssel signiert als die installierte Kopie. Vertraue nur, wenn der Herausgeber den Schlüssel erwartbar gewechselt hat.',
   extensionTrustAccept: 'Vertrauen und installieren',
-  extensionTrustReject: 'Ablehnen'
+  extensionTrustReject: 'Ablehnen',
+  extensionConfigure: '{name:string} konfigurieren',
+  extensionNoSettings: 'Diese Erweiterung deklariert keine Einstellungen.'
 }
 
 export default de

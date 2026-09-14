@@ -508,7 +508,9 @@ const pt = {
   extensionKeyChangedDescription:
     '{name} foi assinada com uma chave diferente da cópia instalada. Confia apenas se esperavas que o editor rodasse as chaves.',
   extensionTrustAccept: 'Confiar e instalar',
-  extensionTrustReject: 'Rejeitar'
+  extensionTrustReject: 'Rejeitar',
+  extensionConfigure: 'Configurar {name:string}',
+  extensionNoSettings: 'Esta extensão não declara definições.'
 }
 
 export default pt

@@ -1892,6 +1892,15 @@ type RootTranslation = {
 	 * R​e​j​e​c​t
 	 */
 	extensionTrustReject: string
+	/**
+	 * C​o​n​f​i​g​u​r​e​ ​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	extensionConfigure: RequiredParams<'name'>
+	/**
+	 * T​h​i​s​ ​e​x​t​e​n​s​i​o​n​ ​d​e​c​l​a​r​e​s​ ​n​o​ ​s​e​t​t​i​n​g​s​.
+	 */
+	extensionNoSettings: string
 }
 
 export type TranslationFunctions = {
@@ -3715,6 +3724,14 @@ export type TranslationFunctions = {
 	 * Reject
 	 */
 	extensionTrustReject: () => LocalizedString
+	/**
+	 * Configure {name}
+	 */
+	extensionConfigure: (arg: { name: string }) => LocalizedString
+	/**
+	 * This extension declares no settings.
+	 */
+	extensionNoSettings: () => LocalizedString
 }
 
 export type Formatters = {}

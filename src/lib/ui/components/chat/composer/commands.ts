@@ -7,6 +7,7 @@ import { get } from 'svelte/store'
 
 import LL from '$lib/i18n/i18n-svelte'
 import { app } from '$lib/state/app.svelte'
+import { extApi } from '$lib/state/app/ext-api.svelte'
 import { toast } from '$lib/ui/primitives/sonner'
 import type { SlashCommand } from '$lib/utils/message-commands'
 
@@ -22,8 +23,12 @@ function usage(text: string): void {
 }
 
 // Returns true when the input was consumed (executed or rejected with
-// a toast), false when the body should be sent as a normal message.
-export function runSlashCommand(opts: SendOpts, command: SlashCommand): boolean {
+// a toast), false when the body should be sent as a normal message,
+// or {body} when an extension command produced text to send instead.
+export async function runSlashCommand(
+  opts: SendOpts,
+  command: SlashCommand
+): Promise<boolean | { body: string }> {
   if (PASSTHROUGH.has(command.name)) return false
   const { account, peerJid, kind, conversation } = opts
 
@@ -70,8 +75,23 @@ export function runSlashCommand(opts: SendOpts, command: SlashCommand): boolean 
       toast.success(get(LL).inviteSent())
       return true
     }
-    default:
+    default: {
+      // extension commands only run on the first dispatch: a returned
+      // body never re-parses as a command, so no recursion loop exists
+      if ((opts.depth ?? 0) === 0) {
+        const result = await extApi.runCommand(command.name, {
+          name: command.name,
+          args: command.args,
+          accountJid: account.jid,
+          peerJid,
+          kind
+        })
+        if (result.handled) {
+          return result.body === undefined ? true : { body: result.body }
+        }
+      }
       toast.error(get(LL).cmdUnknown({ name: command.name }))
       return true
+    }
   }
 }

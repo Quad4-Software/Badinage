@@ -8,7 +8,16 @@
 export const EXT_API_VERSION = 1
 export const MIN_API_VERSION = 1
 
-export const KNOWN_PERMISSIONS = ['menus', 'toast', 'storage', 'net', 'messages.read'] as const
+export const KNOWN_PERMISSIONS = [
+  'menus',
+  'toast',
+  'storage',
+  'net',
+  'messages.read',
+  'messages.decorate',
+  'commands',
+  'settings'
+] as const
 export type Permission = (typeof KNOWN_PERMISSIONS)[number]
 
 export interface ExtManifest {
@@ -65,6 +74,31 @@ export interface ExtMenuItem {
   danger?: boolean
 }
 
+// a slash command an extension announces over the wire. Handlers
+// receive {name, args, peerJid, kind} and may return {body} to send
+export interface ExtCommand {
+  id: string
+  name: string
+  description: string
+}
+
+// declarative settings field. The host renders these in a configure
+// dialog and stores values in the extension's own kv namespace
+export interface ExtSettingField {
+  key: string
+  type: 'text' | 'number' | 'checkbox' | 'select'
+  label: string
+  options?: string[]
+  default?: string | number | boolean
+}
+
+// render-time additions a decorator may attach to a message. Body
+// rewriting is intentionally absent: display integrity stays with us
+export interface ExtDecoration {
+  footer?: string
+  title?: string
+}
+
 export interface TrustedPublisher {
   key: string
   name: string
@@ -84,5 +118,10 @@ export const EXT_LIMITS = {
   callTimeoutMs: 3000,
   readyTimeoutMs: 5000,
   errorLimit: 5,
-  menuItemsMax: 10
+  menuItemsMax: 10,
+  commandsMax: 10,
+  settingsFieldsMax: 20,
+  settingOptionsMax: 20,
+  decorationTextMax: 200,
+  decorationsCacheMax: 500
 } as const

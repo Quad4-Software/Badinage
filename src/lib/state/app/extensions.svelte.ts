@@ -12,13 +12,14 @@ import { ExtensionHost } from '$lib/core/extensions/host'
 import { compareVersions, ManifestError, parsePackage } from '$lib/core/extensions/manifest'
 import { keyFingerprint, verifyPackage } from '$lib/core/extensions/verify'
 import {
-  EXT_LIMITS,
   MIN_API_VERSION,
   type ExtPackage,
   type InstalledExt,
   type TrustedPublisher
 } from '$lib/core/extensions/types'
 import { menus } from '$lib/state/app/menus.svelte'
+import { extApi } from './ext-api.svelte'
+import { loadExtSettings, persistExtSetting, proxiedFetch, scrubPayload } from './ext-rpc'
 import { settings } from '../settings.svelte'
 
 const CODE_PREFIX = 'ext:code:'
@@ -179,12 +180,28 @@ class ExtensionsStore {
     }
     const host = new ExtensionHost(code, ext.permissions, {
       onMenus: (items) => menus.setExtensionItems(id, items),
+      onCommands: (items) => {
+        extApi.setCommands(id, items, (itemId, payload) =>
+          host.invokeValue(itemId, scrubPayload(ext, payload))
+        )
+      },
+      onSettings: (fields) => {
+        void loadExtSettings(id).then((values) => {
+          extApi.setSettings(id, fields, values)
+          host.pushSettings(values)
+        })
+      },
+      onDecorator: () => {
+        extApi.setDecorator(id, (itemId, payload) =>
+          host.invokeValue(itemId, scrubPayload(ext, payload))
+        )
+      },
       onToast: (text) => this.notice('info', `${ext.name}: ${text}`),
       onStorageGet: (key) => idb.get('kv', `${STORAGE_PREFIX}${id}:${key}`),
       onStorageSet: async (key, value) => {
         await idb.set('kv', `${STORAGE_PREFIX}${id}:${key}`, value)
       },
-      onNetFetch: (url, init) => this.proxiedFetch(ext, url, init),
+      onNetFetch: (url, init) => proxiedFetch(ext, url, init),
       onLog: (text) => console.debug(`[ext:${id}]`, text),
       onError: (message) => {
         ext.errors += 1
@@ -197,7 +214,11 @@ class ExtensionsStore {
     })
     this.hosts.set(id, host)
     menus.registerExtension(id, (itemId, payload) => {
-      host.invoke(itemId, this.scrub(ext, payload))
+      host.invoke(itemId, scrubPayload(ext, payload))
+    })
+    extApi.registerSettingsWriter(id, (key, value) => {
+      void persistExtSetting(id, key, value)
+      this.hosts.get(id)?.pushSettings(extApi.settingValues.get(id) ?? {})
     })
     ext.enabled = true
     ext.errors = 0
@@ -208,6 +229,7 @@ class ExtensionsStore {
     this.hosts.get(id)?.kill()
     this.hosts.delete(id)
     menus.unregisterExtension(id)
+    extApi.clearExtension(id)
     const ext = this.list.find((e) => e.id === id)
     if (ext) ext.enabled = false
     if (persist) this.save()
@@ -225,52 +247,10 @@ class ExtensionsStore {
     this.save()
   }
 
-  // whitelist the fields that cross the worker boundary so a new
-  // payload key never leaks to extensions by default
-  private scrub(ext: InstalledExt, payload: unknown): unknown {
-    if (typeof payload !== 'object' || payload === null) return payload
-    const src = payload as Record<string, unknown>
-    const clean: Record<string, unknown> = {}
-    for (const k of ['id', 'peerJid', 'jid', 'outgoing', 'name']) {
-      if (k in src) clean[k] = src[k]
-    }
-    if (ext.permissions.includes('messages.read') && 'body' in src) clean.body = src.body
-    return clean
-  }
-
-  private async proxiedFetch(
-    ext: InstalledExt,
-    url: string,
-    init: Record<string, unknown>
-  ): Promise<string> {
-    let parsed: URL
-    try {
-      parsed = new URL(url)
-    } catch {
-      throw new Error('bad url')
-    }
-    if (!ext.connect.includes(parsed.origin)) throw new Error('origin not in connect list')
-    const method = typeof init.method === 'string' ? init.method.toUpperCase() : 'GET'
-    if (!['GET', 'POST', 'PUT', 'DELETE', 'HEAD'].includes(method)) throw new Error('bad method')
-    const headers: Record<string, string> = {}
-    if (typeof init.headers === 'object' && init.headers !== null) {
-      for (const [k, v] of Object.entries(init.headers as Record<string, unknown>)) {
-        // never forward auth-shaped headers, the proxy strips them
-        if (/^(authorization|cookie|proxy-authorization|x-api-key)$/i.test(k)) continue
-        headers[k] = String(v).slice(0, 500)
-      }
-    }
-    const res = await fetch(parsed.href, {
-      method,
-      headers,
-      ...(typeof init.body === 'string' ? { body: init.body.slice(0, 65536) } : {}),
-      credentials: 'omit',
-      redirect: 'error',
-      signal: AbortSignal.timeout(10_000)
-    })
-    if (!res.ok) throw new Error(`http ${res.status}`)
-    const text = await res.text()
-    return text.slice(0, EXT_LIMITS.netResponseMaxBytes)
+  // called by the configure dialog: persist the value, update the
+  // presented map and push the whole set into the worker
+  setSettingValue(extId: string, key: string, value: unknown): void {
+    extApi.setSettingValue(extId, key, value)
   }
 }
 

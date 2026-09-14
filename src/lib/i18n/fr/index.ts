@@ -508,7 +508,9 @@ const fr = {
   extensionKeyChangedDescription:
     "{name} a été signée avec une clé différente de la copie installée. Ne faites confiance que si vous attendiez une rotation de clés de l'éditeur.",
   extensionTrustAccept: 'Faire confiance et installer',
-  extensionTrustReject: 'Refuser'
+  extensionTrustReject: 'Refuser',
+  extensionConfigure: 'Configurer {name:string}',
+  extensionNoSettings: "Cette extension ne déclare aucun réglage."
 }
 
 export default fr

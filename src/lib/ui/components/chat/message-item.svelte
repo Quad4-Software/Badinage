@@ -19,6 +19,7 @@
   import MessageMeta from './message-meta.svelte'
   import MessageItemActions from './message-item/actions.svelte'
   import EmojiPicker from './emoji-picker.svelte'
+  import MessageDeco from './message-list/message-deco.svelte'
   import { anchorStyle, portal, tick } from '$lib/ui/interactions'
   import { longPress } from '$lib/ui/long-press'
   import { messageMenu } from './message-item/menu.svelte'
@@ -413,5 +414,6 @@
         {/if}
       </div>
     {/if}
+    <MessageDeco {message} />
   </div>
 </div>

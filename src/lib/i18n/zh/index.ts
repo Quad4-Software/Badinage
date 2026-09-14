@@ -507,7 +507,9 @@ const zh = {
   extensionKeyChangedDescription:
     '{name} 使用了与已安装副本不同的密钥签名。仅当你预期发布者轮换密钥时才应信任。',
   extensionTrustAccept: '信任并安装',
-  extensionTrustReject: '拒绝'
+  extensionTrustReject: '拒绝',
+  extensionConfigure: '配置 {name:string}',
+  extensionNoSettings: '此扩展未声明任何设置。'
 }
 
 export default zh

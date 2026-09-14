@@ -511,7 +511,9 @@ const es = {
   extensionKeyChangedDescription:
     '{name} se firmó con una clave distinta a la de la copia instalada. Confía solo si esperabas que el editor rotara las claves.',
   extensionTrustAccept: 'Confiar e instalar',
-  extensionTrustReject: 'Rechazar'
+  extensionTrustReject: 'Rechazar',
+  extensionConfigure: 'Configurar {name:string}',
+  extensionNoSettings: 'Esta extensión no declara ajustes.'
 }
 
 export default es

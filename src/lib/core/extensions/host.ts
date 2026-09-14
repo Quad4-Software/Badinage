@@ -2,12 +2,23 @@
 // bookkeeping and the error budget that drives auto-disable. Every
 // message off the wire is shape-checked before it is trusted.
 
-import { EXT_LIMITS, type ExtMenuItem, type Permission } from './types'
+import {
+  EXT_LIMITS,
+  type ExtCommand,
+  type ExtMenuItem,
+  type ExtSettingField,
+  type Permission
+} from './types'
+import { parseCommands, parseMenuItems, parseSettingsFields } from './wire'
 import { buildWorkerSource } from './worker-source'
 
 export interface HostHandlers {
   onReady?(): void
   onMenus(items: ExtMenuItem[]): void
+  onCommands?(items: ExtCommand[]): void
+  onSettings?(fields: ExtSettingField[]): void
+  // the worker registered a message decorator
+  onDecorator?(): void
   // api surface the worker can call. Handlers enforce permissions
   // themselves, the host just routes
   onToast(text: string): void
@@ -22,6 +33,7 @@ export interface HostHandlers {
 
 interface Pending {
   timer: ReturnType<typeof setTimeout>
+  resolve?: (value: unknown) => void
 }
 
 interface Wire {
@@ -67,15 +79,31 @@ export class ExtensionHost {
   // run a menu item inside the worker. The result is ignored, failures
   // feed the error budget
   invoke(itemId: string, payload: unknown): void {
+    void this.invokeValue(itemId, payload)
+  }
+
+  // run a handler and resolve with its return value. Used by commands
+  // and decorators where the answer matters. Null on timeout or an
+  // unready worker, failures still feed the error budget
+  invokeValue(itemId: string, payload: unknown): Promise<unknown> {
     const worker = this.worker
-    if (!worker || !this.ready) return
+    if (!worker || !this.ready) return Promise.resolve(null)
     const id = ++this.seq
-    const timer = setTimeout(() => {
-      this.pending.delete(id)
-      this.noteError(`menu item timed out: ${itemId}`)
-    }, EXT_LIMITS.callTimeoutMs)
-    this.pending.set(id, { timer })
-    worker.postMessage({ t: 'run', id, itemId, payload })
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id)
+        this.noteError(`handler timed out: ${itemId}`)
+        resolve(null)
+      }, EXT_LIMITS.callTimeoutMs)
+      this.pending.set(id, { timer, resolve })
+      worker.postMessage({ t: 'run', id, itemId, payload })
+    })
+  }
+
+  // push the persisted settings values into the worker. Sent once the
+  // worker is ready and again on every host-side change
+  pushSettings(values: Record<string, unknown>): void {
+    this.worker?.postMessage({ t: 'settings', values })
   }
 
   private noteError(message: string): void {
@@ -94,19 +122,20 @@ export class ExtensionHost {
         this.h.onReady?.()
         return
       case 'menus':
-        if (Array.isArray((m as { items?: unknown }).items)) {
-          const items = (m as { items: unknown[] }).items
-            .filter(
-              (i): i is ExtMenuItem =>
-                typeof i === 'object' &&
-                i !== null &&
-                typeof (i as ExtMenuItem).id === 'string' &&
-                typeof (i as ExtMenuItem).section === 'string' &&
-                typeof (i as ExtMenuItem).label === 'string'
-            )
-            .slice(0, EXT_LIMITS.menuItemsMax)
-          this.h.onMenus(items)
+        this.h.onMenus(parseMenuItems((m as { items?: unknown }).items))
+        return
+      case 'commands':
+        if (this.permissions.includes('commands')) {
+          this.h.onCommands?.(parseCommands((m as { items?: unknown }).items))
         }
+        return
+      case 'settings':
+        if (this.permissions.includes('settings')) {
+          this.h.onSettings?.(parseSettingsFields((m as { fields?: unknown }).fields))
+        }
+        return
+      case 'decorator':
+        if (this.permissions.includes('messages.decorate')) this.h.onDecorator?.()
         return
       case 'result':
       case 'fail': {
@@ -115,7 +144,12 @@ export class ExtensionHost {
         if (!p) return
         clearTimeout(p.timer)
         this.pending.delete(m.id)
-        if (m.t === 'fail') this.noteError(str((m as { error?: unknown }).error, 300))
+        if (m.t === 'fail') {
+          this.noteError(str((m as { error?: unknown }).error, 300))
+          p.resolve?.(null)
+        } else {
+          p.resolve?.((m as { value?: unknown }).value ?? null)
+        }
         return
       }
       case 'call':

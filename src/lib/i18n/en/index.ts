@@ -508,7 +508,9 @@ const en = {
   extensionKeyChangedDescription:
     '{name:string} was signed with a different key than the installed copy. Only trust this if you expected the publisher to rotate keys.',
   extensionTrustAccept: 'Trust and install',
-  extensionTrustReject: 'Reject'
+  extensionTrustReject: 'Reject',
+  extensionConfigure: 'Configure {name:string}',
+  extensionNoSettings: 'This extension declares no settings.'
 } satisfies BaseTranslation
 
 export default en

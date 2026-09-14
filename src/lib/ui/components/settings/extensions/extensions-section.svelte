@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { Puzzle, ShieldCheck, ShieldQuestion, Trash2, Upload } from '@lucide/svelte'
+  import { Puzzle, Settings2, ShieldCheck, ShieldQuestion, Trash2, Upload } from '@lucide/svelte'
 
+  import type { InstalledExt } from '$lib/core/extensions/types'
   import LL from '$lib/i18n/i18n-svelte'
+  import { extApi } from '$lib/state/app/ext-api.svelte'
   import { extensions } from '$lib/state/app/extensions.svelte'
   import { settings } from '$lib/state/settings.svelte'
   import { Button } from '$lib/ui/primitives/button'
@@ -11,6 +13,7 @@
   import { matchesQuery } from '../match'
   import { settingsSearch } from '../search-state.svelte'
   import SettingSection from '../setting-section.svelte'
+  import ConfigureDialog from './configure-dialog.svelte'
   import TrustDialog from './trust-dialog.svelte'
 
   let { q }: { q: string } = $props()
@@ -18,6 +21,7 @@
   let fileInput = $state<HTMLInputElement | null>(null)
   let installError = $state('')
   let removeTarget = $state<string | null>(null)
+  let configureTarget = $state<InstalledExt | null>(null)
 
   const list = $derived(
     extensions.list.filter((e) =>
@@ -115,6 +119,17 @@
           {/if}
         </p>
       </div>
+      {#if ext.enabled && (extApi.settingFields.get(ext.id)?.length ?? 0) > 0}
+        <Button
+          variant="ghost"
+          size="icon"
+          class="size-8"
+          aria-label={$LL.extensionConfigure({ name: ext.name })}
+          onclick={() => (configureTarget = ext)}
+        >
+          <Settings2 class="size-4" />
+        </Button>
+      {/if}
       <Switch
         checked={ext.enabled}
         disabled={ext.outdated}
@@ -154,3 +169,13 @@
 />
 
 <TrustDialog />
+
+{#if configureTarget}
+  <ConfigureDialog
+    ext={configureTarget}
+    open={configureTarget !== null}
+    onOpenChange={(v) => {
+      if (!v) configureTarget = null
+    }}
+  />
+{/if}
