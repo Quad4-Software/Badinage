@@ -21,6 +21,7 @@
   import EmojiPicker from './emoji-picker.svelte'
   import { anchorStyle, portal, tick } from '$lib/ui/interactions'
   import { longPress } from '$lib/ui/long-press'
+  import { messageMenu } from './message-item/menu.svelte'
 
   interface Props {
     message: ChatMessage
@@ -109,6 +110,8 @@
   let pickerStyle = $state('')
   let pickerTrigger = $state<HTMLElement | null>(null)
   let pickerEl = $state<HTMLElement | null>(null)
+  let bubbleEl = $state<HTMLElement | null>(null)
+  const menuHandlers = $derived({ onReply, onEdit, onRetract, onModerate, onDismiss })
 
   function openPicker(anchor: 'top' | 'bottom', trigger: HTMLElement) {
     if (pickerOpen) {
@@ -181,9 +184,11 @@
 
     <div
       class="relative max-w-full"
+      bind:this={bubbleEl}
       {@attach longPress(() => {
         if (!message.retracted && !message.pending) onLongPress?.(message)
       })}
+      {@attach messageMenu(message, canModerate, () => bubbleEl, openPicker, menuHandlers)}
     >
       <div
         class={cn(

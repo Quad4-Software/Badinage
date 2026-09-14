@@ -1,18 +1,22 @@
 <script lang="ts">
-  import { PanelLeftOpen, Settings } from '@lucide/svelte'
+  import { Copy, MessageSquare, PanelLeftOpen, Settings, UserMinus } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
+  import type { MenuItem } from '$lib/state/app/menus.svelte'
+  import { copyText } from '$lib/ui/clipboard'
   import { cn } from '$lib/utils/cn'
   import { bareJid } from '$lib/utils/jid'
   import { presenceLabel, presenceRingClass } from '$lib/ui/presence'
   import { Button } from '$lib/ui/primitives/button'
   import { ScrollArea } from '$lib/ui/primitives/scroll-area'
 
+  import { contextArea } from '../../context-menu/area'
   import PeerAvatar from '../peer-avatar.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
   import LanguageMenu from './language-menu.svelte'
+  import { conversationMenu } from './row-menu.svelte'
 
   const account = $derived(accounts.active)
   const isIrc = $derived(account?.options.protocol === 'irc')
@@ -56,6 +60,43 @@
     // no composer focus on touch devices: it would pop the keyboard
     if (window.matchMedia('(pointer: fine)').matches) app.focusComposer(jid)
   }
+
+  // roster contacts without a conversation get a slim menu: open, copy
+  // and the destructive remove
+  function contactMenu(jid: string): MenuItem[] {
+    const items: MenuItem[] = [
+      { id: 'open', label: $LL.open(), icon: MessageSquare, run: () => open(jid) },
+      { id: 'copy', label: $LL.copyAddress(), icon: Copy, run: () => void copyText(jid) }
+    ]
+    if (account) {
+      const acc = account
+      items.push(
+        { id: 'sep', label: '', separator: true },
+        {
+          id: 'remove',
+          label: $LL.removeContact(),
+          icon: UserMinus,
+          danger: true,
+          run: () => acc.removeContact(jid)
+        }
+      )
+    }
+    return items
+  }
+
+  function accountMenu(): MenuItem[] {
+    if (!account) return []
+    const jid = account.jid
+    return [
+      { id: 'copy', label: $LL.copyAddress(), icon: Copy, run: () => void copyText(jid) },
+      {
+        id: 'settings',
+        label: $LL.openSettings(),
+        icon: Settings,
+        run: () => (app.settingsOpen = true)
+      }
+    ]
+  }
 </script>
 
 <div class="flex h-full w-14 flex-col items-center gap-1 border-r py-2">
@@ -77,6 +118,11 @@
           aria-label={name}
           title={conversation.peerJid}
           onclick={() => open(conversation.peerJid)}
+          {@attach contextArea({
+            section: 'sidebar.conversation',
+            payload: { peerJid: conversation.peerJid, kind: conversation.kind, name },
+            items: () => conversationMenu(conversation, account)
+          })}
         >
           <span class="relative block">
             <PeerAvatar
@@ -102,6 +148,11 @@
           aria-label={name}
           title={room.peerJid}
           onclick={() => open(room.peerJid)}
+          {@attach contextArea({
+            section: 'sidebar.conversation',
+            payload: { peerJid: room.peerJid, kind: room.kind, name },
+            items: () => conversationMenu(room, account)
+          })}
         >
           <span class="relative block">
             <PeerAvatar
@@ -127,6 +178,11 @@
           aria-label={name}
           title={contact.jid}
           onclick={() => open(contact.jid)}
+          {@attach contextArea({
+            section: 'sidebar.conversation',
+            payload: { peerJid: contact.jid, kind: 'dm', name },
+            items: () => contactMenu(contact.jid)
+          })}
         >
           <PeerAvatar
             jid={contact.jid}
@@ -147,6 +203,11 @@
         onclick={() => (app.profileOpen = true)}
         aria-label={presenceNote}
         title={$LL.editProfile()}
+        {@attach contextArea({
+          section: 'sidebar.account',
+          payload: { jid: account.jid },
+          items: accountMenu
+        })}
       >
         <PeerAvatar
           jid={bareJid(account.jid)}
@@ -160,7 +221,15 @@
         />
       </button>
     {:else}
-      <span class="relative rounded-full" title={presenceNote}>
+      <span
+        class="relative rounded-full"
+        title={presenceNote}
+        {@attach contextArea({
+          section: 'sidebar.account',
+          payload: { jid: account.jid },
+          items: accountMenu
+        })}
+      >
         <PeerAvatar
           jid={bareJid(account.jid)}
           fallback={account.jid.slice(0, 2)}

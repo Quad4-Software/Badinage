@@ -16,6 +16,7 @@
   import ContactRow from './sidebar/contact-row.svelte'
   import ConversationRow from './sidebar/conversation-row.svelte'
   import RoomInvites from './sidebar/room-invites.svelte'
+  import { conversationMenu } from './sidebar/row-menu.svelte'
   import SidebarHeader from './sidebar/sidebar-header.svelte'
   import SidebarSection from './sidebar/sidebar-section.svelte'
   import SubscriptionRequests from './sidebar/subscription-requests.svelte'
@@ -113,6 +114,7 @@
             name={displayName(conversation.peerJid)}
             selected={app.activePeer === conversation.peerJid}
             onSelect={() => open(conversation.peerJid)}
+            menuItems={() => conversationMenu(conversation, account)}
           />
         {/each}
       </SidebarSection>
@@ -144,6 +146,7 @@
             name={room.peerJid.split('@')[0] ?? ''}
             selected={app.activePeer === room.peerJid}
             onSelect={() => open(room.peerJid)}
+            menuItems={() => conversationMenu(room, account)}
           />
         {/each}
       </SidebarSection>

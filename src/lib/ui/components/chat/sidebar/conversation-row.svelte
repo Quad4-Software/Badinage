@@ -3,9 +3,11 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { Conversation } from '$lib/state/chats.svelte'
+  import type { MenuItem } from '$lib/state/app/menus.svelte'
   import { cn } from '$lib/utils/cn'
   import { mediaKind } from '$lib/utils/media'
 
+  import { contextArea } from '../../context-menu/area'
   import PeerAvatar from '../peer-avatar.svelte'
   import TypingIndicator from '../typing-indicator.svelte'
 
@@ -15,9 +17,11 @@
     name: string
     selected?: boolean
     onSelect: () => void
+    // right click menu entries, resolved per row by the parent
+    menuItems?: () => MenuItem[]
   }
 
-  let { conversation, name, selected = false, onSelect }: Props = $props()
+  let { conversation, name, selected = false, onSelect, menuItems }: Props = $props()
 
   const isRoom = $derived(conversation.kind === 'muc')
   const initials = $derived(name.slice(0, 2))
@@ -47,6 +51,15 @@
   class="hover:bg-accent flex min-w-0 items-center gap-3 rounded-md px-2 py-[var(--density-row-pad)] text-left"
   class:bg-accent={selected}
   onclick={onSelect}
+  {@attach contextArea({
+    section: 'sidebar.conversation',
+    payload: {
+      peerJid: conversation.peerJid,
+      kind: conversation.kind,
+      name
+    },
+    items: () => menuItems?.() ?? []
+  })}
 >
   <PeerAvatar jid={conversation.peerJid} fallback={isRoom ? '#' : initials} force />
   <span class="min-w-0 flex-1">

@@ -6,11 +6,19 @@ const HOLD_MS = 500
 const MOVE_CANCEL_PX = 10
 // a contextmenu that lands right after the touch timer fired is the same
 // gesture on some mobile browsers, so it is deduped within this window
-const DOUBLE_FIRE_MS = 700
+export const LONGPRESS_DEDUP_MS = 700
 
-// Fires on touch press-and-hold and on contextmenu (desktop right click
-// opens the same menu). Pointer movement past the threshold cancels the
-// timer so scrolling never triggers it.
+let lastFire = 0
+
+// when the most recent touch long-press fired, used by contextArea to
+// suppress the contextmenu event the same gesture produces
+export function lastLongPressAt(): number {
+  return lastFire
+}
+
+// Fires on touch press-and-hold only. Desktop right click is handled by
+// the contextArea attachment. Pointer movement past the threshold cancels
+// the timer so scrolling never triggers it.
 export function longPress(handler: () => void): Attachment<HTMLElement> {
   return (node) => {
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -31,6 +39,7 @@ export function longPress(handler: () => void): Attachment<HTMLElement> {
       timer = setTimeout(() => {
         timer = null
         firedAt = Date.now()
+        lastFire = firedAt
         tick()
         handler()
       }, HOLD_MS)
@@ -44,14 +53,9 @@ export function longPress(handler: () => void): Attachment<HTMLElement> {
     }
 
     const onContextMenu = (event: MouseEvent) => {
-      // keep the native menu on links so urls stay shareable
-      if (event.target instanceof Element && event.target.closest('a')) return
-      if (Date.now() - firedAt < DOUBLE_FIRE_MS) {
-        event.preventDefault()
-        return
-      }
-      event.preventDefault()
-      handler()
+      // desktop right click belongs to contextArea. This listener only
+      // suppresses the contextmenu a touch long-press still produces
+      if (Date.now() - firedAt < LONGPRESS_DEDUP_MS) event.preventDefault()
     }
 
     node.addEventListener('pointerdown', onPointerDown)
