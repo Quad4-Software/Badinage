@@ -260,6 +260,8 @@ const en = {
   roleAdmin: 'admin',
 
   openSettings: 'Open settings',
+  language: 'Language',
+  languageAuto: 'Automatic',
   loadingContacts: 'Loading contacts',
   connectingStatus: 'Connecting to the server',
   collapseSidebar: 'Collapse sidebar',

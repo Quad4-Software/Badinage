@@ -12,6 +12,7 @@
 
   import PeerAvatar from '../peer-avatar.svelte'
   import ThemeToggle from '../../shell/theme-toggle.svelte'
+  import LanguageMenu from './language-menu.svelte'
 
   const account = $derived(accounts.active)
   const isIrc = $derived(account?.options.protocol === 'irc')
@@ -181,5 +182,6 @@
   >
     <Settings class="size-4" />
   </Button>
+  <LanguageMenu />
   <ThemeToggle />
 </div>

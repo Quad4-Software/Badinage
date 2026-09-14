@@ -6,7 +6,12 @@ export type BaseTranslation = BaseTranslationType
 export type BaseLocale = 'en'
 
 export type Locales =
+	| 'de'
 	| 'en'
+	| 'es'
+	| 'fr'
+	| 'pt'
+	| 'zh'
 
 export type Translation = RootTranslation
 
@@ -1018,6 +1023,14 @@ type RootTranslation = {
 	 * O​p​e​n​ ​s​e​t​t​i​n​g​s
 	 */
 	openSettings: string
+	/**
+	 * L​a​n​g​u​a​g​e
+	 */
+	language: string
+	/**
+	 * A​u​t​o​m​a​t​i​c
+	 */
+	languageAuto: string
 	/**
 	 * L​o​a​d​i​n​g​ ​c​o​n​t​a​c​t​s
 	 */
@@ -2716,6 +2729,14 @@ export type TranslationFunctions = {
 	 * Open settings
 	 */
 	openSettings: () => LocalizedString
+	/**
+	 * Language
+	 */
+	language: () => LocalizedString
+	/**
+	 * Automatic
+	 */
+	languageAuto: () => LocalizedString
 	/**
 	 * Loading contacts
 	 */

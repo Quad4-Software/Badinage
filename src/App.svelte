@@ -4,9 +4,13 @@
   import { SvelteURL } from 'svelte/reactivity'
   import { toast } from 'svelte-sonner'
 
+  import { navigatorDetector } from 'typesafe-i18n/detectors'
+
   import { reportError } from '$lib/core/telemetry'
+  import { detectLocale } from '$lib/i18n/i18n-util'
   import { loadLocale } from '$lib/i18n/i18n-util.sync'
   import { setLocale } from '$lib/i18n/i18n-svelte'
+  import { applyLocale, asLocale } from '$lib/i18n/languages'
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, restoreSessions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
@@ -84,8 +88,12 @@
   })
 
   onMount(() => {
+    // the base dictionary is bundled and stays warm for instant render.
+    // A saved pick or the browser language loads its dictionary async
     loadLocale('en')
     setLocale('en')
+    const wanted = asLocale(settings.current.locale) ?? detectLocale(navigatorDetector)
+    if (wanted !== 'en') void applyLocale(wanted)
 
     // XEP-0493 callback: the authorization server redirected back here
     // with ?code&state. Finish the flow before any session restore so a

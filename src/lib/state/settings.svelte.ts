@@ -84,6 +84,9 @@ interface Settings {
   // flip presence to away after IDLE_AWAY_MS without input, and back on
   // the next keystroke or pointer event
   autoAway: boolean
+  // ui language as a typesafe-i18n locale code. Empty means follow the
+  // browser's navigator.language
+  locale: string
   // named palette preset. 'default' keeps the stylesheet tokens
   theme: string
   // settings section ids the user collapsed. Persists across sessions
@@ -112,6 +115,7 @@ const DEFAULT_SETTINGS: Settings = {
   mapPreviews: false,
   xmppLinkHandler: false,
   autoAway: true,
+  locale: '',
   theme: 'default',
   collapsedSections: [],
   seenPrompts: {}
