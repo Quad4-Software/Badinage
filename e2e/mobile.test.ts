@@ -16,8 +16,21 @@ test('contextmenu or long-press opens the message action sheet', async ({ page }
   const bubble = page.locator('ol').getByText('hello mobile')
   await expect(bubble).toBeVisible()
 
-  // right click stands in for the touch hold. Both take the same path
-  await bubble.dispatchEvent('contextmenu')
+  // a real touch hold starts with a touch pointerdown and the sheet
+  // opens when the hold timer fires. A bare contextmenu dispatch is the
+  // desktop path and opens the floating menu instead
+  await bubble.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    el.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        pointerType: 'touch',
+        clientX: rect.x + 10,
+        clientY: rect.y + 10,
+        bubbles: true
+      })
+    )
+  })
+  await page.waitForTimeout(700)
   const sheet = page.getByRole('dialog')
   await expect(sheet).toBeVisible()
   await expect(sheet.getByRole('button', { name: 'Reply' })).toBeVisible()

@@ -157,7 +157,7 @@ test.describe('settings dialog', () => {
       .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--primary')))
       .toBe('')
 
-    await dialog.locator('input[type="file"]').setInputFiles(path ?? '')
+    await dialog.getByLabel('Import').setInputFiles(path ?? '')
     await expect
       .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--primary')))
       .toContain('oklch')
@@ -167,7 +167,7 @@ test.describe('settings dialog', () => {
     await page.goto('/')
     await page.keyboard.press('Control+,')
     const dialog = page.getByRole('dialog')
-    await dialog.locator('input[type="file"]').setInputFiles({
+    await dialog.getByLabel('Import').setInputFiles({
       name: 'junk.json',
       mimeType: 'application/json',
       buffer: Buffer.from('{"not":"ours"}')

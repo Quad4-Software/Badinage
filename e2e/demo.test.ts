@@ -63,7 +63,6 @@ test('scrolling to top loads an older archive page', async ({ page }) => {
   const conversation = page.getByRole('button', { name: /Aria/ }).first()
   await expect(conversation).toBeVisible({ timeout: 10_000 })
   await conversation.click()
-  const before = await page.locator('ol li').count()
   // the pager button only renders near the top. The list opens pinned to
   // the bottom, so scroll the scrollable ancestor to zero first
   await page.locator('ol').evaluate((el) => {
@@ -75,7 +74,14 @@ test('scrolling to top loads an older archive page', async ({ page }) => {
   await expect(loadOlder).toBeVisible()
   await loadOlder.click()
   await expect(page.getByText('Beginning of the conversation')).toBeVisible({ timeout: 10_000 })
-  expect(await page.locator('ol li').count()).toBeGreaterThan(before)
+  // the anchor held the viewport mid-list while the page landed. Scroll
+  // back to the head where the archive messages now live
+  await page.locator('ol').evaluate((el) => {
+    let p = el.parentElement
+    while (p && p.scrollHeight <= p.clientHeight) p = p.parentElement
+    if (p) p.scrollTop = 0
+  })
+  await expect(page.getByText('did you see the outage notice from earlier?')).toBeVisible()
 })
 
 test('demo encrypts direct messages and shows the lock', async ({ page }) => {
