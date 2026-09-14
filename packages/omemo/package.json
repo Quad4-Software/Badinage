@@ -1,5 +1,5 @@
 {
-  "name": "@quad4-software/omemo",
+  "name": "@quad4-software/badinage-omemo",
   "version": "0.1.0",
   "description": "OMEMO (XEP-0384) end-to-end encryption for XMPP: X3DH, Double Ratchet, SCE",
   "license": "0BSD",

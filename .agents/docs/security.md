@@ -114,3 +114,8 @@ Keep it that way. Do not add configDependencies.
 - packages/omemo is our own 0BSD implementation, interop-checked against
   python-omemo vectors. Never import GPL code (libomemo.js, libsignal) into
   the dependency tree.
+- Known residual: pnpm audit flags extract-zip twice under
+  @lhci/cli > lighthouse > puppeteer. It has no patched upstream release
+  and only ever runs inside the dev-only Lighthouse CI browser download
+  path, never in the shipped bundle. Re-check on every @lhci/cli bump and
+  drop the residual if upstream publishes a fix.

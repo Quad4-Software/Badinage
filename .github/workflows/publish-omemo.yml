@@ -38,10 +38,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: test
-        run: pnpm --filter @quad4-software/omemo test
+        run: pnpm --filter @quad4-software/badinage-omemo test
 
       - name: build
-        run: pnpm --filter @quad4-software/omemo build
+        run: pnpm --filter @quad4-software/badinage-omemo build
 
       - name: check tag matches package version
         run: |

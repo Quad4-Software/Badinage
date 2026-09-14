@@ -15,9 +15,14 @@ import { idb } from '$lib/core/storage/idb'
 import { scopedKey } from '$lib/core/storage/keys'
 import type { TrustStore, TrustRecord } from './trust'
 
-import { sessionKey } from '@quad4-software/omemo'
-import type { IdentityRecord, KeyPair, OmemoStore, SignedPreKeyRecord } from '@quad4-software/omemo'
-import type { SessionData } from '@quad4-software/omemo'
+import { sessionKey } from '@quad4-software/badinage-omemo'
+import type {
+  IdentityRecord,
+  KeyPair,
+  OmemoStore,
+  SignedPreKeyRecord
+} from '@quad4-software/badinage-omemo'
+import type { SessionData } from '@quad4-software/badinage-omemo'
 
 // The wrapping key lives in the kv store as a structured-cloned
 // non-extractable CryptoKey. Without a user passphrase this is a

@@ -41,7 +41,7 @@ jobs:
       - run: pnpm test:coverage
       - run: pnpm knip
       - run: pnpm check:size
-      - run: pnpm --filter @quad4-software/omemo typecheck
+      - run: pnpm --filter @quad4-software/badinage-omemo typecheck
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -52,8 +52,8 @@ jobs:
           python -m venv packages/omemo/.venv
           packages/omemo/.venv/bin/pip install -r packages/omemo/requirements-interop.txt
 
-      - run: pnpm --filter @quad4-software/omemo test
-      - run: pnpm --filter @quad4-software/omemo build
+      - run: pnpm --filter @quad4-software/badinage-omemo test
+      - run: pnpm --filter @quad4-software/badinage-omemo build
       - run: pnpm build
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

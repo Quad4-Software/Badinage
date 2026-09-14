@@ -49,7 +49,7 @@ License: 0BSD. Copyright Quad4 Software.
     src/lib/ui/        primitives/ (shadcn-style Bits UI wrappers), components/
     src/lib/i18n/      generated typesafe-i18n output plus locale folders
     src/lib/utils/     pure helpers, unit tested
-    packages/omemo/    @quad4-software/omemo, our own 0BSD OMEMO implementation
+    packages/omemo/    @quad4-software/badinage-omemo, our own 0BSD OMEMO implementation
     e2e/               playwright specs including UI measurement tests
     docker/            prod Dockerfile + nginx + compose
     docker/dev/        dev stack: vite server + local prosody + ergo
@@ -92,7 +92,7 @@ License: 0BSD. Copyright Quad4 Software.
 ## Known decision: OMEMO licensing
 
 Resolved: we implement our own. libomemo.js is GPL-3.0 which conflicts with
-0BSD, so OMEMO lives in packages/omemo as @quad4-software/omemo, a standalone
+0BSD, so OMEMO lives in packages/omemo as @quad4-software/badinage-omemo, a standalone
 0BSD package built on @noble/curves and @noble/hashes. The app integrates
 it through the module boundary in src/lib/core/omemo/. Never import GPL
 code.

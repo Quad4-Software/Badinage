@@ -6,7 +6,7 @@ import {
   PREKEY_COUNT_DEFAULT,
   PREKEY_COUNT_MIN_LEGACY,
   PREKEY_COUNT_MIN_OMEMO2
-} from '@quad4-software/omemo'
+} from '@quad4-software/badinage-omemo'
 
 import { maintainKeys, MemoryKeyMetaStore } from './rotation'
 

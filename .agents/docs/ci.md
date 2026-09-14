@@ -32,7 +32,7 @@
   as an artifact. The vitest runner is patched (pnpm-workspace.yaml
   patchedDependencies) because vitest 5 changed testNamePattern matching
   to leaf test names, which would silently skip every filtered mutant.
-  Local runs: pnpm mutate, pnpm --filter @quad4-software/omemo mutate.
+  Local runs: pnpm mutate, pnpm --filter @quad4-software/badinage-omemo mutate.
   Keep .stryker-tmp/ and reports/ out of lint and git.
 - codeql.yml: CodeQL javascript-typescript, security-and-quality queries,
   build-mode none, weekly cron. Actions pinned by SHA.

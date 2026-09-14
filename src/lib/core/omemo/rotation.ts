@@ -15,8 +15,8 @@ import {
   PREKEY_COUNT_DEFAULT,
   PREKEY_COUNT_MIN_LEGACY,
   PREKEY_COUNT_MIN_OMEMO2
-} from '@quad4-software/omemo'
-import type { Namespace, OmemoManager, OmemoStore } from '@quad4-software/omemo'
+} from '@quad4-software/badinage-omemo'
+import type { Namespace, OmemoManager, OmemoStore } from '@quad4-software/badinage-omemo'
 
 // What the service persists between sessions to know what the published
 // bundle contained.

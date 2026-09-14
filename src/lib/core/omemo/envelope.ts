@@ -12,8 +12,8 @@ import { NS } from '$lib/core/xmpp/ns'
 import type { Attachment, ChatState, IncomingMessage } from '$lib/core/xmpp/stanzas'
 import type { AttachmentMeta } from '$lib/core/xmpp/types'
 
-import { childrenNamed, el, findChild } from '@quad4-software/omemo'
-import type { XmlElement } from '@quad4-software/omemo'
+import { childrenNamed, el, findChild } from '@quad4-software/badinage-omemo'
+import type { XmlElement } from '@quad4-software/badinage-omemo'
 
 const CHAT_STATE_NAMES = new Set<string>(['active', 'composing', 'paused', 'inactive', 'gone'])
 

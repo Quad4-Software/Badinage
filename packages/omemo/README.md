@@ -1,4 +1,4 @@
-# @quad4-software/omemo
+# @quad4-software/badinage-omemo
 
 OMEMO (XEP-0384) end-to-end encryption for XMPP, in TypeScript.
 
@@ -18,13 +18,13 @@ comes from `crypto.getRandomValues`. The only dependencies are
 ## Install
 
 ```sh
-pnpm add @quad4-software/omemo
+pnpm add @quad4-software/badinage-omemo
 ```
 
 Or build it from a checkout:
 
 ```sh
-pnpm --filter @quad4-software/omemo build
+pnpm --filter @quad4-software/badinage-omemo build
 ```
 
 ## Usage
@@ -35,7 +35,7 @@ import {
   InMemoryOmemoStore,
   serializeSceEnvelope,
   textEnvelope
-} from '@quad4-software/omemo'
+} from '@quad4-software/badinage-omemo'
 
 const alice = await OmemoManager.create({
   namespace: 'omemo2',

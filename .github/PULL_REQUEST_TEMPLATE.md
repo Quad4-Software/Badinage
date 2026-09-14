@@ -10,4 +10,4 @@
 - [ ] `pnpm check`
 - [ ] `pnpm test`
 - [ ] `pnpm test:e2e` (if UI changed)
-- [ ] `pnpm -F @quad4-software/omemo test` (if packages/omemo changed)
+- [ ] `pnpm -F @quad4-software/badinage-omemo test` (if packages/omemo changed)

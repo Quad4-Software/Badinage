@@ -11,7 +11,7 @@
 // dumps, not a vault. The account lock screen in TODO.md is the real
 // fix.
 
-import { base64Decode, base64Encode, randomBytes } from '@quad4-software/omemo'
+import { base64Decode, base64Encode, randomBytes } from '@quad4-software/badinage-omemo'
 
 import { idb } from './idb'
 

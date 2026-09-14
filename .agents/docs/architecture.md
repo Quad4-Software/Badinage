@@ -88,7 +88,7 @@ KEYBINDING_ACTIONS and a label key in the locale.
 
 ## OMEMO
 
-OMEMO ships as our own package, packages/omemo (@quad4-software/omemo, 0BSD),
+OMEMO ships as our own package, packages/omemo (@quad4-software/badinage-omemo, 0BSD),
 because the only maintained JS implementation is GPL-3.0. The package
 implements X3DH, the double ratchet, the OMEMO wire format for both
 urn:xmpp:omemo:2 and the legacy eu.siacs.conversations.axolotl namespace,

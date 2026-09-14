@@ -48,7 +48,7 @@ description: XMPP protocol layer conventions for this repo. Use when adding stan
 
 ## OMEMO
 
-- The OMEMO implementation is packages/omemo (@quad4-software/omemo, 0BSD).
+- The OMEMO implementation is packages/omemo (@quad4-software/badinage-omemo, 0BSD).
   App code must only touch it through src/lib/core/omemo/index.ts.
 - packages/omemo/test/interop validates against python-omemo (Syndace's
   reference stack) two ways: golden vectors in test/interop/vectors.json
