@@ -234,9 +234,12 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 - [x] XEP-0392 consistent contact/nick colors for avatar fallbacks
 - [x] Bundle splitting: sentry SDK and non-base locales lazy-load on
       first use, emoji data already lazy. Entry chunk down ~77k gzip
-- [ ] Message list virtualization (long history perf)
-- [ ] OMEMO decrypt in a worker: noble ops run on the main thread,
-      fine per message but a large encrypted MAM page can jank
+- [x] Message list virtualization: virtua windowing, dynamic heights,
+      prepend anchoring via gated shift, tail pin, quote jumps into
+      unmounted rows
+- [x] OMEMO in a dedicated worker: FIFO-serialized RPC behind the
+      OmemoCrypto boundary, crash/timeout/dispose handling, lazy respawn,
+      stale-reply rejection, inline fallback for injected stores
 - [ ] Onboarding: server discovery hints, Tor/i2p notes for self-hosters
 - [ ] PWA manifest + service worker, installable
 
