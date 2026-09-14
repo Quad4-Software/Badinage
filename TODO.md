@@ -139,14 +139,36 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
       vectors + round-trip bridge tests (test/interop, scripts/gen_vectors.py,
       scripts/py_verify.py)
 - [x] Property-based tests (fast-check), RFC 5869 known-answer vectors
-- [x] API docs via TypeDoc (`pnpm --filter @quad4-software/omemo docs`)
+- [x] API docs via TypeDoc (`pnpm --filter @quad4-software/badinage-omemo docs`)
 - [x] XEP-0450 ATM: automatic trust policy (auto-trust first-seen on
       decrypt, changed keys drop to undecided for manual verify,
       manual verify overrides), bulk verify action
-- [ ] XEP-0434 trust messages: sync trust decisions across own devices
+- [x] XEP-0434 trust messages: sync trust decisions across own devices
 - [ ] MUC OMEMO gated on members-only + non-anonymous + occupant ids
-- [x] Publish @quad4-software/omemo to GitHub Packages on omemo-v* tags
-      (publish-omemo.yml workflow)
+- [x] Publish @quad4-software/badinage-omemo to GitHub Packages on
+      omemo-v* tags (publish-omemo.yml workflow)
+
+## IRC (IRCv3, Ergo)
+
+- [x] Second protocol alongside XMPP: multiple IRC and XMPP accounts
+      online at once through the per-account ChatConnection boundary
+- [x] core/irc: line parser, session state machine, WebSocket transport,
+      CAP negotiation, SASL PLAIN, JOIN/NAMES, PRIVMSG/NOTICE, MONITOR
+      presence, AWAY, CHATHISTORY, MARKREAD, nick renames, labeled
+      response failures
+- [x] Channel and DM mapping onto the shared jid model, ## fallback for
+      bare-nick channels, casemapping helpers
+- [x] Room explore via IRC LIST, channel join with keys, add-contact by
+      bare nick, IRC-aware login and add-account flows
+- [x] Capability flags hide XMPP-only UI on IRC accounts: no OMEMO,
+      upload, profiles, subscriptions, room config or registration
+- [x] Split-pane picker groups rooms and DMs with display names and
+      includes joined-but-quiet channels
+- [x] Fake IRC server harness plus live tests, real Ergo interop suite
+      gated on ERGO_WS, dev Ergo service in docker/dev compose, CI job
+- [ ] IRC OAUTHBEARER or IRCV3BEARER SASL for OIDC providers like
+      Pocket ID (Ergo supports it server-side)
+- [ ] IRC bouncer or always-on story for history across disconnects
 
 ## Calls (Jingle + WebRTC)
 
@@ -194,7 +216,8 @@ Legend: [ ] open, [x] done. Sections are roughly in dependency order.
 
 ## i18n and a11y
 
-- [ ] Second locale to prove the pipeline, then community process
+- [x] Locales de, es, fr, pt, zh plus a rail language picker with an
+      automatic browser-detection entry. Community process still open
 - [ ] RTL layout support
 - [x] Locale-aware date/time formatting (formatTime already takes locale)
 - [x] Full axe pass on all views, keyboard-only walkthrough
