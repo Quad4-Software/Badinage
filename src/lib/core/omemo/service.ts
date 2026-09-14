@@ -23,7 +23,6 @@ import {
   formatFingerprint,
   identityFingerprintFromWire,
   NAMESPACES,
-  OmemoManager,
   parseDeviceList,
   parseEncryptedElement,
   parseXml,
@@ -54,9 +53,11 @@ import {
   replyNode,
   spoilerNode
 } from './envelope'
-import { maintainKeys, MemoryKeyMetaStore, type KeyMetaStore } from './rotation'
-import { IdbOmemoStore, IdbTrustStore } from './store'
+import type { KeyMetaStore } from './rotation'
+import { IdbTrustStore } from './store'
 import { TrustRegistry, trustOwner, type TrustLevel, type TrustRecord } from './trust'
+import { createOmemoCrypto } from './worker/crypto'
+import type { OmemoCrypto } from './worker/crypto'
 
 export interface DeviceFingerprint {
   jid: string
@@ -110,109 +111,72 @@ export class OmemoService {
   private readonly refreshedDevices = new Set<string>()
 
   private constructor(
-    private readonly manager: OmemoManager,
-    private readonly legacyManager: OmemoManager,
+    private readonly crypto: OmemoCrypto,
     private readonly connection: ChatConnection,
     private readonly ownJid: string,
-    readonly trust: TrustRegistry,
-    private readonly omemoStore: OmemoStore,
-    private readonly legacyStore: OmemoStore,
-    private readonly meta: KeyMetaStore
+    readonly trust: TrustRegistry
   ) {}
 
   static async create(options: OmemoServiceOptions): Promise<OmemoService> {
-    const omemoStore = options.omemoStore ?? (await IdbOmemoStore.create(options.accountJid))
-    const legacyStore =
-      options.legacyStore ?? (await IdbOmemoStore.create(options.accountJid, 'oml'))
     const trust = new TrustRegistry(options.trustStore ?? new IdbTrustStore(options.accountJid))
     if (options.blindTrust !== undefined) trust.blindTrust = options.blindTrust
     await trust.load()
     const ownJid = bareJid(options.accountJid)
-    const manager = await OmemoManager.create({
-      namespace: 'omemo2',
-      store: omemoStore,
-      ownJid
-    })
-    // the legacy profile shares our device id so both PEP trees name the
-    // same device, matching what multi-profile clients publish
-    const legacyManager = await OmemoManager.create({
-      namespace: 'legacy',
-      store: legacyStore,
+    // sessions, ratchets and key material live behind this boundary,
+    // in a dedicated worker whenever one can be spawned
+    const crypto = await createOmemoCrypto({
+      accountJid: options.accountJid,
       ownJid,
-      deviceId: manager.deviceId
+      ...(options.omemoStore !== undefined ? { omemoStore: options.omemoStore } : {}),
+      ...(options.legacyStore !== undefined ? { legacyStore: options.legacyStore } : {}),
+      ...(options.metaStore !== undefined ? { metaStore: options.metaStore } : {})
     })
-    const meta =
-      options.metaStore ??
-      (omemoStore instanceof IdbOmemoStore ? omemoStore : new MemoryKeyMetaStore())
-    return new OmemoService(
-      manager,
-      legacyManager,
-      options.connection,
-      ownJid,
-      trust,
-      omemoStore,
-      legacyStore,
-      meta
-    )
+    return new OmemoService(crypto, options.connection, ownJid, trust)
   }
 
   get deviceId(): number {
-    return this.manager.deviceId
+    return this.crypto.deviceId
   }
 
   // True when the underlying store wraps key material at rest. Injected
   // stores that are not IdbOmemoStore are assumed to manage their own
   // at-rest protection.
   get secureStorage(): boolean {
-    const omemoInsecure = this.omemoStore instanceof IdbOmemoStore && !this.omemoStore.secure
-    const legacyInsecure = this.legacyStore instanceof IdbOmemoStore && !this.legacyStore.secure
-    return !omemoInsecure && !legacyInsecure
+    return this.crypto.secure
+  }
+
+  // release the crypto worker (or no-op inline). Pending calls reject.
+  // Called when the owning account is removed
+  dispose(): void {
+    this.crypto.dispose()
   }
 
   async ownFingerprint(): Promise<string> {
-    const identity = await this.omemoStore.getIdentity()
-    if (!identity) return ''
-    return formatFingerprint(identityFingerprintFromWire('omemo2', identity.wirePublicKey))
-  }
-
-  private managerFor(ns: Namespace): OmemoManager {
-    return ns === 'legacy' ? this.legacyManager : this.manager
-  }
-
-  private storeFor(ns: Namespace): OmemoStore {
-    return ns === 'legacy' ? this.legacyStore : this.omemoStore
+    const wire = await this.crypto.identityKey('omemo2')
+    if (!wire) return ''
+    return formatFingerprint(identityFingerprintFromWire('omemo2', wire))
   }
 
   // Advertise our bundles and device lists on PEP, on both namespaces.
   // Safe on every reconnect: republishing the same items is idempotent.
   async publishOwn(): Promise<void> {
-    await maintainKeys({
-      store: this.omemoStore,
-      manager: this.manager,
-      meta: this.meta,
-      metaKey: 'omemo2'
-    })
-    await maintainKeys({
-      store: this.legacyStore,
-      manager: this.legacyManager,
-      meta: this.meta,
-      metaKey: 'legacy'
-    })
+    await this.crypto.maintain('omemo2')
+    await this.crypto.maintain('legacy')
 
     this.connection.pepPublish(
       `${NAMESPACES.omemo2.bundles}:${this.deviceId}`,
       'current',
-      serializeXml(await this.manager.buildBundle())
+      serializeXml(await this.crypto.buildBundle('omemo2'))
     )
     this.connection.pepPublish(
       `${NAMESPACES.legacy.bundles}:${this.deviceId}`,
       'current',
-      serializeXml(await this.legacyManager.buildBundle())
+      serializeXml(await this.crypto.buildBundle('legacy'))
     )
 
     const known = new Set(await this.devicesOfNs('omemo2', this.ownJid))
     known.add(this.deviceId)
-    await this.omemoStore.putDeviceIds(this.ownJid, [...known])
+    await this.crypto.putDeviceIds('omemo2', this.ownJid, [...known])
     this.connection.pepPublish(
       NAMESPACES.omemo2.devices,
       'current',
@@ -221,7 +185,7 @@ export class OmemoService {
 
     const knownLegacy = new Set(await this.devicesOfNs('legacy', this.ownJid))
     knownLegacy.add(this.deviceId)
-    await this.legacyStore.putDeviceIds(this.ownJid, [...knownLegacy])
+    await this.crypto.putDeviceIds('legacy', this.ownJid, [...knownLegacy])
     this.connection.pepPublish(
       NAMESPACES.legacy.devices,
       'current',
@@ -244,7 +208,7 @@ export class OmemoService {
     if (listEl) {
       try {
         const ids = parseDeviceList(domToXml(listEl))
-        await this.storeFor(ns).putDeviceIds(bare, ids)
+        await this.crypto.putDeviceIds(ns, bare, ids)
         return ids
       } catch (error) {
         // fall through to the cached list
@@ -254,7 +218,7 @@ export class OmemoService {
         )
       }
     }
-    return (await this.storeFor(ns).getDeviceIds(bare)) ?? []
+    return (await this.crypto.getDeviceIds(ns, bare)) ?? []
   }
 
   async devicesOf(jid: string): Promise<number[]> {
@@ -271,7 +235,7 @@ export class OmemoService {
     const bundleEl = items === null ? null : firstTag(items, 'bundle')
     if (!bundleEl) return undefined
     try {
-      return this.managerFor(ns).parseBundle(domToXml(bundleEl))
+      return await this.crypto.parseBundle(ns, domToXml(bundleEl))
     } catch (error) {
       console.warn(
         `omemo: failed to parse bundle for ${bare}/${deviceId}:`,
@@ -376,7 +340,7 @@ export class OmemoService {
       to: bare,
       time: new Date()
     })
-    const encrypted = await this.manager.encrypt({
+    const encrypted = await this.crypto.encrypt('omemo2', {
       recipients,
       plaintext: utf8ToBytes(envelope)
     })
@@ -411,7 +375,7 @@ export class OmemoService {
     const peer = await this.peerRecipients('legacy', bare)
     if (peer.length === 0) return null
     const recipients = [...peer, ...(await this.ownRecipients('legacy'))]
-    const encrypted = await this.legacyManager.encrypt({
+    const encrypted = await this.crypto.encrypt('legacy', {
       recipients,
       plaintext: utf8ToBytes(body)
     })
@@ -447,7 +411,7 @@ export class OmemoService {
     if (this.trust.get(bare, sid)?.level === 'distrusted') return false
     try {
       const bundle = await this.bundleOfNs(ns, bare, sid)
-      const encrypted = await this.managerFor(ns).encrypt({
+      const encrypted = await this.crypto.encrypt(ns, {
         recipients: [{ jid: bare, deviceId: sid, ...(bundle ? { bundle } : {}) }],
         empty: true
       })
@@ -465,7 +429,7 @@ export class OmemoService {
   // XEP-0384: traffic from a device id that is not on the known device
   // list warrants one direct re-fetch of that user's devices node.
   private async refreshDevicesOnce(sender: string, sid: number, ns: Namespace): Promise<void> {
-    const known = (await this.storeFor(ns).getDeviceIds(sender)) ?? []
+    const known = (await this.crypto.getDeviceIds(ns, sender)) ?? []
     if (known.includes(sid)) return
     const key = `${ns}:${sender}`
     if (this.refreshedDevices.has(key)) return
@@ -503,7 +467,7 @@ export class OmemoService {
     if (sid !== undefined) void this.refreshDevicesOnce(sender, sid, ns)
 
     try {
-      const result = await this.managerFor(ns).decrypt(element, sender)
+      const result = await this.crypto.decrypt(ns, element, sender)
       if (result.senderIdentityKey) {
         const record = await this.trust.observe(
           sender,

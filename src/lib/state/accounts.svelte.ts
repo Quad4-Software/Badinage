@@ -255,10 +255,6 @@ export class Account {
   // creation promise is cached so callers can await the in-flight init
   // instead of racing it and sending a first message unencrypted
   private omemoInit: Promise<OmemoService | undefined> | undefined
-
-  // Called by omemoModule on every connect: creates the service once,
-  // then republishes our bundle and device list. Failures leave the
-  // account running in plaintext.
   private omemoInitError: string | undefined
 
   async initOmemo(): Promise<void> {
@@ -268,7 +264,6 @@ export class Account {
       accountJid: this.jid,
       blindTrust: settings.current.omemoBlindTrust,
       // untrusted devices keep key material and trust decisions in memory
-      // only. Nothing OMEMO-shaped reaches IndexedDB
       ...(this.options.untrusted
         ? { omemoStore: new InMemoryOmemoStore(), trustStore: new InMemoryTrustStore() }
         : {})
@@ -289,10 +284,15 @@ export class Account {
     })
   }
 
-  // Resolve the service if it exists or is still being created. Undefined
-  // when init never ran (disconnected) or creation failed.
+  // the service if it exists or is still being created, else undefined
   async omemoService(): Promise<OmemoService | undefined> {
     return this.omemo ?? (await this.omemoInit)
+  }
+
+  // kill the crypto worker on removal
+  disposeOmemo(): void {
+    void this.omemoInit?.then((service) => service?.dispose())
+    this.omemo = this.omemoInit = undefined
   }
 
   setOmemoBlindTrust(enabled: boolean): void {
@@ -673,13 +673,13 @@ class AccountsStore {
   }
 
   // Let listeners flush pending writes first, then disconnect, drop the
-  // account and delete its persisted data. The delete runs after the
-  // flush so a late debounced snapshot cannot outlive the removal.
+  // account and delete its persisted data before a late snapshot lands.
   private async teardown(account: Account): Promise<void> {
     try {
       await Promise.all(this.removeListeners.map((fn) => fn(account.jid)))
     } finally {
       account.disconnect()
+      account.disposeOmemo()
       this.list = this.list.filter((a) => a !== account)
       clearSession(account.jid)
       clearOAuthTokens(account.jid)
