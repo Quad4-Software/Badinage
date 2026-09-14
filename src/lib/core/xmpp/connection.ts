@@ -32,6 +32,7 @@ import {
   banOccupant,
   changeRoomNick,
   fetchRoomConfig,
+  grantMembership,
   inviteToRoom,
   joinRoom,
   kickOccupant,
@@ -106,8 +107,7 @@ export class XmppConnection implements ChatConnection {
   // know are fatal on strict stacks, so carbons and csi only go out when
   // the stream advertised them
   private streamFeatures = new Set<string>()
-  // queryids of in-flight MAM queries. The message handler only unwraps
-  // result wrappers echoing one of these or sent by our own bare jid
+  // in-flight MAM queryids: only these result wrappers (or our own) unwrap
   private readonly mamQueries = new Set<string>()
   readonly vcard = createVcardApi(() => this.transport) // thunked: transport is post-ctor
 
@@ -160,8 +160,7 @@ export class XmppConnection implements ChatConnection {
   ): void {
     if (!this.conn.connected) {
       // queued iq work (omemo publish, disco) can race a teardown. Report
-      // it as a failed send instead of throwing through strophe's dead
-      // transport
+      // it as a failed send instead of throwing on a dead transport
       const fail = onError ?? noop
       fail(null)
       return
@@ -341,6 +340,10 @@ export class XmppConnection implements ChatConnection {
     sendRoomDecline(this.transport, room, to, reason)
   }
 
+  grantMembership(room: string, jid: string): void {
+    grantMembership(this.transport, room, jid)
+  }
+
   kickOccupant(room: string, nick: string, reason?: string): void {
     kickOccupant(this.transport, room, nick, reason)
   }
@@ -367,8 +370,7 @@ export class XmppConnection implements ChatConnection {
 
   // ---- MAM, implemented in features/mam.ts ---------------------------------------
 
-  // Results arrive as 'message' events flagged with mam=true. OnDone
-  // fires when the iq result (fin) arrives.
+  // results arrive as 'message' events flagged mam=true, onDone fires on fin
   queryArchive(
     peerJid: string,
     opts: { max?: number; before?: string | undefined; room?: boolean | undefined },
@@ -495,8 +497,7 @@ export class XmppConnection implements ChatConnection {
         break
       case Strophe.Status.DISCONNECTED:
         this.ping.stop()
-        // a dead stream never answers: in-flight queryids must not
-        // authenticate results on the next session
+        // a dead stream never answers: clear queryids before the next session
         this.mamQueries.clear()
         this.events.emit('status', 'disconnected')
         if (!this.manualDisconnect) this.scheduleReconnect()
@@ -516,8 +517,7 @@ export class XmppConnection implements ChatConnection {
     this.enableCarbons()
     this.sendPresence()
     this.fetchRoster()
-    // a reconnect re-establishes the csi signal: only a hidden tab needs
-    // re-sending, active is the server's default assumption
+    // a reconnect re-establishes csi: only a hidden tab needs re-sending
     this.csiSent = null
     if (this.csiActive === false) this.setClientActive(false)
   }

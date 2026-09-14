@@ -12,6 +12,7 @@ import {
   ERR_SASLABORTED,
   ERR_SASLALREADY,
   ERR_SASLFAIL,
+  ERR_SASLMECHS,
   ERR_SASLTOOLONG,
   RPL_SASLSUCCESS,
   RPL_WELCOME
@@ -62,6 +63,9 @@ export class IrcSession {
   readonly caps = new Set<string>()
   private lsDone = false
   private offered = new Set<string>()
+  // sasl mechanisms the server enumerated via sasl=MECHS, empty when it
+  // advertised the cap without a list
+  private offeredSasl = new Set<string>()
   private saslStarted = false
   private nickFallbackTried = false
   registered = false
@@ -69,7 +73,8 @@ export class IrcSession {
   constructor(
     private nick: string,
     private readonly password: string,
-    private readonly hooks: SessionHooks
+    private readonly hooks: SessionHooks,
+    private readonly opts?: { oauth?: boolean | undefined }
   ) {}
 
   // kick off negotiation once the socket is open
@@ -104,6 +109,7 @@ export class IrcSession {
       case ERR_SASLFAIL:
       case ERR_SASLTOOLONG:
       case ERR_SASLABORTED:
+      case ERR_SASLMECHS:
         this.hooks.onAuthFail()
         break
       case ERR_SASLALREADY:
@@ -130,7 +136,11 @@ export class IrcSession {
     switch (sub) {
       case 'LS': {
         for (const cap of line.text.split(/\s+/).filter(Boolean)) {
-          this.offered.add(cap.split('=')[0] ?? cap)
+          const [name, value] = cap.split('=')
+          this.offered.add(name ?? cap)
+          if (name === 'sasl' && value) {
+            for (const mech of value.split(',')) this.offeredSasl.add(mech)
+          }
         }
         // param 2 '*' means another LS line follows
         if (line.params[2] === '*') return
@@ -179,17 +189,28 @@ export class IrcSession {
   private maybeStartSasl(): void {
     if (this.saslStarted || !this.lsDone) return
     this.saslStarted = true
-    if (this.password && this.caps.has('sasl')) {
-      this.hooks.send('AUTHENTICATE PLAIN')
-    } else {
+    if (!this.password || !this.caps.has('sasl')) {
       this.hooks.send('CAP END')
+      return
     }
+    const mech = this.opts?.oauth ? 'OAUTHBEARER' : 'PLAIN'
+    // a server that enumerates mechanisms may not offer ours. Fail
+    // locally instead of pushing a token at a mechanism it will reject
+    if (this.offeredSasl.size > 0 && !this.offeredSasl.has(mech)) {
+      this.hooks.onAuthFail()
+      return
+    }
+    this.hooks.send(`AUTHENTICATE ${mech}`)
   }
 
   private onAuthenticate(line: IrcLine): void {
     if (line.params[0] !== '+') return
-    // SASL PLAIN: authzid \0 authcid \0 passwd, base64, chunked
-    const payload = btoa(`\0${this.nick}\0${this.password}`)
+    // PLAIN is authzid \0 authcid \0 passwd. OAUTHBEARER is the RFC 7628
+    // gs2 header plus the bearer token. Both base64 and chunk the same
+    const raw = this.opts?.oauth
+      ? `n,a=${this.nick},\x01auth=Bearer ${this.password}\x01\x01`
+      : `\0${this.nick}\0${this.password}`
+    const payload = btoa(raw)
     for (let i = 0; i < payload.length; i += SASL_MAX_CHUNK) {
       this.hooks.send(`AUTHENTICATE ${payload.slice(i, i + SASL_MAX_CHUNK)}`)
     }

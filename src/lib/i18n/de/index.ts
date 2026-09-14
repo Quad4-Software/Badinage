@@ -24,6 +24,12 @@ const de = {
   jidPlaceholder: 'du@example.org',
   jidHint:
     'Sieht aus wie eine E-Mail-Adresse. Der Server wird automatisch über die Domain gefunden.',
+  anonymousLogin: 'Anonym anmelden',
+  anonymousDomain: 'Server-Domain',
+  anonymousDomainPlaceholder: 'example.org',
+  anonymousDomainHint:
+    'Kein Konto nötig. Der Server weist dir eine temporäre Adresse für diese Sitzung zu.',
+  accessTokenLogin: 'Zugriffstoken statt Passwort verwenden',
   password: 'Passwort',
   server: 'Server',
   serverPlaceholder: 'wss://example.org/xmpp-websocket',

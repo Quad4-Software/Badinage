@@ -103,6 +103,26 @@ type RootTranslation = {
 	 */
 	jidHint: string
 	/**
+	 * S​i​g​n​ ​i​n​ ​a​n​o​n​y​m​o​u​s​l​y
+	 */
+	anonymousLogin: string
+	/**
+	 * S​e​r​v​e​r​ ​d​o​m​a​i​n
+	 */
+	anonymousDomain: string
+	/**
+	 * e​x​a​m​p​l​e​.​o​r​g
+	 */
+	anonymousDomainPlaceholder: string
+	/**
+	 * N​o​ ​a​c​c​o​u​n​t​ ​n​e​e​d​e​d​.​ ​T​h​e​ ​s​e​r​v​e​r​ ​a​s​s​i​g​n​s​ ​a​ ​t​e​m​p​o​r​a​r​y​ ​a​d​d​r​e​s​s​ ​f​o​r​ ​t​h​i​s​ ​s​e​s​s​i​o​n​.
+	 */
+	anonymousDomainHint: string
+	/**
+	 * U​s​e​ ​a​n​ ​a​c​c​e​s​s​ ​t​o​k​e​n​ ​i​n​s​t​e​a​d​ ​o​f​ ​a​ ​p​a​s​s​w​o​r​d
+	 */
+	accessTokenLogin: string
+	/**
 	 * P​a​s​s​w​o​r​d
 	 */
 	password: string
@@ -1954,6 +1974,26 @@ export type TranslationFunctions = {
 	 * Looks like an email address. The server is discovered automatically from the domain.
 	 */
 	jidHint: () => LocalizedString
+	/**
+	 * Sign in anonymously
+	 */
+	anonymousLogin: () => LocalizedString
+	/**
+	 * Server domain
+	 */
+	anonymousDomain: () => LocalizedString
+	/**
+	 * example.org
+	 */
+	anonymousDomainPlaceholder: () => LocalizedString
+	/**
+	 * No account needed. The server assigns a temporary address for this session.
+	 */
+	anonymousDomainHint: () => LocalizedString
+	/**
+	 * Use an access token instead of a password
+	 */
+	accessTokenLogin: () => LocalizedString
 	/**
 	 * Password
 	 */

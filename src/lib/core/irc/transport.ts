@@ -39,6 +39,9 @@ export class IrcLink {
   private lastInbound = 0
   private loginNick = ''
   private password = ''
+  // sasl mechanism choice: oauth swaps PLAIN for OAUTHBEARER and the
+  // password slot carries the token. Persisted so reconnects reuse it
+  private oauth = false
   private wasRegistered = false
   private listDone: ((items: ListReply[] | null) => void) | null = null
   private listItems: ListReply[] = []
@@ -81,10 +84,11 @@ export class IrcLink {
     done?.(items)
   }
 
-  connect(nick: string, password: string): void {
+  connect(nick: string, password: string, oauth = false): void {
     this.manualDisconnect = false
     this.loginNick = nick
     this.password = password
+    this.oauth = oauth
     let ws: WebSocket
     try {
       ws = new WebSocket(this.service)
@@ -94,23 +98,28 @@ export class IrcLink {
     }
     this.ws = ws
     ws.onopen = () => {
-      this.session = new IrcSession(this.loginNick, this.password, {
-        send: (line) => this.send(line),
-        onRegistered: (n) => {
-          this.wasRegistered = true
-          this.reconnectDelay = RECONNECT_DELAY_MS
-          this.startPing()
-          this.hooks.onRegistered(n)
+      this.session = new IrcSession(
+        this.loginNick,
+        this.password,
+        {
+          send: (line) => this.send(line),
+          onRegistered: (n) => {
+            this.wasRegistered = true
+            this.reconnectDelay = RECONNECT_DELAY_MS
+            this.startPing()
+            this.hooks.onRegistered(n)
+          },
+          onAuthFail: () => {
+            this.hooks.onStatus('authfail')
+            ws.close()
+          },
+          onError: () => {
+            this.hooks.onStatus('error')
+            ws.close()
+          }
         },
-        onAuthFail: () => {
-          this.hooks.onStatus('authfail')
-          ws.close()
-        },
-        onError: () => {
-          this.hooks.onStatus('error')
-          ws.close()
-        }
-      })
+        { oauth: this.oauth }
+      )
       this.session.start()
     }
     ws.onmessage = (event) => this.onData(String(event.data))
@@ -185,7 +194,7 @@ export class IrcLink {
       this.reconnectTimer = undefined
       if (!this.manualDisconnect && !this.connected) {
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, RECONNECT_DELAY_MAX_MS)
-        this.connect(this.loginNick, this.password)
+        this.connect(this.loginNick, this.password, this.oauth)
       }
     }, this.reconnectDelay)
   }

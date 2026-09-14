@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { bareJid, isValidBareJid, isValidUserJid, jidDomain, parseJid } from './jid'
+import {
+  bareJid,
+  isValidAnonymousDomain,
+  isValidBareJid,
+  isValidUserJid,
+  jidDomain,
+  parseJid
+} from './jid'
 
 describe('parseJid', () => {
   it('parses a full jid', () => {
@@ -73,5 +80,23 @@ describe('isValidUserJid', () => {
 
   it('rejects an empty jid', () => {
     expect(isValidUserJid('')).toBe(false)
+  })
+})
+
+describe('isValidAnonymousDomain', () => {
+  it('accepts a domain-only jid', () => {
+    expect(isValidAnonymousDomain('example.net')).toBe(true)
+  })
+
+  it('accepts a dev domain without a dot', () => {
+    expect(isValidAnonymousDomain('localhost')).toBe(true)
+  })
+
+  it('rejects a jid with a local part', () => {
+    expect(isValidAnonymousDomain('romeo@example.net')).toBe(false)
+  })
+
+  it('rejects empty input', () => {
+    expect(isValidAnonymousDomain('')).toBe(false)
   })
 })

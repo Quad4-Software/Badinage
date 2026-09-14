@@ -64,7 +64,11 @@ export class IrcConnection extends IrcStubs implements ChatConnection, IrcSend, 
   constructor(
     private readonly service: string,
     readonly domain: string,
-    options?: { persist?: boolean | undefined }
+    private readonly options?: {
+      persist?: boolean | undefined
+      // oauth makes the password slot carry a bearer token (OAUTHBEARER)
+      oauth?: boolean | undefined
+    }
   ) {
     super()
     this.lists = new AccountLists(options?.persist ?? true, domain, this.isupport, {
@@ -151,7 +155,7 @@ export class IrcConnection extends IrcStubs implements ChatConnection, IrcSend, 
     this.ourNick = jidToTarget(this.accountBare)
     this.lists.load(this.accountBare)
     this.events.emit('status', 'connecting')
-    this.link.connect(this.ourNick, password)
+    this.link.connect(this.ourNick, password, this.options?.oauth === true)
   }
 
   disconnect(): void {

@@ -3,6 +3,9 @@
 #
 # Prosody listens on 5280 (BOSH+WS over http). Register an account at
 # login with any jid like test@localhost since in-band registration is on.
+# Anonymous login lives on the anon.localhost virtual host: pick the
+# anonymous option, enter anon.localhost as the domain, and give the
+# websocket url ws://localhost:5280/xmpp-websocket as the server.
 #
 # Ergo listens on 6667 (plain IRC) and 8097 (WebSocket). Log in at the
 # client with the IRC protocol, ws://localhost:8097, any nick and an

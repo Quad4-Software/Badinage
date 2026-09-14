@@ -83,6 +83,19 @@ accounts:
         method: "strict"
         additional-nick-length: 9
 
+    # dev only: hmac-signed JWT bearer tokens for SASL OAUTHBEARER
+    # testing. Mint HS256 tokens with this key and a sub claim holding
+    # the account name. Check the access-token box at login and paste
+    # the token as the password
+    jwt-auth:
+        enabled: true
+        autocreate: true
+        tokens:
+            -
+                algorithm: "hmac"
+                key: "badinage-dev-jwt-key"
+                account-claims: ["sub"]
+
 channels:
     registration:
         enabled: true

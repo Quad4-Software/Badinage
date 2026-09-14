@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { parseLine } from '../line'
 import { IrcSession, type SessionHooks } from '../session'
 
-function makeSession(nick = 'me', password = 'pw') {
+function makeSession(nick = 'me', password = 'pw', opts?: { oauth?: boolean }) {
   const sent: string[] = []
   const hooks: SessionHooks = {
     send: (line) => sent.push(line),
@@ -11,7 +11,7 @@ function makeSession(nick = 'me', password = 'pw') {
     onAuthFail: vi.fn(),
     onError: vi.fn()
   }
-  const session = new IrcSession(nick, password, hooks)
+  const session = new IrcSession(nick, password, hooks, opts)
   return { session, sent, hooks }
 }
 
@@ -65,6 +65,36 @@ describe('IrcSession registration', () => {
     expect(payload).toBe(`AUTHENTICATE ${btoa('\0me\0pw')}`)
     feed(session, ':srv 903 me :SASL success')
     expect(sent.at(-1)).toBe('CAP END')
+  })
+
+  it('runs SASL OAUTHBEARER with the RFC 7628 payload', () => {
+    const { session, sent } = makeSession('me', 'tok123', { oauth: true })
+    session.start()
+    feed(session, ':srv CAP * LS :sasl=PLAIN,OAUTHBEARER server-time')
+    feed(session, ':srv CAP * ACK :sasl server-time')
+    expect(sent).toContain('AUTHENTICATE OAUTHBEARER')
+    feed(session, 'AUTHENTICATE +')
+    const payload = sent.find(
+      (l) => l.startsWith('AUTHENTICATE ') && l !== 'AUTHENTICATE OAUTHBEARER'
+    )
+    expect(payload).toBe(`AUTHENTICATE ${btoa('n,a=me,\x01auth=Bearer tok123\x01\x01')}`)
+  })
+
+  it('fails locally when oauth is requested but not offered', () => {
+    const { session, sent, hooks } = makeSession('me', 'tok', { oauth: true })
+    session.start()
+    feed(session, ':srv CAP * LS :sasl=PLAIN server-time')
+    feed(session, ':srv CAP * ACK :sasl server-time')
+    expect(hooks.onAuthFail).toHaveBeenCalled()
+    expect(sent.some((l) => l.startsWith('AUTHENTICATE'))).toBe(false)
+  })
+
+  it('still runs sasl when the server omits a mechanism list', () => {
+    const { session, sent } = makeSession('me', 'tok', { oauth: true })
+    session.start()
+    feed(session, ':srv CAP * LS :sasl server-time')
+    feed(session, ':srv CAP * ACK :sasl server-time')
+    expect(sent).toContain('AUTHENTICATE OAUTHBEARER')
   })
 
   it('reports registered on 001 with the server nick', () => {

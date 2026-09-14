@@ -43,6 +43,12 @@ websocket_allow_subprotocols = true
 VirtualHost "localhost"
   authentication = "internal_hashed"
 
+-- SASL ANONYMOUS needs its own virtual host, prosody cannot mix
+-- anonymous and password auth on one host. Log in with the anonymous
+-- option and domain anon.localhost.
+VirtualHost "anon.localhost"
+  authentication = "anonymous"
+
 Component "conference.localhost" "muc"
   name = "Badinage dev rooms"
   restrict_room_creation = false

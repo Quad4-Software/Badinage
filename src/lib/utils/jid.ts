@@ -37,3 +37,10 @@ export function isValidUserJid(jid: string): boolean {
   const { local, domain } = parseJid(jid)
   return local !== undefined && local.length > 0 && domain.length > 0
 }
+
+// a domain-only jid is the input an anonymous login takes: the server
+// assigns the temporary account identity
+export function isValidAnonymousDomain(jid: string): boolean {
+  const { local, domain } = parseJid(jid)
+  return local === undefined && domain.length > 0
+}

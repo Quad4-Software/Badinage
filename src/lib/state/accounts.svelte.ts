@@ -133,11 +133,9 @@ export class Account {
   // pong lands and whenever the account drops offline
   latency = $state<number | null>(null)
 
-  // resolved avatar data uris keyed by address: bare contact jid, room
-  // jid, room/nick occupant key, or our own jid. Missing means initials.
+  // avatar data uris by address: bare jid, room jid, room/nick, our own
   avatars = new SvelteMap<string, string>()
-  // XEP-0402 PEP bookmarks keyed by the bookmarked bare jid. Empty when
-  // the server has no PEP or the fetch has not landed yet
+  // XEP-0402 PEP bookmarks by bare jid, empty until the fetch lands
   bookmarks = new SvelteMap<string, Bookmark>()
 
   private registry = new ModuleRegistry()
@@ -162,14 +160,17 @@ export class Account {
       ? new DemoConnection()
       : options.protocol === 'irc'
         ? new IrcConnection(options.websocketUrl ?? '', jidDomain(options.jid), {
-            persist: !options.untrusted
+            persist: !options.untrusted,
+            oauth: options.oauth
           })
         : new XmppConnection(options.websocketUrl ?? options.boshUrl ?? '', undefined, {
             oauth: options.oauth
           })
-    // omemo only exists on transports that can carry it. IRC
-    // connections report e2ee=false and get no module
-    if (this.connection.capabilities?.e2ee !== false) this.registry.register(omemoModule)
+    // omemo only exists on transports that can carry it: irc reports
+    // e2ee=false and anonymous jids are too throwaway to bind keys to
+    if (this.connection.capabilities?.e2ee !== false && !this.options.anonymous) {
+      this.registry.register(omemoModule)
+    }
     this.bind()
   }
 
@@ -252,8 +253,7 @@ export class Account {
     unblockAll(this)
   }
 
-  // creation promise is cached so callers can await the in-flight init
-  // instead of racing it and sending a first message unencrypted
+  // cached so callers await in-flight init instead of racing it
   private omemoInit: Promise<OmemoService | undefined> | undefined
   private omemoInitError: string | undefined
 

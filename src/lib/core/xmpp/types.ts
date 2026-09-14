@@ -51,9 +51,8 @@ export type ConnectionStatus =
 // `capabilities?.x !== false` so an absent field means supported.
 export interface TransportCapabilities {
   // OMEMO e2ee, HTTP upload, roster, presence subscriptions, vcard
-  // profile editing, MUC owner config forms, in-band registration.
-  // IRC: plaintext only, no upload, MONITOR approximates a roster, no
-  // subscriptions, no profile store, ChanServ config, NickServ register.
+  // profile editing, MUC owner config forms, in-band registration. IRC:
+  // none of those apply and MONITOR is the roster approximation
   e2ee: boolean
   upload: boolean
   roster: boolean
@@ -121,16 +120,14 @@ export type ConnectionEvents = {
   // presence type=error with the stanza error details. MUC join
   // failures (401/403/404/407/409) arrive this way
   presenceError: PresenceError
-  // XEP-0402 PEP notification: another of our resources published or
-  // retracted bookmark items. Consumers refetch the node (last write
-  // wins) rather than trusting the partial update.
+  // XEP-0402 PEP notification: another resource published or retracted
+  // bookmark items. Consumers refetch the node (last write wins)
   bookmarks: { updated: Bookmark[]; retracted: string[] }
   // XEP-0490 PEP notification: our other resources advanced the
   // displayed marker for these conversations
   mds: MdsDisplayed[]
-  // IRC draft/read-marker: another of our clients moved the read cursor
-  // in this conversation to this timestamp (ms). stanza-id based
-  // markers come through mds instead
+  // IRC draft/read-marker: another client moved the read cursor to this
+  // timestamp (ms). stanza-id based markers come through mds instead
   readMarker: { peer: string; timestamp: number }
 }
 
@@ -229,6 +226,9 @@ export interface ChatConnection {
   ): void
   // XEP-0045 decline, mediated through the room
   declineRoomInvite(room: string, to: string, reason?: string): void
+  // XEP-0045 admin grant of member affiliation, which members-only rooms
+  // need to admit an invitee. Requires admin or owner rights
+  grantMembership(room: string, jid: string): void
   // XEP-0045 kick and ban. Ban needs the occupant's real jid
   kickOccupant(room: string, nick: string, reason?: string): void
   banOccupant(room: string, jid: string, reason?: string): void

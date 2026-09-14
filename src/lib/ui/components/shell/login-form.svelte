@@ -4,7 +4,7 @@
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, loginBackoffRemaining, type AccountOptions } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
-  import { isValidUserJid } from '$lib/utils/jid'
+  import { isValidAnonymousDomain, isValidUserJid } from '$lib/utils/jid'
   import { isWebSocketUrl } from '$lib/utils/url'
   import { Button } from '$lib/ui/primitives/button'
   import { Checkbox } from '$lib/ui/primitives/checkbox'
@@ -29,13 +29,25 @@
   // login: sign in to an existing account. register: XEP-0077 creates the
   // account on the server first, then the same connect flow runs
   let mode = $state<'login' | 'register'>('login')
+  // SASL ANONYMOUS: identity is just the domain and no password applies.
+  // Always treated as untrusted since the identity is disposable anyway
+  let anonymous = $state(false)
+  // irc only: the password slot carries an oauth bearer token and sasl
+  // runs OAUTHBEARER instead of PLAIN
+  let useToken = $state(false)
   // authfail backoff: the timestamp the jid may retry at, ticked down by
   // the interval below so the countdown text stays live
   let cooldownUntil = $state(0)
   let now = $state(Date.now())
 
   const isIrc = $derived(protocol === 'irc')
-  const identityValid = $derived(isIrc ? isValidIrcNick(identity) : isValidUserJid(identity))
+  const identityValid = $derived(
+    isIrc
+      ? isValidIrcNick(identity)
+      : anonymous
+        ? isValidAnonymousDomain(identity)
+        : isValidUserJid(identity)
+  )
   const serverValid = $derived(!isIrc || isWebSocketUrl(server))
   const title = $derived(
     mode === 'register' ? $LL.registerTitle() : isIrc ? $LL.signInTitleIrc() : $LL.signInTitle()
@@ -103,9 +115,15 @@
     // remember stays in the options so the session layer can prove the
     // untrusted flag wins over it
     const options: AccountOptions = { jid: loginJid, password, remember, untrusted }
+    if (anonymous) {
+      options.anonymous = true
+      options.untrusted = true
+      options.password = ''
+    }
     if (isIrc) {
       options.protocol = 'irc'
       options.websocketUrl = server
+      if (useToken) options.oauth = true
     } else if (server) {
       if (isWebSocketUrl(server)) {
         options.websocketUrl = server
@@ -183,28 +201,34 @@
       bind:identity
       bind:password
       bind:server
+      bind:anonymous
+      bind:useToken
       {identityValid}
       {serverValid}
       onprotocolchange={() => {
         mode = 'login'
+        anonymous = false
+        useToken = false
         error = ''
       }}
     />
 
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
-      {$LL.rememberSession()}
-    </label>
-
-    <div class="grid gap-1">
+    {#if !anonymous}
       <label class="flex items-center gap-2 text-sm">
-        <Checkbox id="untrusted" bind:checked={untrusted} />
-        {$LL.sharedDevice()}
+        <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
+        {$LL.rememberSession()}
       </label>
-      {#if untrusted}
-        <p class="text-muted-foreground ps-6 text-xs">{$LL.sharedDeviceHint()}</p>
-      {/if}
-    </div>
+
+      <div class="grid gap-1">
+        <label class="flex items-center gap-2 text-sm">
+          <Checkbox id="untrusted" bind:checked={untrusted} />
+          {$LL.sharedDevice()}
+        </label>
+        {#if untrusted}
+          <p class="text-muted-foreground ps-6 text-xs">{$LL.sharedDeviceHint()}</p>
+        {/if}
+      </div>
+    {/if}
 
     {#if error}
       <p role="alert" class="text-destructive text-sm">{error}</p>
@@ -220,7 +244,7 @@
       disabled={submitting ||
         !identityValid ||
         !serverValid ||
-        (!isIrc && !password) ||
+        (!isIrc && !anonymous && !password) ||
         cooldownLeft > 0}
     >
       {#if submitting}
@@ -231,7 +255,7 @@
       {/if}
     </Button>
 
-    {#if !isIrc}
+    {#if !isIrc && !anonymous}
       <Button
         type="button"
         variant="link"
@@ -245,7 +269,7 @@
       </Button>
     {/if}
 
-    {#if mode === 'login' && !isIrc}
+    {#if mode === 'login' && !isIrc && !anonymous}
       <Button
         type="button"
         variant="outline"

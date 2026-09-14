@@ -132,6 +132,7 @@ export const RPL_SASLSUCCESS = '903'
 export const ERR_SASLTOOLONG = '905'
 export const ERR_SASLABORTED = '906'
 export const ERR_SASLALREADY = '907'
+export const ERR_SASLMECHS = '908'
 export const RPL_MONONLINE = '730'
 export const RPL_MONOFFLINE = '731'
 

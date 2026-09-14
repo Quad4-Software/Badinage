@@ -255,6 +255,7 @@ export abstract class IrcStubs {
   sendTrustMessage = noop
   sendDirectedPresence = noop
   declineRoomInvite = noop
+  grantMembership = noop
   pepGet(_n: string, _j: string | undefined, onDone: (items: Element | null) => void): void {
     onDone(null)
   }

@@ -25,10 +25,14 @@ export interface SessionOptions {
   // the password slot carries an oauth access token and sasl is pinned to
   // OAUTHBEARER. Set by the XEP-0493 flow
   oauth?: boolean | undefined
+  // SASL ANONYMOUS login: jid holds just the domain and the server
+  // assigns a throwaway account. Never persisted, always paired with
+  // the untrusted flag
+  anonymous?: boolean | undefined
 }
 
 export function saveSession(options: SessionOptions): void {
-  if (options.remember && !options.demo && !options.untrusted) {
+  if (options.remember && !options.demo && !options.untrusted && !options.anonymous) {
     sessionStorage.setItem(scopedKey(options.jid, 'session'), JSON.stringify(options))
   }
 }

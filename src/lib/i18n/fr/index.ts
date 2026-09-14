@@ -22,6 +22,12 @@ const fr = {
   jid: 'Adresse XMPP',
   jidPlaceholder: 'vous@example.org',
   jidHint: 'Ressemble à une adresse e-mail. Le serveur est détecté automatiquement à partir du domaine.',
+  anonymousLogin: 'Se connecter anonymement',
+  anonymousDomain: 'Domaine du serveur',
+  anonymousDomainPlaceholder: 'example.org',
+  anonymousDomainHint:
+    'Aucun compte requis. Le serveur attribue une adresse temporaire pour cette session.',
+  accessTokenLogin: 'Utiliser un jeton d\'accès à la place du mot de passe',
   password: 'Mot de passe',
   server: 'Serveur',
   serverPlaceholder: 'wss://example.org/xmpp-websocket',
