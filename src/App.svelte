@@ -24,7 +24,11 @@
   import ProfileDialog from '$lib/ui/components/dialogs/profile-dialog.svelte'
   import PromptHost from '$lib/ui/components/prompts/prompt-host.svelte'
   import ShareDialog from '$lib/ui/components/dialogs/share-dialog.svelte'
+  import { deployment } from '$lib/state/status/status.svelte'
+  import AddAccountDialog from '$lib/ui/components/shell/login-form/dialog.svelte'
   import SettingsDialog from '$lib/ui/components/settings/settings-dialog.svelte'
+  import StatusBanner from '$lib/ui/components/status/banner.svelte'
+  import StatusPage from '$lib/ui/components/status/page.svelte'
   import AppShell from '$lib/ui/components/shell/app-shell.svelte'
   import CallOverlay from '$lib/ui/components/call/call-overlay.svelte'
   import CommandPalette from '$lib/ui/components/shell/command-palette.svelte'
@@ -36,13 +40,6 @@
   import LoginForm from '$lib/ui/components/shell/login-form.svelte'
   import Notifications from '$lib/ui/components/shell/notifications.svelte'
   import StatusToasts from '$lib/ui/components/shell/status-toasts.svelte'
-  import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle
-  } from '$lib/ui/primitives/dialog'
   import { Sonner } from '$lib/ui/primitives/sonner'
   import { TooltipProvider } from '$lib/ui/primitives/tooltip'
   import { watchIdleAway } from '$lib/ui/idle/away'
@@ -137,6 +134,13 @@
 
     // read the lock config before anything touches sealed storage
     void appLock.init()
+    // deployment status: poll status.json for maintenance windows and
+    // push browser connectivity into the DOM-free store
+    deployment.setOffline(!navigator.onLine)
+    deployment.start()
+    const syncOnline = () => deployment.setOffline(!navigator.onLine)
+    window.addEventListener('online', syncOnline)
+    window.addEventListener('offline', syncOnline)
     // XEP-0147 deep links: the web+xmpp protocol handler (manifest or
     // registerProtocolHandler) lands on ?uri=, the in-app form uses
     // #/xmpp/<encoded-uri>. Either way the parsed action waits in
@@ -181,6 +185,8 @@
     return () => {
       window.removeEventListener('error', onError)
       window.removeEventListener('unhandledrejection', onRejection)
+      window.removeEventListener('online', syncOnline)
+      window.removeEventListener('offline', syncOnline)
     }
   })
 
@@ -236,55 +242,57 @@
   <Keyboard />
   <StatusToasts />
   <Notifications />
-  {#if accounts.active?.options.demo}
-    <DemoBadge />
-  {/if}
-  <SettingsDialog />
-  <JoinRoomDialog />
-  <ProfileDialog />
-  <AddContactDialog />
-  <ExploreRoomsDialog />
-  <PromptHost />
-  {#if app.sharePayload}
-    <ShareDialog
-      bind:open={
-        () => app.sharePayload !== null,
-        (open) => {
-          if (!open) app.sharePayload = null
-        }
-      }
-      payload={app.sharePayload}
-    />
-  {/if}
-  <CommandPalette />
-  <ContextMenuHost />
-  <CallOverlay />
-
-  <Dialog bind:open={app.loginOpen}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{$LL.addAccount()}</DialogTitle>
-        <DialogDescription>{$LL.signInTitle()}</DialogDescription>
-      </DialogHeader>
-      <LoginForm embedded />
-    </DialogContent>
-  </Dialog>
-
-  <svelte:boundary onerror={(error: unknown) => reportError(error, { source: 'crash-boundary' })}>
-    {#snippet failed(error: unknown, reset: () => void)}
-      <CrashView {error} {reset} />
-    {/snippet}
-
-    {#if !appLock.ready}
-      <main class="h-full"></main>
-    {:else if appLock.locked}
-      <LockScreen />
-    {:else if accounts.list.length === 0}
-      <main class="h-full">
-        <LoginForm />
-      </main>
-    {:else}
-      <AppShell />
+  {#if !deployment.blocking}
+    {#if accounts.active?.options.demo}
+      <DemoBadge />
     {/if}
-  </svelte:boundary>
+    <SettingsDialog />
+    <JoinRoomDialog />
+    <ProfileDialog />
+    <AddContactDialog />
+    <ExploreRoomsDialog />
+    <PromptHost />
+    {#if app.sharePayload}
+      <ShareDialog
+        bind:open={
+          () => app.sharePayload !== null,
+          (open) => {
+            if (!open) app.sharePayload = null
+          }
+        }
+        payload={app.sharePayload}
+      />
+    {/if}
+    <CommandPalette />
+    <ContextMenuHost />
+    <CallOverlay />
+    <AddAccountDialog />
+  {/if}
+
+  <div class="flex h-full min-h-0 flex-col">
+    <StatusBanner />
+    <div class="min-h-0 flex-1">
+      <svelte:boundary
+        onerror={(error: unknown) => reportError(error, { source: 'crash-boundary' })}
+      >
+        {#snippet failed(error: unknown, reset: () => void)}
+          <CrashView {error} {reset} />
+        {/snippet}
+
+        {#if deployment.blocking}
+          <StatusPage status={deployment.status} />
+        {:else if !appLock.ready}
+          <main class="h-full"></main>
+        {:else if appLock.locked}
+          <LockScreen />
+        {:else if accounts.list.length === 0}
+          <main class="h-full">
+            <LoginForm />
+          </main>
+        {:else}
+          <AppShell />
+        {/if}
+      </svelte:boundary>
+    </div>
+  </div>
 </TooltipProvider>

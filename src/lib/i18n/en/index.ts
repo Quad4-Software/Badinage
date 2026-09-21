@@ -555,7 +555,15 @@ const en = {
   callDeclined: 'Declined',
   callNoAnswer: 'No answer',
   callFailed: 'Call failed',
-  callMediaError: 'Microphone or camera unavailable'
+  callMediaError: 'Microphone or camera unavailable',
+  statusMaintenanceTitle: 'Under maintenance',
+  statusMaintenanceDefault:
+    'Scheduled maintenance is in progress. The app will be back shortly.',
+  statusExpectedBack: 'Expected back around {time:string}',
+  statusOutageTitle: 'Service outage',
+  statusOutageDefault: 'The service is temporarily unavailable. Please try again later.',
+  statusOffline: 'You are offline. Changes will sync when the connection returns.',
+  statusRetry: 'Retry'
 } satisfies BaseTranslation
 
 export default en

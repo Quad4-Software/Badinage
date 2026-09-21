@@ -42,6 +42,10 @@ export const COPY_FEEDBACK_MS = 2_000
 // login form polls the connection status at this interval while connecting
 export const LOGIN_STATUS_POLL_MS = 250
 
+// deployment status (public/status.json) is re-polled on this cadence so
+// a maintenance window flipped on the static host lands without a reload
+export const STATUS_POLL_MS = 60_000
+
 // attachments larger than this are never inlined as data uris
 export const INLINE_ATTACHMENT_LIMIT = 512 * 1024
 

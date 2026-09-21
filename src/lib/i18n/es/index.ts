@@ -558,7 +558,16 @@ const es = {
   callDeclined: 'Rechazada',
   callNoAnswer: 'Sin respuesta',
   callFailed: 'La llamada falló',
-  callMediaError: 'Micrófono o cámara no disponibles'
+  callMediaError: 'Micrófono o cámara no disponibles',
+  statusMaintenanceTitle: 'En mantenimiento',
+  statusMaintenanceDefault:
+    'Hay un mantenimiento programado en curso. La aplicación volverá en breve.',
+  statusExpectedBack: 'Volverá aproximadamente a las {time}',
+  statusOutageTitle: 'Interrupción del servicio',
+  statusOutageDefault:
+    'El servicio no está disponible temporalmente. Inténtalo de nuevo más tarde.',
+  statusOffline: 'Estás sin conexión. Los cambios se sincronizarán cuando vuelva la conexión.',
+  statusRetry: 'Reintentar'
 }
 
 export default es

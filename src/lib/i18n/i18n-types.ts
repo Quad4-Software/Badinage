@@ -2067,6 +2067,35 @@ type RootTranslation = {
 	 * M​i​c​r​o​p​h​o​n​e​ ​o​r​ ​c​a​m​e​r​a​ ​u​n​a​v​a​i​l​a​b​l​e
 	 */
 	callMediaError: string
+	/**
+	 * U​n​d​e​r​ ​m​a​i​n​t​e​n​a​n​c​e
+	 */
+	statusMaintenanceTitle: string
+	/**
+	 * S​c​h​e​d​u​l​e​d​ ​m​a​i​n​t​e​n​a​n​c​e​ ​i​s​ ​i​n​ ​p​r​o​g​r​e​s​s​.​ ​T​h​e​ ​a​p​p​ ​w​i​l​l​ ​b​e​ ​b​a​c​k​ ​s​h​o​r​t​l​y​.
+	 */
+	statusMaintenanceDefault: string
+	/**
+	 * E​x​p​e​c​t​e​d​ ​b​a​c​k​ ​a​r​o​u​n​d​ ​{​t​i​m​e​}
+	 * @param {string} time
+	 */
+	statusExpectedBack: RequiredParams<'time'>
+	/**
+	 * S​e​r​v​i​c​e​ ​o​u​t​a​g​e
+	 */
+	statusOutageTitle: string
+	/**
+	 * T​h​e​ ​s​e​r​v​i​c​e​ ​i​s​ ​t​e​m​p​o​r​a​r​i​l​y​ ​u​n​a​v​a​i​l​a​b​l​e​.​ ​P​l​e​a​s​e​ ​t​r​y​ ​a​g​a​i​n​ ​l​a​t​e​r​.
+	 */
+	statusOutageDefault: string
+	/**
+	 * Y​o​u​ ​a​r​e​ ​o​f​f​l​i​n​e​.​ ​C​h​a​n​g​e​s​ ​w​i​l​l​ ​s​y​n​c​ ​w​h​e​n​ ​t​h​e​ ​c​o​n​n​e​c​t​i​o​n​ ​r​e​t​u​r​n​s​.
+	 */
+	statusOffline: string
+	/**
+	 * R​e​t​r​y
+	 */
+	statusRetry: string
 }
 
 export type TranslationFunctions = {
@@ -4062,6 +4091,34 @@ export type TranslationFunctions = {
 	 * Microphone or camera unavailable
 	 */
 	callMediaError: () => LocalizedString
+	/**
+	 * Under maintenance
+	 */
+	statusMaintenanceTitle: () => LocalizedString
+	/**
+	 * Scheduled maintenance is in progress. The app will be back shortly.
+	 */
+	statusMaintenanceDefault: () => LocalizedString
+	/**
+	 * Expected back around {time}
+	 */
+	statusExpectedBack: (arg: { time: string }) => LocalizedString
+	/**
+	 * Service outage
+	 */
+	statusOutageTitle: () => LocalizedString
+	/**
+	 * The service is temporarily unavailable. Please try again later.
+	 */
+	statusOutageDefault: () => LocalizedString
+	/**
+	 * You are offline. Changes will sync when the connection returns.
+	 */
+	statusOffline: () => LocalizedString
+	/**
+	 * Retry
+	 */
+	statusRetry: () => LocalizedString
 }
 
 export type Formatters = {}

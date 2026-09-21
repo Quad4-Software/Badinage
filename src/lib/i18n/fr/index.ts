@@ -555,7 +555,17 @@ const fr = {
   callDeclined: 'Refusé',
   callNoAnswer: 'Pas de réponse',
   callFailed: "Échec de l'appel",
-  callMediaError: 'Micro ou caméra indisponible'
+  callMediaError: 'Micro ou caméra indisponible',
+  statusMaintenanceTitle: 'Maintenance en cours',
+  statusMaintenanceDefault:
+    'Une maintenance planifiée est en cours. L\'application sera de retour sous peu.',
+  statusExpectedBack: 'Retour prévu vers {time}',
+  statusOutageTitle: 'Panne de service',
+  statusOutageDefault:
+    'Le service est temporairement indisponible. Veuillez réessayer plus tard.',
+  statusOffline:
+    'Vous êtes hors ligne. Les modifications seront synchronisées au retour de la connexion.',
+  statusRetry: 'Réessayer'
 }
 
 export default fr

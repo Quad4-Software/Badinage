@@ -555,7 +555,16 @@ const pt = {
   callDeclined: 'Recusada',
   callNoAnswer: 'Sem resposta',
   callFailed: 'A chamada falhou',
-  callMediaError: 'Microfone ou câmera indisponíveis'
+  callMediaError: 'Microfone ou câmera indisponíveis',
+  statusMaintenanceTitle: 'Em manutenção',
+  statusMaintenanceDefault:
+    'Uma manutenção programada está em curso. O aplicativo voltará em breve.',
+  statusExpectedBack: 'Previsão de retorno por volta das {time}',
+  statusOutageTitle: 'Serviço indisponível',
+  statusOutageDefault:
+    'O serviço está temporariamente indisponível. Tente novamente mais tarde.',
+  statusOffline: 'Você está offline. As alterações serão sincronizadas quando a conexão voltar.',
+  statusRetry: 'Tentar novamente'
 }
 
 export default pt

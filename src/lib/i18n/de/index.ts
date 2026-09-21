@@ -558,7 +558,17 @@ const de = {
   callDeclined: 'Abgelehnt',
   callNoAnswer: 'Keine Antwort',
   callFailed: 'Anruf fehlgeschlagen',
-  callMediaError: 'Mikrofon oder Kamera nicht verfügbar'
+  callMediaError: 'Mikrofon oder Kamera nicht verfügbar',
+  statusMaintenanceTitle: 'Wartungsarbeiten',
+  statusMaintenanceDefault:
+    'Geplante Wartungsarbeiten laufen. Die App ist gleich wieder da.',
+  statusExpectedBack: 'Voraussichtlich wieder da um {time}',
+  statusOutageTitle: 'Dienstausfall',
+  statusOutageDefault:
+    'Der Dienst ist vorübergehend nicht verfügbar. Bitte versuche es später erneut.',
+  statusOffline:
+    'Du bist offline. Änderungen werden synchronisiert, sobald die Verbindung wieder steht.',
+  statusRetry: 'Erneut versuchen'
 }
 
 export default de

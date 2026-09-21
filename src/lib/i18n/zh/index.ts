@@ -551,7 +551,14 @@ const zh = {
   callDeclined: '已拒绝',
   callNoAnswer: '无人接听',
   callFailed: '通话失败',
-  callMediaError: '麦克风或摄像头不可用'
+  callMediaError: '麦克风或摄像头不可用',
+  statusMaintenanceTitle: '维护中',
+  statusMaintenanceDefault: '正在进行计划维护，应用很快恢复。',
+  statusExpectedBack: '预计 {time} 恢复',
+  statusOutageTitle: '服务中断',
+  statusOutageDefault: '服务暂时不可用，请稍后重试。',
+  statusOffline: '你已离线。连接恢复后更改将同步。',
+  statusRetry: '重试'
 }
 
 export default zh
