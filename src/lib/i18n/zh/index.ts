@@ -459,6 +459,8 @@ const zh = {
   notifyMentions: '仅提及',
   notifyNever: '静音',
 
+  encryptionAuto: '自动',
+
   invisible: '隐身',
   invisibleHint:
     '你将向联系人显示为离线。隐身时无法加入房间。',

@@ -460,6 +460,8 @@ const fr = {
   notifyMentions: 'Mentions uniquement',
   notifyNever: 'Silencieux',
 
+  encryptionAuto: 'Automatique',
+
   invisible: 'Invisible',
   invisibleHint:
     'Vous apparaissez hors ligne auprès de vos contacts. Rejoindre des salons est bloqué en mode invisible.',

@@ -172,7 +172,9 @@ export function sendFileMessage(
   file: Blob,
   name: string,
   mediaType: string,
-  onError: () => void,
+  // encryption=true means the send was refused by the conversation's
+  // required-encryption override, not an upload failure
+  onError: (encryption?: boolean) => void,
   duration?: number
 ): void {
   const store = app.chatsFor(account.jid)
@@ -198,11 +200,26 @@ export function sendFileMessage(
   // in a dm, try the encrypted path whenever the service resolves - the
   // first thing ever sent may be a file. A false result means the peer
   // publishes no usable devices: fall back to plaintext and keep the
-  // encrypted flag honest.
-  if (chatType === 'chat') {
+  // encrypted flag honest. The conversation override can force either
+  // side: 'none' skips omemo, 'omemo' refuses the plaintext fallback.
+  // Groupchat has no encrypted attachment path at all.
+  const preference = conversation.encryption ?? 'auto'
+  if (chatType === 'chat' && preference !== 'none') {
     void Promise.resolve(account.omemo ?? account.omemoService()).then((omemo) => {
       if (!omemo) {
-        uploadAndSend(account, peerJid, chatType, file, name, mediaType, duration, onSent, onError)
+        if (preference === 'omemo') onError(true)
+        else
+          uploadAndSend(
+            account,
+            peerJid,
+            chatType,
+            file,
+            name,
+            mediaType,
+            duration,
+            onSent,
+            onError
+          )
         return
       }
       void uploadEncrypted(
@@ -220,10 +237,18 @@ export function sendFileMessage(
         onError
       ).then((sent) => {
         if (sent) return
+        if (preference === 'omemo') {
+          onError(true)
+          return
+        }
         conversation.encrypted = false
         uploadAndSend(account, peerJid, chatType, file, name, mediaType, duration, onSent, onError)
       })
     })
+    return
+  }
+  if (preference === 'omemo') {
+    onError(true)
     return
   }
   uploadAndSend(account, peerJid, chatType, file, name, mediaType, duration, onSent, onError)

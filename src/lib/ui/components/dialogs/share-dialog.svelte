@@ -68,7 +68,7 @@
         file,
         file.name || 'file',
         file.type || 'application/octet-stream',
-        () => toast.error($LL.uploadFailed())
+        (encryption) => toast.error(encryption ? $LL.encryptFailed() : $LL.uploadFailed())
       )
     }
     if (sharedText) app.setDraft(peer, sharedText)

@@ -45,11 +45,14 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   // plain "/me ..." stays literal on the wire. The render side splits it.
   const spoiler = parseSpoilerCommand(text)
   const body = spoiler?.body ?? text
+  // per-conversation override: 'none' never encrypts, 'omemo' refuses
+  // the plaintext fallback, anything else auto-negotiates
+  const encryption = conversation?.encryption ?? 'auto'
 
   if (ctx.editing) {
     const ref = ctx.editing.wireId ?? ctx.editing.id
     let sent = false
-    if (type === 'chat') {
+    if (type === 'chat' && encryption !== 'none') {
       const omemo = account.omemo ?? (await account.omemoService())
       if (omemo) {
         try {
@@ -70,6 +73,10 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
           return false
         }
       }
+    }
+    if (!sent && encryption === 'omemo') {
+      toast.error(get(LL).encryptFailed())
+      return false
     }
     if (!sent) {
       account.connection.sendChatMessage(peerJid, body, type, {
@@ -108,6 +115,7 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
   // landed yet, in which case the room still sends plaintext
   const members = [...(conversation?.occupants.values() ?? [])].filter((o) => !o.self)
   const roomEncrypted =
+    encryption !== 'none' &&
     kind === 'muc' &&
     conversation?.roomInfo?.membersOnly === true &&
     conversation.roomInfo.anonymous === false &&
@@ -116,9 +124,10 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
     // read the stanza, so partial coverage sends plaintext instead
     members.every((o) => o.jid !== undefined)
   // encrypt when the peer publishes omemo devices. Falls back to
-  // plaintext when there are none or every device is distrusted
+  // plaintext when there are none or every device is distrusted, unless
+  // the conversation requires omemo
   let encryptedXml: string | null = null
-  if (type === 'chat' || roomEncrypted) {
+  if (encryption !== 'none' && (type === 'chat' || roomEncrypted)) {
     // await the in-flight service creation so a message sent right
     // after connect is still encrypted
     const omemo = account.omemo ?? (await account.omemoService())
@@ -147,6 +156,12 @@ export async function sendText(opts: SendOpts): Promise<boolean> {
         return false
       }
     }
+  }
+  // required encryption never downgrades: no service, no usable devices
+  // or an ineligible room all stop the send
+  if (encryption === 'omemo' && encryptedXml === null) {
+    toast.error(get(LL).encryptFailed())
+    return false
   }
   const encrypted = encryptedXml !== null
   const id = encryptedXml

@@ -25,14 +25,16 @@ import { bareJid } from '$lib/utils/jid'
 
 import type { NotifySetting } from '$lib/core/xmpp/stanzas'
 
-import type { ChatMessage, Conversation } from './conversation.svelte'
+import type { ChatMessage, Conversation, EncryptionPreference } from './conversation.svelte'
 
 // per-conversation preferences too small to be messages: the ephemeral
-// timer and the notification override. Stored in kv unencrypted - they
-// leak only that a conversation exists, which the store keys do anyway.
+// timer, the notification override and the encryption preference.
+// Stored in kv unencrypted - they leak only that a conversation exists,
+// which the store keys do anyway.
 export interface ConversationMeta {
   ephemeral?: number | undefined
   notify?: NotifySetting | undefined
+  encryption?: EncryptionPreference | undefined
 }
 
 const RETAINED_MESSAGES = MESSAGE_PAGE_SIZE * 4

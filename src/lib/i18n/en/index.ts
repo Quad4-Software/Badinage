@@ -459,6 +459,8 @@ const en = {
   notifyMentions: 'Mentions only',
   notifyNever: 'Muted',
 
+  encryptionAuto: 'Automatic',
+
   invisible: 'Invisible',
   invisibleHint:
     'You appear offline to your contacts. Joining rooms is blocked while invisible.',

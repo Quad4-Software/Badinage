@@ -1,31 +1,36 @@
 <script lang="ts">
   import { DropdownMenu } from 'bits-ui'
-  import { Bell, Check, Timer } from '@lucide/svelte'
+  import { Bell, Check, Lock, Timer } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { NotifySetting } from '$lib/core/xmpp/stanzas'
-  import type { Conversation } from '$lib/state/chats.svelte'
+  import type { Conversation, EncryptionPreference } from '$lib/state/chats.svelte'
 
   import { EPHEMERAL_OPTIONS } from './ephemeral'
 
   const itemClass =
     'data-[highlighted]:bg-accent flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none'
 
+  const subTriggerClass =
+    'data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none'
+
   let {
     conversation,
+    e2ee = false,
     onSetNotify,
-    onSetEphemeral
+    onSetEphemeral,
+    onSetEncryption
   }: {
     conversation: Conversation
+    e2ee?: boolean
     onSetNotify: (level: NotifySetting | undefined) => void
     onSetEphemeral: (seconds: number) => void
+    onSetEncryption: (preference: EncryptionPreference) => void
   } = $props()
 </script>
 
 <DropdownMenu.Sub>
-  <DropdownMenu.SubTrigger
-    class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-  >
+  <DropdownMenu.SubTrigger class={subTriggerClass}>
     <Bell class="size-4" />
     {$LL.notifyChat()}
   </DropdownMenu.SubTrigger>
@@ -45,10 +50,31 @@
     </DropdownMenu.SubContent>
   </DropdownMenu.Portal>
 </DropdownMenu.Sub>
+{#if e2ee}
+  <DropdownMenu.Sub>
+    <DropdownMenu.SubTrigger class={subTriggerClass}>
+      <Lock class="size-4" />
+      {$LL.encryption()}
+    </DropdownMenu.SubTrigger>
+    <DropdownMenu.Portal>
+      <DropdownMenu.SubContent
+        class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
+        sideOffset={4}
+      >
+        {#each [['auto', $LL.encryptionAuto()], ['omemo', 'OMEMO'], ['none', $LL.off()]] as const as [preference, label] (preference)}
+          <DropdownMenu.Item class={itemClass} onSelect={() => onSetEncryption(preference)}>
+            {label}
+            {#if (conversation.encryption ?? 'auto') === preference}
+              <Check class="size-4" />
+            {/if}
+          </DropdownMenu.Item>
+        {/each}
+      </DropdownMenu.SubContent>
+    </DropdownMenu.Portal>
+  </DropdownMenu.Sub>
+{/if}
 <DropdownMenu.Sub>
-  <DropdownMenu.SubTrigger
-    class="data-[highlighted]:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-  >
+  <DropdownMenu.SubTrigger class={subTriggerClass}>
     <Timer class="size-4" />
     {$LL.disappearing()}
   </DropdownMenu.SubTrigger>

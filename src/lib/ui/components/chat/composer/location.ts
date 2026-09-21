@@ -23,20 +23,43 @@ export async function sendGeoloc(
   const current = account
   const body = geoUri(geoloc.lat, geoloc.lon)
   const type = kind === 'muc' ? 'groupchat' : 'chat'
+  const encryption = conversation?.encryption ?? 'auto'
+  // same eligibility rule as the text send path: members-only and
+  // non-anonymous with real jids for every occupant
+  const members = [...(conversation?.occupants.values() ?? [])].filter((o) => !o.self)
+  const roomEncrypted =
+    encryption !== 'none' &&
+    kind === 'muc' &&
+    conversation?.roomInfo?.membersOnly === true &&
+    conversation.roomInfo.anonymous === false &&
+    members.length > 0 &&
+    members.every((o) => o.jid !== undefined)
   let encryptedXml: string | null = null
-  if (type === 'chat') {
+  if (encryption !== 'none' && (type === 'chat' || roomEncrypted)) {
     const omemo = current.omemo ?? (await current.omemoService())
     if (omemo) {
       try {
-        encryptedXml = await omemo.encryptBody(peerJid, body, {
-          geoloc,
-          ephemeral: conversation?.ephemeralTimer
-        })
+        encryptedXml = roomEncrypted
+          ? await omemo.encryptRoomBody(
+              peerJid,
+              members.map((o) => o.jid ?? ''),
+              body,
+              { geoloc, ephemeral: conversation?.ephemeralTimer }
+            )
+          : await omemo.encryptBody(peerJid, body, {
+              geoloc,
+              ephemeral: conversation?.ephemeralTimer
+            })
       } catch {
         toast.error(get(LL).encryptFailed())
         return
       }
     }
+  }
+  // a required-encryption conversation never downgrades a location share
+  if (encryption === 'omemo' && encryptedXml === null) {
+    toast.error(get(LL).encryptFailed())
+    return
   }
   const encrypted = encryptedXml !== null
   const id = encryptedXml
@@ -47,7 +70,7 @@ export async function sendGeoloc(
       })
   const store = app.chatsFor(current.jid)
   const conv = store.open(peerJid)
-  if (type === 'chat') conv.encrypted = encrypted
+  conv.encrypted = encrypted
   store.push(peerJid, {
     id,
     wireId: id,

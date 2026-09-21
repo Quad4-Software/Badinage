@@ -14,7 +14,7 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { NotifySetting } from '$lib/core/xmpp/stanzas'
-  import type { Conversation } from '$lib/state/chats.svelte'
+  import type { Conversation, EncryptionPreference } from '$lib/state/chats.svelte'
   import { Button } from '$lib/ui/primitives/button'
 
   import MenuSubs from './menu-subs.svelte'
@@ -29,6 +29,7 @@
     peerBlocked,
     canEditSubject = false,
     canConfigure = false,
+    e2ee = false,
     onNick,
     onInvite,
     onSubject,
@@ -37,7 +38,8 @@
     onBuzz,
     onBlock,
     onSetNotify,
-    onSetEphemeral
+    onSetEphemeral,
+    onSetEncryption
   }: {
     conversation: Conversation
     room: boolean
@@ -45,6 +47,7 @@
     peerBlocked: boolean
     canEditSubject?: boolean
     canConfigure?: boolean
+    e2ee?: boolean
     onNick?: (() => void) | undefined
     onInvite?: (() => void) | undefined
     onSubject?: (() => void) | undefined
@@ -54,6 +57,7 @@
     onBlock?: (() => void) | undefined
     onSetNotify: (level: NotifySetting | undefined) => void
     onSetEphemeral: (seconds: number) => void
+    onSetEncryption: (preference: EncryptionPreference) => void
   } = $props()
 </script>
 
@@ -117,7 +121,7 @@
         </DropdownMenu.Item>
       {/if}
       <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
-      <MenuSubs {conversation} {onSetNotify} {onSetEphemeral} />
+      <MenuSubs {conversation} {e2ee} {onSetNotify} {onSetEphemeral} {onSetEncryption} />
     </DropdownMenu.Content>
   </DropdownMenu.Portal>
 </DropdownMenu.Root>

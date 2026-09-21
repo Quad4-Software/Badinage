@@ -463,6 +463,8 @@ const es = {
   notifyMentions: 'Solo menciones',
   notifyNever: 'Silenciado',
 
+  encryptionAuto: 'Automático',
+
   invisible: 'Invisible',
   invisibleHint:
     'Apareces desconectado para tus contactos. No puedes unirte a salas mientras estás invisible.',

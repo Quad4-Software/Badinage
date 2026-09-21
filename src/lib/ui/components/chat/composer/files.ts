@@ -30,7 +30,7 @@ export function createFileSend(deps: FileDeps): {
       file,
       name,
       mediaType,
-      () => toast.error(get(LL).uploadFailed()),
+      (encryption) => toast.error(encryption ? get(LL).encryptFailed() : get(LL).uploadFailed()),
       duration
     )
   }

@@ -463,6 +463,8 @@ const de = {
   notifyMentions: 'Nur Erwähnungen',
   notifyNever: 'Stumm',
 
+  encryptionAuto: 'Automatisch',
+
   invisible: 'Unsichtbar',
   invisibleHint:
     'Du erscheinst deinen Kontakten als offline. Das Beitreten von Räumen ist im unsichtbaren Modus blockiert.',

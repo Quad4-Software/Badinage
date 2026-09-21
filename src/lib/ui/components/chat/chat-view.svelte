@@ -151,13 +151,10 @@
     doModerate,
     setNotify,
     setEphemeral,
+    setEncryption,
     buzz,
     sendReactionSet
   } = actions
-
-  function retractMessage() {
-    actions.retractMessage(retractTarget)
-  }
 
   function onDragOver(event: DragEvent) {
     if (event.dataTransfer?.types.includes('Files')) {
@@ -189,7 +186,7 @@
         file,
         file.name,
         file.type || 'application/octet-stream',
-        () => toast.error($LL.uploadFailed())
+        (encryption) => toast.error(encryption ? $LL.encryptFailed() : $LL.uploadFailed())
       )
     }
   }
@@ -412,6 +409,8 @@
                   onBuzz={buzz}
                   onSetNotify={setNotify}
                   onSetEphemeral={setEphemeral}
+                  e2ee={account?.caps.e2ee ?? false}
+                  onSetEncryption={setEncryption}
                 />
               {/if}
             {/if}
@@ -442,6 +441,8 @@
                 }}
                 onSetNotify={setNotify}
                 onSetEphemeral={setEphemeral}
+                e2ee={account?.caps.e2ee ?? false}
+                onSetEncryption={setEncryption}
               />
             {/if}
           </div>
@@ -596,7 +597,7 @@
   description={$LL.retractMessageDescription()}
   confirmLabel={$LL.retract()}
   destructive
-  onConfirm={retractMessage}
+  onConfirm={() => actions.retractMessage(retractTarget)}
 />
 
 {#if conversation}

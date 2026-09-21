@@ -460,6 +460,8 @@ const pt = {
   notifyMentions: 'Apenas menções',
   notifyNever: 'Silenciado',
 
+  encryptionAuto: 'Automática',
+
   invisible: 'Invisível',
   invisibleHint:
     'Você aparece offline para seus contatos. A entrada em salas é bloqueada enquanto você está invisível.',

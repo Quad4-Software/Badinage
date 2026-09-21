@@ -19,6 +19,7 @@ import {
   type ChatMessage,
   type Conversation,
   type ConversationKind,
+  type EncryptionPreference,
   type RoomOccupant
 } from './conversation.svelte'
 import {
@@ -34,6 +35,7 @@ import {
 } from './chats/signals'
 import { loadOlder } from './chats/archive'
 import {
+  applyMeta,
   canBuzz,
   hydrateConversation,
   isDuplicate,
@@ -42,7 +44,8 @@ import {
   noteBuzz,
   saveMeta,
   sweepExpired,
-  trimLive
+  trimLive,
+  updateMeta
 } from './chats/meta'
 import {
   applyDeliveryError,
@@ -61,6 +64,7 @@ export type {
   ChatMessage,
   Conversation,
   ConversationKind,
+  EncryptionPreference,
   RoomOccupant
 } from './conversation.svelte'
 
@@ -111,9 +115,7 @@ export class ChatStore {
       this.loaded[bare] = true
       void this.hydrate(conversation)
       void this.persistence.loadMeta(bare).then((meta) => {
-        if (!meta) return
-        if (meta.ephemeral !== undefined) conversation.ephemeralTimer = meta.ephemeral
-        if (meta.notify !== undefined) conversation.notify = meta.notify
+        if (meta) applyMeta(conversation, meta)
       })
     }
     return conversation
@@ -275,7 +277,7 @@ export class ChatStore {
       )
     }
     applyContentSignals(this.typing, conversation, message, sender, outgoing, (c) =>
-      this.saveMeta(c)
+      saveMeta(this.persistence, c)
     )
     // corrections replace an existing message instead of appending
     if (message.replaceId && message.body) {
@@ -388,33 +390,31 @@ export class ChatStore {
     noteBuzz(this.buzzedAt, peer)
   }
 
-  // XEP-0466: change the local ephemeral timer and persist it. A timer
-  // of 0 clears ephemeral mode.
+  // XEP-0466: persist the local ephemeral timer. 0 clears ephemeral mode.
   setEphemeral(peer: string, seconds: number): void {
-    const conversation = this.open(peer)
-    conversation.ephemeralTimer = seconds > 0 ? seconds : undefined
-    this.saveMeta(conversation)
+    updateMeta(this.open(peer), this.persistence, (c) => {
+      c.ephemeralTimer = seconds > 0 ? seconds : undefined
+    })
+  }
+
+  // local encryption override. Undefined restores auto behavior.
+  setEncryption(peer: string, preference: EncryptionPreference | undefined): void {
+    updateMeta(this.open(peer), this.persistence, (c) => {
+      c.encryption = preference === 'auto' ? undefined : preference
+    })
   }
 
   // XEP-0492: local notification override for a conversation.
   setNotify(peer: string, level: NotifySetting | undefined): void {
-    const conversation = this.open(peer)
-    conversation.notify = level
-    this.saveMeta(conversation)
+    updateMeta(this.open(peer), this.persistence, (c) => (c.notify = level))
   }
 
   // XEP-0492: a bookmark sync carries the shared override. Unlike
-  // setNotify this never opens a conversation: a bookmarked jid we have
-  // no local history for must not materialize a sidebar row.
+  // setNotify this never opens a conversation, so a bookmarked jid with
+  // no local history does not materialize a sidebar row.
   applyRemoteNotify(peer: string, level: NotifySetting): void {
     const conversation = this.conversations.get(bareJid(peer))
-    if (!conversation) return
-    conversation.notify = level
-    this.saveMeta(conversation)
-  }
-
-  private saveMeta(conversation: Conversation): void {
-    saveMeta(this.persistence, conversation)
+    if (conversation) updateMeta(conversation, this.persistence, (c) => (c.notify = level))
   }
 
   // XEP-0490: another of our resources displayed up to stanzaId in this

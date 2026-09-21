@@ -1723,6 +1723,10 @@ type RootTranslation = {
 	 */
 	notifyNever: string
 	/**
+	 * A​u​t​o​m​a​t​i​c
+	 */
+	encryptionAuto: string
+	/**
 	 * I​n​v​i​s​i​b​l​e
 	 */
 	invisible: string
@@ -3726,6 +3730,10 @@ export type TranslationFunctions = {
 	 * Muted
 	 */
 	notifyNever: () => LocalizedString
+	/**
+	 * Automatic
+	 */
+	encryptionAuto: () => LocalizedString
 	/**
 	 * Invisible
 	 */

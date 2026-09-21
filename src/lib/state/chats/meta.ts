@@ -48,12 +48,32 @@ export function noteBuzz(buzzedAt: Map<string, number>, peer: string): void {
   buzzedAt.set(bareJid(peer), Date.now())
 }
 
-// Persist the per-conversation meta record (ephemeral timer + notify).
+// Persist the per-conversation meta record (ephemeral timer, notify
+// override, encryption preference).
 export function saveMeta(persistence: ConversationPersistence, conversation: Conversation): void {
   const meta: ConversationMeta = {}
   if (conversation.ephemeralTimer !== undefined) meta.ephemeral = conversation.ephemeralTimer
   if (conversation.notify !== undefined) meta.notify = conversation.notify
+  if (conversation.encryption !== undefined) meta.encryption = conversation.encryption
   persistence.saveMeta(conversation.peerJid, meta)
+}
+
+// Mutate one meta field and persist the record. Keeps each ChatStore
+// setter a one-liner.
+export function updateMeta(
+  conversation: Conversation,
+  persistence: ConversationPersistence,
+  mutate: (conversation: Conversation) => void
+): void {
+  mutate(conversation)
+  saveMeta(persistence, conversation)
+}
+
+// Hydrate the meta fields of a freshly opened conversation.
+export function applyMeta(conversation: Conversation, meta: ConversationMeta): void {
+  if (meta.ephemeral !== undefined) conversation.ephemeralTimer = meta.ephemeral
+  if (meta.notify !== undefined) conversation.notify = meta.notify
+  if (meta.encryption !== undefined) conversation.encryption = meta.encryption
 }
 
 // XEP-0490: another of our resources displayed up to stanzaId in this

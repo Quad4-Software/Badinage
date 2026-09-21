@@ -9,7 +9,7 @@ import LL from '$lib/i18n/i18n-svelte'
 import type { NotifySetting } from '$lib/core/xmpp/stanzas'
 import type { Account, RosterContact } from '$lib/state/accounts.svelte'
 import { app } from '$lib/state/app.svelte'
-import type { ChatMessage, Conversation } from '$lib/state/chats.svelte'
+import type { ChatMessage, Conversation, EncryptionPreference } from '$lib/state/chats.svelte'
 import { toast } from '$lib/ui/primitives/sonner'
 
 export interface ChatActionDeps {
@@ -152,6 +152,15 @@ export function createChatActions(deps: ChatActionDeps) {
     account.setBookmarkNotify(conversation.peerJid, level)
   }
 
+  // local per-conversation encryption override. Persisted through the
+  // store meta so it survives restarts
+  function setEncryption(preference: EncryptionPreference): void {
+    const account = deps.account()
+    const conversation = deps.conversation()
+    if (!account || !conversation) return
+    app.chatsFor(account.jid).setEncryption(conversation.peerJid, preference)
+  }
+
   function setEphemeral(seconds: number): void {
     const account = deps.account()
     const conversation = deps.conversation()
@@ -162,7 +171,7 @@ export function createChatActions(deps: ChatActionDeps) {
     // without waiting for the next typed message. In an encrypted dm
     // the announce rides inside an SCE envelope. A cleartext ephemeral
     // element would leak that the conversation self-destructs.
-    if (!deps.isRoom() && conversation.encrypted === true) {
+    if (!deps.isRoom() && conversation.encrypted === true && conversation.encryption !== 'none') {
       const conn = account.connection
       const peer = conversation.peerJid
       void Promise.resolve(account.omemo ?? account.omemoService()).then(async (omemo) => {
@@ -200,7 +209,11 @@ export function createChatActions(deps: ChatActionDeps) {
     const account = deps.account()
     const conversation = deps.conversation()
     if (!account || !conversation) return
-    if (conversation.kind === 'dm' && conversation.encrypted === true) {
+    if (
+      conversation.kind === 'dm' &&
+      conversation.encrypted === true &&
+      conversation.encryption !== 'none'
+    ) {
       void Promise.resolve(account.omemo ?? account.omemoService())
         .then(async (omemo) => {
           const xml = omemo ? await omemo.encryptReaction(target, ref, emojis) : null
@@ -223,6 +236,7 @@ export function createChatActions(deps: ChatActionDeps) {
     doModerate,
     setNotify,
     setEphemeral,
+    setEncryption,
     buzz,
     sendReactionSet
   }

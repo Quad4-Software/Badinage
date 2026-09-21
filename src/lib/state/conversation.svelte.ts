@@ -9,6 +9,11 @@ import type { Attachment, ChatState, Geoloc, NotifySetting } from '$lib/core/xmp
 
 export type ConversationKind = 'dm' | 'muc'
 
+// per-conversation encryption override: auto encrypts when the peer
+// supports it, omemo refuses to fall back to plaintext, none never
+// encrypts. Undefined behaves as auto.
+export type EncryptionPreference = 'auto' | 'omemo' | 'none'
+
 interface ReplyRef {
   id: string
   from: string
@@ -138,6 +143,9 @@ export interface Conversation {
   joined?: boolean
   // true once omemo traffic was observed on this conversation (dm)
   encrypted?: boolean | undefined
+  // the user's encryption override for this peer. Undefined is auto:
+  // encrypt when the peer publishes usable devices
+  encryption?: EncryptionPreference | undefined
   // mam paging: the rsm first uid of the oldest page we pulled, sent as
   // the before cursor when fetching further back
   historyCursor?: string | undefined

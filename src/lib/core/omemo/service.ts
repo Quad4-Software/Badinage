@@ -78,6 +78,16 @@ export interface DecryptReport {
   namespace?: Namespace | undefined
 }
 
+// Envelope extras that ride alongside the body of an encrypted message:
+// corrections, replies, spoilers, ephemeral timers and geoloc.
+export interface EnvelopeContentOpts {
+  replaceId?: string
+  replyTo?: { id: string; to: string } | undefined
+  spoilerHint?: string | undefined
+  ephemeral?: number | undefined
+  geoloc?: { lat: number; lon: number; accuracy?: number | undefined } | undefined
+}
+
 export interface OmemoServiceOptions {
   connection: ChatConnection
   accountJid: string
@@ -362,17 +372,7 @@ export class OmemoService {
   // Encrypt a text body plus envelope content (replies, corrections,
   // spoilers, ephemeral timer, geoloc). Legacy-only peers cannot carry
   // envelope content, so that metadata is dropped there.
-  async encryptBody(
-    jid: string,
-    body: string,
-    opts?: {
-      replaceId?: string
-      replyTo?: { id: string; to: string } | undefined
-      spoilerHint?: string | undefined
-      ephemeral?: number | undefined
-      geoloc?: { lat: number; lon: number; accuracy?: number | undefined } | undefined
-    }
-  ): Promise<string | null> {
+  async encryptBody(jid: string, body: string, opts?: EnvelopeContentOpts): Promise<string | null> {
     const bare = bareJid(jid)
     const content = textEnvelope(body, [
       ...(opts?.replaceId ? [replaceNode(opts.replaceId)] : []),
@@ -400,18 +400,14 @@ export class OmemoService {
     roomJid: string,
     memberJids: string[],
     body: string,
-    opts?: {
-      replaceId?: string
-      replyTo?: { id: string; to: string } | undefined
-      spoilerHint?: string | undefined
-      ephemeral?: number | undefined
-    }
+    opts?: EnvelopeContentOpts
   ): Promise<string | null> {
     const content = textEnvelope(body, [
       ...(opts?.replaceId ? [replaceNode(opts.replaceId)] : []),
       ...(opts?.replyTo ? [replyNode(opts.replyTo)] : []),
       ...(opts?.spoilerHint !== undefined ? [spoilerNode(opts.spoilerHint)] : []),
-      ...(opts?.ephemeral !== undefined ? [ephemeralNode(opts.ephemeral)] : [])
+      ...(opts?.ephemeral !== undefined ? [ephemeralNode(opts.ephemeral)] : []),
+      ...(opts?.geoloc ? [geolocNode(opts.geoloc)] : [])
     ]).content
     return this.encryptEnvelopeFor(bareJid(roomJid), memberJids, content)
   }
