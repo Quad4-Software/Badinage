@@ -195,7 +195,12 @@
     if (item.kind === 'message') {
       return {
         id: messageRowId(item.message.id),
-        class: item.index > 0 ? (item.grouped ? 'pt-[var(--density-msg-gap)]' : 'pt-0.5') : ''
+        class:
+          item.index > 0
+            ? item.grouped
+              ? 'pt-[var(--density-msg-gap)]'
+              : 'pt-[var(--density-msg-run-gap)]'
+            : ''
       }
     }
     if (item.kind === 'day') {

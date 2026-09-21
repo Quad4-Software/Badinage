@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DropdownMenu } from 'bits-ui'
-  import { Bell, Check, Lock, Timer } from '@lucide/svelte'
+  import { Bell, Check, Lock, LockOpen, ShieldCheck, Timer } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import type { NotifySetting } from '$lib/core/xmpp/stanzas'
@@ -61,9 +61,12 @@
         class="bg-popover text-popover-foreground z-50 min-w-40 rounded-md border p-1 shadow-md"
         sideOffset={4}
       >
-        {#each [['auto', $LL.encryptionAuto()], ['omemo', 'OMEMO'], ['none', $LL.off()]] as const as [preference, label] (preference)}
+        {#each [['auto', $LL.encryptionAuto(), ShieldCheck], ['omemo', 'OMEMO', Lock], ['none', $LL.off(), LockOpen]] as const as [preference, label, Icon] (preference)}
           <DropdownMenu.Item class={itemClass} onSelect={() => onSetEncryption(preference)}>
-            {label}
+            <span class="flex items-center gap-2">
+              <Icon class="size-4" />
+              {label}
+            </span>
             {#if (conversation.encryption ?? 'auto') === preference}
               <Check class="size-4" />
             {/if}
