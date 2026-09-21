@@ -5,7 +5,10 @@ import { enterDemo } from '../helpers'
 async function openPrivacySettings(page: Page) {
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+,' : 'Control+,')
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('button', { name: 'Privacy', exact: true }).click()
+  // the section nav collapses to a select on narrow viewports
+  const navButton = dialog.getByRole('button', { name: 'Privacy', exact: true })
+  if (await navButton.isVisible()) await navButton.click()
+  else await dialog.getByRole('combobox', { name: 'Settings section' }).selectOption('privacy')
   return dialog
 }
 
