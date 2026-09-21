@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MapPin, Mic, Paperclip, Plus, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
+  import { Plus, SendHorizontal, Smile, Square, X } from '@lucide/svelte'
 
   import type { Geoloc } from '$lib/core/xmpp/stanzas'
   import LL from '$lib/i18n/i18n-svelte'
@@ -14,6 +14,7 @@
   import { Button } from '$lib/ui/primitives/button'
 
   import EmojiPicker from './emoji-picker.svelte'
+  import AttachMenu from './composer/attach-menu.svelte'
   import AttachSheet from './composer/attach-sheet.svelte'
   import ComposerContext from './composer/context.svelte'
   import RecordingMeter from './recording-meter.svelte'
@@ -262,8 +263,8 @@
       aria-hidden="true"
       tabindex={-1}
     />
-    <!-- mobile: one button opens the attach sheet. Desktop keeps the
-         separate row buttons -->
+    <!-- mobile: the plus opens the attach sheet, desktop a dropdown
+         menu. Both offer files, media, location and voice -->
     {#if canUpload}
       <Button
         variant="ghost"
@@ -271,21 +272,38 @@
         class="max-md:size-10 md:hidden"
         onclick={() => (attachOpen = true)}
         aria-label={$LL.attachFile()}
+        aria-haspopup="dialog"
         disabled={voice.recording}
       >
         <Plus class="size-5" />
       </Button>
+      <AttachMenu
+        {locating}
+        disabled={voice.recording}
+        onAttach={(accept) => attach(accept)}
+        onLocation={shareLocation}
+        onVoice={toggleRecording}
+      />
+    {/if}
+    <div class="relative shrink-0">
       <Button
         variant="ghost"
         size="icon"
-        class="hidden md:inline-flex"
-        onclick={() => attach()}
-        aria-label={$LL.attachFile()}
+        class="max-md:size-10"
+        onclick={() => (emojiOpen = !emojiOpen)}
+        aria-label={$LL.addReactionEmoji()}
+        aria-expanded={emojiOpen}
+        aria-haspopup="dialog"
         disabled={voice.recording}
       >
-        <Paperclip class="size-4" />
+        <Smile class="size-4" />
       </Button>
-    {/if}
+      {#if emojiOpen}
+        <div class="absolute bottom-full left-0 z-50 mb-2">
+          <EmojiPicker onPick={pickEmoji} onClose={() => (emojiOpen = false)} />
+        </div>
+      {/if}
+    </div>
     <div class="relative min-w-0 flex-1">
       {#if mentionCandidates.length > 0}
         <div
@@ -312,22 +330,6 @@
           {/each}
         </div>
       {/if}
-      <Button
-        variant="ghost"
-        size="icon"
-        class="absolute bottom-1 left-1 size-8"
-        onclick={() => (emojiOpen = !emojiOpen)}
-        aria-label={$LL.addReactionEmoji()}
-        aria-expanded={emojiOpen}
-        disabled={voice.recording}
-      >
-        <Smile class="size-4" />
-      </Button>
-      {#if emojiOpen}
-        <div class="absolute bottom-full left-0 z-50 mb-2">
-          <EmojiPicker onPick={pickEmoji} onClose={() => (emojiOpen = false)} />
-        </div>
-      {/if}
       <textarea
         bind:value={body}
         bind:this={inputEl}
@@ -344,19 +346,9 @@
         disabled={voice.recording}
         enterkeyhint={settings.current.sendWithEnter ? 'send' : 'enter'}
         autocapitalize="sentences"
-        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none scrollbar-none overflow-y-auto rounded-md border bg-transparent py-2 pr-3 pl-10 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+        class="border-input selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none scrollbar-none overflow-y-auto rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
       ></textarea>
     </div>
-    <Button
-      variant="ghost"
-      size="icon"
-      class="hidden md:inline-flex"
-      onclick={shareLocation}
-      aria-label={$LL.shareLocation()}
-      disabled={voice.recording || locating}
-    >
-      <MapPin class="size-4" />
-    </Button>
     {#if voice.recording}
       <div class="flex min-w-0 flex-1 items-center gap-2">
         <RecordingMeter analyser={voice.analyser} />
@@ -381,24 +373,15 @@
       >
         <Square class="size-4" />
       </Button>
-    {:else if body.trim()}
+    {:else}
       <Button
         size="icon"
         class="transition-transform active:scale-90 max-md:size-10"
         onclick={send}
         aria-label={$LL.send()}
+        disabled={!body.trim()}
       >
         <SendHorizontal class="size-4" />
-      </Button>
-    {:else if canUpload}
-      <Button
-        variant="ghost"
-        size="icon"
-        class="max-md:size-10"
-        onclick={toggleRecording}
-        aria-label={$LL.recordVoice()}
-      >
-        <Mic class="size-4" />
       </Button>
     {/if}
   </div>
@@ -409,4 +392,5 @@
   {locating}
   onAttach={(accept) => attach(accept)}
   onLocation={shareLocation}
+  onVoice={toggleRecording}
 />

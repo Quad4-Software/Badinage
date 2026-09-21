@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Image, MapPin, Paperclip, Video } from '@lucide/svelte'
+  import { Image, MapPin, Mic, Paperclip, Video } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
   import { Sheet } from '$lib/ui/primitives/sheet'
@@ -10,12 +10,14 @@
     open = $bindable(false),
     locating = false,
     onAttach,
-    onLocation
+    onLocation,
+    onVoice
   }: {
     open?: boolean
     locating?: boolean
     onAttach: (accept: string) => void
     onLocation: () => void
+    onVoice: () => void
   } = $props()
 
   const rowClass =
@@ -52,6 +54,17 @@
     >
       <MapPin class="size-4" />
       {$LL.shareLocation()}
+    </button>
+    <button
+      type="button"
+      class={rowClass}
+      onclick={() => {
+        open = false
+        onVoice()
+      }}
+    >
+      <Mic class="size-4" />
+      {$LL.recordVoice()}
     </button>
   </div>
 </Sheet>
