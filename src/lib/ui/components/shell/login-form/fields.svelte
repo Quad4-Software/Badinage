@@ -4,52 +4,36 @@
   import { Input } from '$lib/ui/primitives/input'
   import { Label } from '$lib/ui/primitives/label'
 
-  // the credential fields shared by both protocol modes. identity is the
+  // one credential block for both protocols, no picker: identity is the
   // jid for xmpp, the nickname for irc, and just the server domain for an
-  // anonymous xmpp login. server is optional discovery for xmpp and the
-  // required websocket url for irc. Validity is derived by the parent,
+  // anonymous xmpp login. The parent detects irc from a websocket server
+  // url plus an @-less identity and passes isIrc so labels, hints and the
+  // trailing checkbox can follow. Validity is derived by the parent too,
   // which needs it for the submit button
   let {
-    protocol = $bindable(),
     identity = $bindable(),
     password = $bindable(),
     server = $bindable(),
     anonymous = $bindable(),
     useToken = $bindable(),
+    isIrc,
     identityValid,
-    serverValid,
-    onprotocolchange
+    serverValid
   }: {
-    protocol: 'xmpp' | 'irc'
     identity: string
     password: string
     server: string
     anonymous: boolean
     useToken: boolean
+    isIrc: boolean
     identityValid: boolean
     serverValid: boolean
-    onprotocolchange?: () => void
   } = $props()
-
-  const isIrc = $derived(protocol === 'irc')
 </script>
 
 <div class="grid gap-2">
-  <Label for="protocol">{$LL.protocol()}</Label>
-  <select
-    id="protocol"
-    bind:value={protocol}
-    onchange={onprotocolchange}
-    class="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
-  >
-    <option value="xmpp">{$LL.protocolXmpp()}</option>
-    <option value="irc">{$LL.protocolIrc()}</option>
-  </select>
-</div>
-
-<div class="grid gap-2">
   <Label for="identity"
-    >{isIrc ? $LL.ircNick() : anonymous ? $LL.anonymousDomain() : $LL.jid()}</Label
+    >{isIrc ? $LL.ircNick() : anonymous ? $LL.anonymousDomain() : $LL.addressOrNick()}</Label
   >
   <Input
     id="identity"

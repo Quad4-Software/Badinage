@@ -10,15 +10,13 @@
   import { Checkbox } from '$lib/ui/primitives/checkbox'
   import { LoaderCircle } from '@lucide/svelte'
 
+  import { demoLogin, ircJid, registerError, ssoLogin } from './login-form/actions'
   import LoginFields from './login-form/fields.svelte'
   import ThemeToggle from './theme-toggle.svelte'
 
   let { embedded = false }: { embedded?: boolean } = $props()
 
-  // the wire protocol this form produces. xmpp is the default. irc
-  // swaps the jid field for a nickname and requires the websocket url
-  let protocol = $state<'xmpp' | 'irc'>('xmpp')
-  // the jid for xmpp, the nickname for irc
+  // the jid for xmpp, the nickname for irc, the domain for anonymous
   let identity = $state('')
   let password = $state('')
   let server = $state('')
@@ -40,7 +38,10 @@
   let cooldownUntil = $state(0)
   let now = $state(Date.now())
 
-  const isIrc = $derived(protocol === 'irc')
+  // no protocol picker: an @-less identity plus a websocket server url is
+  // an irc login, anything else is xmpp. The anonymous checkbox pins the
+  // xmpp reading so a bare domain plus a ws endpoint still works
+  const isIrc = $derived(!anonymous && !identity.includes('@') && isWebSocketUrl(server.trim()))
   const identityValid = $derived(
     isIrc
       ? isValidIrcNick(identity)
@@ -54,12 +55,11 @@
   )
   const cooldownLeft = $derived(Math.ceil(Math.max(0, cooldownUntil - now) / 1000))
 
-  // the synthetic jid an irc login produces: nick@network-host. The
-  // host keeps same-nick accounts on different networks apart
-  function ircJid(): string {
-    const host = URL.parse(server)?.host.replace(':', '-') ?? 'irc.invalid'
-    return `${identity}@${host}`
-  }
+  // registration is xmpp-only: falling back to login keeps a stray
+  // register mode from running on an irc-looking input
+  $effect(() => {
+    if (isIrc) mode = 'login'
+  })
 
   $effect(() => {
     if (cooldownUntil <= Date.now()) return
@@ -67,45 +67,25 @@
     return () => clearInterval(timer)
   })
 
-  function registerError(reason: string): string {
-    if (reason === 'unsupported') return $LL.registerUnsupported()
-    if (reason === 'conflict') return $LL.registerConflict()
-    return $LL.registerFailed()
-  }
-
   async function startDemo() {
     submitting = true
-    await accounts.add({
-      jid: 'demo@badinage.local',
-      password: 'demo',
-      demo: true
-    })
+    await demoLogin()
     submitting = false
   }
 
-  // XEP-0493: probe the server for OAUTHBEARER, then hand the browser
-  // to the authorization endpoint. The callback resumes in App.svelte.
   async function startSso() {
     error = ''
     submitting = true
-    const result = await accounts.startOAuth(identity, {
-      websocketUrl: isWebSocketUrl(server) ? server : undefined,
-      redirectUri: `${window.location.origin}/`,
-      remember,
-      untrusted
-    })
-    if (result.ok) {
-      window.location.assign(result.url)
-      return
-    }
+    const failure = await ssoLogin(identity, server, remember, untrusted)
+    if (failure === null) return
     submitting = false
-    error = result.reason === 'unsupported' ? $LL.oauthUnsupported() : $LL.oauthFailed()
+    error = failure
   }
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     error = ''
-    const loginJid = isIrc ? ircJid() : identity
+    const loginJid = isIrc ? ircJid(identity, server) : identity
     const wait = loginBackoffRemaining(loginJid)
     if (wait > 0) {
       cooldownUntil = Date.now() + wait
@@ -166,133 +146,133 @@
   }
 </script>
 
-<div
-  class={embedded
-    ? 'flex flex-col'
-    : 'auth-bg relative flex h-full flex-col items-center justify-center gap-6 p-4'}
->
-  {#if !embedded}
-    <div class="absolute top-4 right-4">
-      <ThemeToggle />
-    </div>
-    <div class="flex flex-col items-center gap-1">
-      <h1 class="font-pixel text-3xl">{$LL.appName()}</h1>
+{#snippet formBody()}
+  {#if embedded}
+    <div class="flex flex-col gap-1">
+      <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
       <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
+      <p class="text-muted-foreground text-sm">{title}</p>
+    </div>
+  {:else}
+    <p class="text-muted-foreground text-sm">{title}</p>
+  {/if}
+
+  <LoginFields
+    bind:identity
+    bind:password
+    bind:server
+    bind:anonymous
+    bind:useToken
+    {isIrc}
+    {identityValid}
+    {serverValid}
+  />
+
+  {#if !anonymous}
+    <label class="flex items-center gap-2 text-sm">
+      <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
+      {$LL.rememberSession()}
+    </label>
+
+    <div class="grid gap-1">
+      <label class="flex items-center gap-2 text-sm">
+        <Checkbox id="untrusted" bind:checked={untrusted} />
+        {$LL.sharedDevice()}
+      </label>
+      {#if untrusted}
+        <p class="text-muted-foreground ps-6 text-xs">{$LL.sharedDeviceHint()}</p>
+      {/if}
     </div>
   {/if}
-  <form
-    onsubmit={submit}
-    class={embedded
-      ? 'flex flex-col gap-5'
-      : 'bg-card flex w-full max-w-sm flex-col gap-5 rounded-lg border p-6 shadow-sm'}
-  >
-    {#if embedded}
-      <div class="flex flex-col gap-1">
-        <h1 class="text-xl font-semibold">{$LL.appName()}</h1>
-        <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
-        <p class="text-muted-foreground text-sm">{title}</p>
-      </div>
-    {:else}
-      <p class="text-muted-foreground text-sm">{title}</p>
-    {/if}
 
-    <LoginFields
-      bind:protocol
-      bind:identity
-      bind:password
-      bind:server
-      bind:anonymous
-      bind:useToken
-      {identityValid}
-      {serverValid}
-      onprotocolchange={() => {
-        mode = 'login'
-        anonymous = false
-        useToken = false
+  {#if error}
+    <p role="alert" class="text-destructive text-sm">{error}</p>
+  {/if}
+  {#if cooldownLeft > 0}
+    <p role="alert" class="text-muted-foreground text-sm">
+      {$LL.loginBackoffWait({ seconds: cooldownLeft })}
+    </p>
+  {/if}
+
+  <Button
+    type="submit"
+    disabled={submitting ||
+      !identityValid ||
+      !serverValid ||
+      (!isIrc && !anonymous && !password) ||
+      cooldownLeft > 0}
+  >
+    {#if submitting}
+      <LoaderCircle class="size-4 animate-spin" />
+      {mode === 'register' ? $LL.registering() : $LL.connecting()}
+    {:else}
+      {mode === 'register' ? $LL.register() : $LL.connect()}
+    {/if}
+  </Button>
+
+  {#if !isIrc && !anonymous}
+    <Button
+      type="button"
+      variant="link"
+      class="h-auto min-h-6 p-0"
+      onclick={() => {
+        mode = mode === 'login' ? 'register' : 'login'
         error = ''
       }}
-    />
+    >
+      {mode === 'login' ? $LL.createAccount() : $LL.signIn()}
+    </Button>
+  {/if}
 
-    {#if !anonymous}
-      <label class="flex items-center gap-2 text-sm">
-        <Checkbox id="remember" bind:checked={remember} disabled={untrusted} />
-        {$LL.rememberSession()}
-      </label>
-
-      <div class="grid gap-1">
-        <label class="flex items-center gap-2 text-sm">
-          <Checkbox id="untrusted" bind:checked={untrusted} />
-          {$LL.sharedDevice()}
-        </label>
-        {#if untrusted}
-          <p class="text-muted-foreground ps-6 text-xs">{$LL.sharedDeviceHint()}</p>
-        {/if}
-      </div>
-    {/if}
-
-    {#if error}
-      <p role="alert" class="text-destructive text-sm">{error}</p>
-    {/if}
-    {#if cooldownLeft > 0}
-      <p role="alert" class="text-muted-foreground text-sm">
-        {$LL.loginBackoffWait({ seconds: cooldownLeft })}
-      </p>
-    {/if}
-
+  {#if mode === 'login' && !isIrc && !anonymous}
     <Button
-      type="submit"
-      disabled={submitting ||
-        !identityValid ||
-        !serverValid ||
-        (!isIrc && !anonymous && !password) ||
-        cooldownLeft > 0}
+      type="button"
+      variant="outline"
+      class="w-full"
+      disabled={submitting || !identityValid || cooldownLeft > 0}
+      onclick={startSso}
     >
       {#if submitting}
         <LoaderCircle class="size-4 animate-spin" />
-        {mode === 'register' ? $LL.registering() : $LL.connecting()}
+        {$LL.ssoWorking()}
       {:else}
-        {mode === 'register' ? $LL.register() : $LL.connect()}
+        {$LL.signInSso()}
       {/if}
     </Button>
+  {/if}
 
-    {#if !isIrc && !anonymous}
-      <Button
-        type="button"
-        variant="link"
-        class="h-auto min-h-6 p-0"
-        onclick={() => {
-          mode = mode === 'login' ? 'register' : 'login'
-          error = ''
-        }}
-      >
-        {mode === 'login' ? $LL.createAccount() : $LL.signIn()}
+  {#if !embedded}
+    <div class="border-t pt-3 sm:pt-4">
+      <Button type="button" variant="secondary" class="w-full" onclick={startDemo}>
+        {$LL.tryDemo()}
       </Button>
-    {/if}
+      <p class="text-muted-foreground mt-2 text-center text-xs">{$LL.demoHint()}</p>
+    </div>
+  {/if}
+{/snippet}
 
-    {#if mode === 'login' && !isIrc && !anonymous}
-      <Button
-        type="button"
-        variant="outline"
-        class="w-full"
-        disabled={submitting || !identityValid || cooldownLeft > 0}
-        onclick={startSso}
-      >
-        {#if submitting}
-          <LoaderCircle class="size-4 animate-spin" />
-          {$LL.ssoWorking()}
-        {:else}
-          {$LL.signInSso()}
-        {/if}
-      </Button>
-    {/if}
-
-    {#if !embedded}
-      <div class="border-t pt-4">
-        <Button type="button" variant="secondary" class="w-full" onclick={startDemo}>
-          {$LL.tryDemo()}
-        </Button>
-        <p class="text-muted-foreground mt-2 text-center text-xs">{$LL.demoHint()}</p>
-      </div>
-    {/if}
+{#if embedded}
+  <form onsubmit={submit} class="flex flex-col gap-4">
+    {@render formBody()}
   </form>
-</div>
+{:else}
+  <div class="auth-bg relative h-full overflow-y-auto">
+    <div class="absolute top-4 right-4 z-10">
+      <ThemeToggle />
+    </div>
+    <div
+      class="m-auto flex min-h-full w-full max-w-sm flex-col items-center justify-center gap-4 p-4"
+    >
+      <div class="flex flex-col items-center gap-1">
+        <h1 class="font-pixel text-2xl sm:text-3xl">{$LL.appName()}</h1>
+        <p class="text-muted-foreground text-xs">{$LL.appPronunciation()}</p>
+      </div>
+      <form
+        onsubmit={submit}
+        class="bg-card flex w-full flex-col gap-4 rounded-lg border p-4 shadow-sm sm:gap-5 sm:p-6"
+      >
+        {@render formBody()}
+      </form>
+    </div>
+  </div>
+{/if}

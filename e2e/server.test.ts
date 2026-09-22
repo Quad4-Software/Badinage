@@ -11,7 +11,7 @@ const CONNECT_TIMEOUT = 15_000
 // also wait for the online presence dot to prove the session connected
 async function loginAs(page: Page, jid: string, password: string, server = WS_URL) {
   await page.goto('/')
-  await page.getByLabel('XMPP address').fill(jid)
+  await page.getByLabel('Address or nickname').fill(jid)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByLabel('Server').fill(server)
   await page.getByRole('button', { name: 'Connect' }).click()
@@ -135,7 +135,7 @@ test.describe('against the dev prosody container', () => {
 
   test('shows an error for an unreachable server', async ({ page }) => {
     await page.goto('/')
-    await page.getByLabel('XMPP address').fill(ALICE.jid)
+    await page.getByLabel('Address or nickname').fill(ALICE.jid)
     await page.getByLabel('Password', { exact: true }).fill(ALICE.password)
     await page.getByLabel('Server').fill(BAD_WS_URL)
     await page.getByRole('button', { name: 'Connect' }).click()

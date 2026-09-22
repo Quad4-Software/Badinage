@@ -31,21 +31,13 @@ type RootTranslation = {
 	 */
 	signIn: string
 	/**
-	 * S​i​g​n​ ​i​n​ ​t​o​ ​y​o​u​r​ ​X​M​P​P​ ​a​c​c​o​u​n​t
+	 * S​i​g​n​ ​i​n​ ​t​o​ ​y​o​u​r​ ​a​c​c​o​u​n​t
 	 */
 	signInTitle: string
 	/**
 	 * S​i​g​n​ ​i​n​ ​t​o​ ​a​n​ ​I​R​C​ ​n​e​t​w​o​r​k
 	 */
 	signInTitleIrc: string
-	/**
-	 * P​r​o​t​o​c​o​l
-	 */
-	protocol: string
-	/**
-	 * X​M​P​P
-	 */
-	protocolXmpp: string
 	/**
 	 * I​R​C
 	 */
@@ -99,9 +91,13 @@ type RootTranslation = {
 	 */
 	jidPlaceholder: string
 	/**
-	 * L​o​o​k​s​ ​l​i​k​e​ ​a​n​ ​e​m​a​i​l​ ​a​d​d​r​e​s​s​.​ ​T​h​e​ ​s​e​r​v​e​r​ ​i​s​ ​d​i​s​c​o​v​e​r​e​d​ ​a​u​t​o​m​a​t​i​c​a​l​l​y​ ​f​r​o​m​ ​t​h​e​ ​d​o​m​a​i​n​.
+	 * Y​o​u​r​ ​X​M​P​P​ ​a​d​d​r​e​s​s​,​ ​o​r​ ​a​n​ ​I​R​C​ ​n​i​c​k​n​a​m​e​ ​t​o​g​e​t​h​e​r​ ​w​i​t​h​ ​t​h​e​ ​s​e​r​v​e​r​ ​W​e​b​S​o​c​k​e​t​ ​a​d​d​r​e​s​s​ ​b​e​l​o​w​.
 	 */
 	jidHint: string
+	/**
+	 * A​d​d​r​e​s​s​ ​o​r​ ​n​i​c​k​n​a​m​e
+	 */
+	addressOrNick: string
 	/**
 	 * S​i​g​n​ ​i​n​ ​a​n​o​n​y​m​o​u​s​l​y
 	 */
@@ -135,7 +131,7 @@ type RootTranslation = {
 	 */
 	serverPlaceholder: string
 	/**
-	 * L​e​a​v​e​ ​e​m​p​t​y​ ​t​o​ ​d​i​s​c​o​v​e​r​ ​t​h​e​ ​s​e​r​v​e​r​ ​a​u​t​o​m​a​t​i​c​a​l​l​y
+	 * O​p​t​i​o​n​a​l​ ​f​o​r​ ​X​M​P​P​.​ ​F​o​r​ ​I​R​C​ ​t​h​i​s​ ​i​s​ ​t​h​e​ ​W​e​b​S​o​c​k​e​t​ ​e​n​d​p​o​i​n​t​,​ ​f​o​r​ ​e​x​a​m​p​l​e​ ​w​s​s​:​/​/​i​r​c​.​e​x​a​m​p​l​e​.​o​r​g
 	 */
 	serverHint: string
 	/**
@@ -411,10 +407,9 @@ type RootTranslation = {
 	 */
 	subscriptionRequests: string
 	/**
-	 * {​f​r​o​m​}​ ​w​a​n​t​s​ ​t​o​ ​s​e​e​ ​y​o​u​r​ ​p​r​e​s​e​n​c​e
-	 * @param {string} from
+	 * W​a​n​t​s​ ​t​o​ ​s​e​e​ ​y​o​u​r​ ​p​r​e​s​e​n​c​e
 	 */
-	wantsToSubscribe: RequiredParams<'from'>
+	presenceAsk: string
 	/**
 	 * A​c​c​e​p​t
 	 */
@@ -1136,6 +1131,20 @@ type RootTranslation = {
 	 */
 	profilePublishFailed: string
 	/**
+	 * V​i​e​w​ ​p​r​o​f​i​l​e
+	 */
+	viewProfile: string
+	/**
+	 * V​i​e​w​ ​p​r​o​f​i​l​e​ ​o​f​ ​{​n​a​m​e​}
+	 * @param {string} name
+	 */
+	viewProfileOf: RequiredParams<'name'>
+	/**
+	 * M​e​m​b​e​r​ ​o​f​ ​{​r​o​o​m​}
+	 * @param {string} room
+	 */
+	memberOfRoom: RequiredParams<'room'>
+	/**
 	 * T​h​i​s​ ​p​r​o​t​o​c​o​l​ ​h​a​s​ ​n​o​ ​e​d​i​t​a​b​l​e​ ​p​r​o​f​i​l​e​.
 	 */
 	profileUnsupported: string
@@ -1253,6 +1262,15 @@ type RootTranslation = {
 	 * R​o​o​m​ ​i​n​v​i​t​a​t​i​o​n​s
 	 */
 	roomInvites: string
+	/**
+	 * I​n​v​i​t​e​d​ ​b​y​ ​{​f​r​o​m​}
+	 * @param {string} from
+	 */
+	invitedBy: RequiredParams<'from'>
+	/**
+	 * D​e​c​l​i​n​e​ ​i​n​v​i​t​a​t​i​o​n
+	 */
+	declineInviteTitle: string
 	/**
 	 * {​f​r​o​m​}​ ​i​n​v​i​t​e​d​ ​y​o​u​ ​t​o​ ​{​r​o​o​m​}
 	 * @param {string} from
@@ -2112,21 +2130,13 @@ export type TranslationFunctions = {
 	 */
 	signIn: () => LocalizedString
 	/**
-	 * Sign in to your XMPP account
+	 * Sign in to your account
 	 */
 	signInTitle: () => LocalizedString
 	/**
 	 * Sign in to an IRC network
 	 */
 	signInTitleIrc: () => LocalizedString
-	/**
-	 * Protocol
-	 */
-	protocol: () => LocalizedString
-	/**
-	 * XMPP
-	 */
-	protocolXmpp: () => LocalizedString
 	/**
 	 * IRC
 	 */
@@ -2180,9 +2190,13 @@ export type TranslationFunctions = {
 	 */
 	jidPlaceholder: () => LocalizedString
 	/**
-	 * Looks like an email address. The server is discovered automatically from the domain.
+	 * Your XMPP address, or an IRC nickname together with the server WebSocket address below.
 	 */
 	jidHint: () => LocalizedString
+	/**
+	 * Address or nickname
+	 */
+	addressOrNick: () => LocalizedString
 	/**
 	 * Sign in anonymously
 	 */
@@ -2216,7 +2230,7 @@ export type TranslationFunctions = {
 	 */
 	serverPlaceholder: () => LocalizedString
 	/**
-	 * Leave empty to discover the server automatically
+	 * Optional for XMPP. For IRC this is the WebSocket endpoint, for example wss://irc.example.org
 	 */
 	serverHint: () => LocalizedString
 	/**
@@ -2484,9 +2498,9 @@ export type TranslationFunctions = {
 	 */
 	subscriptionRequests: () => LocalizedString
 	/**
-	 * {from} wants to see your presence
+	 * Wants to see your presence
 	 */
-	wantsToSubscribe: (arg: { from: string }) => LocalizedString
+	presenceAsk: () => LocalizedString
 	/**
 	 * Accept
 	 */
@@ -3192,6 +3206,18 @@ export type TranslationFunctions = {
 	 */
 	profilePublishFailed: () => LocalizedString
 	/**
+	 * View profile
+	 */
+	viewProfile: () => LocalizedString
+	/**
+	 * View profile of {name}
+	 */
+	viewProfileOf: (arg: { name: string }) => LocalizedString
+	/**
+	 * Member of {room}
+	 */
+	memberOfRoom: (arg: { room: string }) => LocalizedString
+	/**
 	 * This protocol has no editable profile.
 	 */
 	profileUnsupported: () => LocalizedString
@@ -3307,6 +3333,14 @@ export type TranslationFunctions = {
 	 * Room invitations
 	 */
 	roomInvites: () => LocalizedString
+	/**
+	 * Invited by {from}
+	 */
+	invitedBy: (arg: { from: string }) => LocalizedString
+	/**
+	 * Decline invitation
+	 */
+	declineInviteTitle: () => LocalizedString
 	/**
 	 * {from} invited you to {room}
 	 */
