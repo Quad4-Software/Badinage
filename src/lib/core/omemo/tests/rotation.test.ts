@@ -8,7 +8,7 @@ import {
   PREKEY_COUNT_MIN_OMEMO2
 } from '@quad4-software/badinage-omemo'
 
-import { maintainKeys, MemoryKeyMetaStore } from './rotation'
+import { maintainKeys, MemoryKeyMetaStore } from '../rotation'
 
 async function makeManager(namespace: 'omemo2' | 'legacy' = 'omemo2') {
   const store = new InMemoryOmemoStore()

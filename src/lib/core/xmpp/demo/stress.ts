@@ -11,7 +11,7 @@
 import type { Emitter } from '$lib/core/events'
 
 import type { ConnectionEvents } from '../connection'
-import { roomOccupants } from '../demo-data'
+import { roomOccupants } from './roster'
 import type { Bookmark, MucOccupant, RosterItem } from '../stanzas'
 
 type StressEmitter = Emitter<ConnectionEvents>

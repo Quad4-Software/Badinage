@@ -13,7 +13,6 @@ import type { ChatConnection } from '$lib/core/xmpp/connection'
 import type { ChatState, IncomingMessage, TrustOwner } from '$lib/core/xmpp/stanzas'
 import type { AttachmentMeta } from '$lib/core/xmpp/types'
 import { bareJid } from '$lib/utils/jid'
-import { firstTag } from '$lib/utils/xml'
 
 import {
   bytesToHex,
@@ -23,7 +22,6 @@ import {
   formatFingerprint,
   identityFingerprintFromWire,
   NAMESPACES,
-  parseDeviceList,
   parseEncryptedElement,
   parseXml,
   serializeXml,
@@ -53,6 +51,7 @@ import {
   replyNode,
   spoilerNode
 } from './envelope'
+import { bundleOfNs, devicesOfNs } from './devices'
 import type { KeyMetaStore } from './rotation'
 import { IdbTrustStore } from './store'
 import { TrustRegistry, trustOwner, type TrustLevel, type TrustRecord } from './trust'
@@ -97,13 +96,6 @@ export interface OmemoServiceOptions {
   legacyStore?: OmemoStore
   metaStore?: KeyMetaStore
   trustStore?: ConstructorParameters<typeof TrustRegistry>[0]
-}
-
-// Bridge a DOM element to the package's own XmlElement via its xml text
-function domToXml(element: Element): XmlElement {
-  const outer = (element as { outerHTML?: string }).outerHTML
-  const text = outer ?? (element as unknown as { toString(): string }).toString()
-  return parseXml(text)
 }
 
 function namespaceOf(element: XmlElement): Namespace | undefined {
@@ -203,56 +195,20 @@ export class OmemoService {
     )
   }
 
-  private pepItems(node: string, jid?: string): Promise<Element | null> {
-    return new Promise((resolve) => {
-      this.connection.pepGet(node, jid, (items) => resolve(items))
-    })
-  }
-
-  // The PEP device list of a bare JID for one profile. Falls back to the
-  // last persisted list when the fetch fails.
-  private async devicesOfNs(ns: Namespace, jid: string): Promise<number[]> {
-    const bare = bareJid(jid)
-    const items = await this.pepItems(NAMESPACES[ns].devices, bare)
-    const listEl = items === null ? null : (firstTag(items, 'devices') ?? firstTag(items, 'list'))
-    if (listEl) {
-      try {
-        const ids = parseDeviceList(domToXml(listEl))
-        await this.crypto.putDeviceIds(ns, bare, ids)
-        return ids
-      } catch (error) {
-        // fall through to the cached list
-        console.warn(
-          `omemo: failed to parse device list for ${bare}:`,
-          error instanceof Error ? error.message : String(error)
-        )
-      }
-    }
-    return (await this.crypto.getDeviceIds(ns, bare)) ?? []
+  private devicesOfNs(ns: Namespace, jid: string): Promise<number[]> {
+    return devicesOfNs(this.crypto, this.connection, ns, jid)
   }
 
   async devicesOf(jid: string): Promise<number[]> {
     return this.devicesOfNs('omemo2', jid)
   }
 
-  private async bundleOfNs(
+  private bundleOfNs(
     ns: Namespace,
     jid: string,
     deviceId: number
   ): Promise<ParsedBundle | undefined> {
-    const bare = bareJid(jid)
-    const items = await this.pepItems(`${NAMESPACES[ns].bundles}:${deviceId}`, bare)
-    const bundleEl = items === null ? null : firstTag(items, 'bundle')
-    if (!bundleEl) return undefined
-    try {
-      return await this.crypto.parseBundle(ns, domToXml(bundleEl))
-    } catch (error) {
-      console.warn(
-        `omemo: failed to parse bundle for ${bare}/${deviceId}:`,
-        error instanceof Error ? error.message : String(error)
-      )
-      return undefined
-    }
+    return bundleOfNs(this.crypto, this.connection, ns, jid, deviceId)
   }
 
   async bundleOf(jid: string, deviceId: number): Promise<ParsedBundle | undefined> {

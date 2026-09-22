@@ -1,7 +1,7 @@
 // Demo mode: a fake XmppConnection that emits believable traffic so the app
 // can be tried without a server. Activated by logging in with the JID
 // demo@badinage.local (any password) or the Try the demo button. Fixtures
-// and scripted replies live in demo-data.ts.
+// and scripted replies live in the demo/ folder.
 
 import { Emitter } from '$lib/core/events'
 
@@ -18,9 +18,6 @@ import type {
   UploadSlot
 } from './connection'
 import {
-  DemoOmemoPeers,
-  demoBookmarks,
-  demoRosterItems,
   emitArchivePage,
   emitContactPresence,
   emitDmHistory,
@@ -30,9 +27,11 @@ import {
   emitRoomHistory,
   emitSubscriptionAccept,
   emitTypingEcho,
-  ROOM,
   scheduleLiveEvents
-} from './demo-data'
+} from './demo/emit'
+import { ROOM } from './demo/fixtures'
+import { DemoOmemoPeers } from './demo/omemo'
+import { demoBookmarks, demoRosterItems } from './demo/roster'
 import {
   demoBanOccupant,
   demoChangeRoomNick,

@@ -11,9 +11,9 @@ import { bareJid } from '$lib/utils/jid'
 
 import { InMemoryOmemoStore, NAMESPACES } from '@quad4-software/badinage-omemo'
 
-import { MemoryKeyMetaStore } from './rotation'
-import { OmemoService } from './service'
-import { InMemoryTrustStore } from './trust'
+import { MemoryKeyMetaStore } from '../rotation'
+import { OmemoService } from '../service'
+import { InMemoryTrustStore } from '../trust'
 
 const parser = new DOMParser()
 

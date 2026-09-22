@@ -4,7 +4,6 @@
 // lists in account-lists.ts, jid bridging in address.ts.
 
 import { Emitter } from '$lib/core/events'
-import { CHANNEL_SEARCH_FEATURE } from '$lib/core/xmpp/features/search'
 import type {
   Bookmark,
   ChannelSearchItem,
@@ -19,11 +18,12 @@ import type { ChatConnection, ConnectionEvents, SendMessageOptions } from '$lib/
 import { bareJid } from '$lib/utils/jid'
 
 import { AccountLists, HistoryQueue } from './account-lists'
-import { defaultISupport, jidToTarget, parseIsupport, targetToJid } from './address'
+import { defaultISupport, jidToTarget, parseIsupport } from './address'
 import { Inbound } from './inbound'
 import { ircLower } from './line'
 import type { IrcView } from './mapping'
 import { Membership } from './occupants'
+import { channelSearch, discoInfo, discoItems } from './search'
 import { SessionState } from './session'
 import {
   banOccupant,
@@ -266,35 +266,14 @@ export class IrcConnection extends IrcStubs implements ChatConnection, IrcSend, 
   // discovery for the explore dialog: the account domain itself poses
   // as the one search service, backed by LIST
   discoItems = (jid: string, onDone: (items: DiscoItem[] | null) => void) =>
-    onDone(bareJid(jid) === this.domain ? [{ jid: this.domain }] : [])
+    discoItems(this.domain, jid, onDone)
 
   discoInfo = (jid: string, _node: string | undefined, onDone: (info: DiscoInfo | null) => void) =>
-    onDone(
-      bareJid(jid) === this.domain
-        ? { identities: [], features: [CHANNEL_SEARCH_FEATURE], forms: [] }
-        : null
-    )
+    discoInfo(this.domain, jid, onDone)
 
   channelSearch = (
     _service: string,
     form: DataForm,
     onDone: (items: ChannelSearchItem[] | null) => void
-  ): void => {
-    const q = form.fields
-      .find((field) => field.var === 'q')
-      ?.values[0]?.trim()
-      .replace(/[*?\s]+/g, '')
-    const mask = q ? `*${q}*` : undefined
-    const ok = this.link.listChannels(mask, (items) =>
-      onDone(
-        items?.map((item) => ({
-          address: targetToJid(item.channel, this.domain, this.isupport),
-          name: item.channel,
-          ...(item.topic ? { description: item.topic } : {}),
-          nusers: item.users
-        })) ?? null
-      )
-    )
-    if (!ok) onDone(null)
-  }
+  ): void => channelSearch(this.link, this.domain, this.isupport, form, onDone)
 }

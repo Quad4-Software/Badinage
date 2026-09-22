@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { InMemoryTrustStore, observeLevel, TrustRegistry } from './trust'
-import type { TrustRecord } from './trust'
+import { InMemoryTrustStore, observeLevel, TrustRegistry } from '../trust'
+import type { TrustRecord } from '../trust'
 
 const record = (over: Partial<TrustRecord> = {}): TrustRecord => ({
   jid: 'romeo@example.net',

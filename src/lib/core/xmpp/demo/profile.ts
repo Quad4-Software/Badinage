@@ -5,7 +5,7 @@
 import { APP_ICON_192 } from '$lib/constants'
 import { bareJid } from '$lib/utils/jid'
 
-import { ROOM } from '../demo-data'
+import { ROOM } from './fixtures'
 import type { Vcard } from '../stanzas'
 import type { VcardApi } from '../types'
 

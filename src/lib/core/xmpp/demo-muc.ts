@@ -5,7 +5,8 @@
 import type { Emitter } from '$lib/core/events'
 
 import type { ConnectionEvents } from './connection'
-import { demoRoomConfig, ROOM_SUBJECT, roomOccupants } from './demo-data'
+import { ROOM_SUBJECT } from './demo/fixtures'
+import { demoRoomConfig, roomOccupants } from './demo/roster'
 import type { DataForm } from './stanzas'
 
 const DEMO_NICK_CHANGE_DELAY_MS = 300

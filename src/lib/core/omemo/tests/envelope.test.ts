@@ -10,7 +10,7 @@ import {
   reactionsNode,
   replaceNode,
   replyNode
-} from './envelope'
+} from '../envelope'
 
 const baseMessage = (): IncomingMessage => ({
   from: 'romeo@example.net/phone',

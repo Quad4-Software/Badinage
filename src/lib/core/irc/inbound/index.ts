@@ -1,6 +1,7 @@
 // Inbound dispatch: one parsed IRC line in, typed events out. Free
 // functions over an IrcContext so tests can drive them without a
-// socket. Channel membership handlers live in occupants.ts.
+// socket. Channel membership handlers live in ../occupants.ts and the
+// BATCH tracker in batches.ts.
 
 import type {
   IncomingMessage,
@@ -19,8 +20,8 @@ import {
   RPL_NOTOPIC,
   RPL_TOPIC,
   targetToJid
-} from './address'
-import { prefixNick, type IrcLine } from './line'
+} from '../address'
+import { prefixNick, type IrcLine } from '../line'
 import {
   mapMarkread,
   mapPrivmsg,
@@ -30,7 +31,7 @@ import {
   senderNick,
   isSelf,
   type IrcView
-} from './mapping'
+} from '../mapping'
 import {
   onJoin,
   onKick,
@@ -41,7 +42,8 @@ import {
   onQuit,
   onTopic,
   onTopicReply
-} from './occupants'
+} from '../occupants'
+import { BatchTracker, type Batch } from './batches'
 
 interface IrcHooks {
   message(message: IncomingMessage): void
@@ -51,18 +53,6 @@ interface IrcHooks {
   invite(invite: MucInvite): void
   readMarker(peer: string, timestamp: number): void
   historyDone(result: MamPageResult): void
-}
-
-interface Batch {
-  type: string
-  count: number
-  // draft/chathistory-end tag on the BATCH start, when sent
-  end?: boolean | undefined
-  // msgid of the first message in the batch, the older-page cursor
-  firstMsgid?: string | undefined
-  // multiline accumulator plus its first line for sender context
-  lines?: string[] | undefined
-  first?: IrcLine | undefined
 }
 
 // everything the dispatcher needs off the connection
@@ -84,19 +74,18 @@ export interface IrcContext {
 }
 
 export class Inbound {
-  private batches = new Map<string, Batch>()
-  private pendingHistory: { limit: number } | null = null
+  private batches = new BatchTracker()
 
   constructor(private readonly ctx: IrcContext) {}
 
   // a CHATHISTORY query is in flight. The next chathistory batch or
   // FAIL resolves it and limit feeds the batch-exhaustion heuristic
   noteHistory(limit: number): void {
-    this.pendingHistory = { limit }
+    this.batches.noteHistory(limit)
   }
 
   batchType(ref: string): string | undefined {
-    return this.batches.get(ref)?.type
+    return this.batches.typeOf(ref)
   }
 
   handle(line: IrcLine): void {
@@ -174,33 +163,14 @@ export class Inbound {
     return nick !== '' && !isSelf(this.ctx.view, nick) && this.ctx.blocked(nick)
   }
 
-  private batchOf(line: IrcLine): Batch | undefined {
-    const ref = line.tags['batch']
-    return ref === undefined ? undefined : this.batches.get(ref)
-  }
-
   private onPrivmsg(line: IrcLine): void {
-    const batch = this.batchOf(line)
-    if (batch?.type === 'draft/multiline') {
-      batch.lines ??= []
-      // draft/multiline-concat is valueless: join onto the previous
-      // line instead of starting a new one
-      const prev = 'draft/multiline-concat' in line.tags ? (batch.lines.pop() ?? '') : ''
-      batch.lines.push(prev + line.text)
-      batch.first ??= line
-      return
-    }
-    if (batch?.type === 'chathistory') {
-      batch.count++
-      batch.firstMsgid ??= line.tags['msgid']
-    }
+    if (this.batches.absorb(line, true)) return
     if (this.blockedSender(line)) return
     this.emit(mapPrivmsg(this.ctx.view, line))
   }
 
   private onTagmsg(line: IrcLine): void {
-    const batch = this.batchOf(line)
-    if (batch?.type === 'chathistory') batch.count++
+    if (this.batches.absorb(line, false)) return
     if (this.blockedSender(line)) return
     this.emit(mapTagmsg(this.ctx.view, line))
   }
@@ -230,42 +200,27 @@ export class Inbound {
     const ref = line.params[0]
     if (!ref) return
     if (ref.startsWith('+')) {
-      const end = line.tags['draft/chathistory-end']
-      this.batches.set(ref.slice(1), {
-        type: line.params[1] ?? '',
-        count: 0,
-        ...(end !== undefined ? { end: end === 'true' } : {})
-      })
+      this.batches.open(line)
       return
     }
-    const batch = this.batches.get(ref.slice(1))
-    this.batches.delete(ref.slice(1))
-    if (!batch) return
-    if (batch.type === 'chathistory') this.finishHistory(batch, false)
-    if (batch.type === 'draft/multiline' && batch.lines && batch.first) {
-      const joined = batch.lines.join('\n')
-      const first = batch.first
+    const closed = this.batches.close(line)
+    if (!closed) return
+    if (closed.batch.type === 'chathistory') this.finishHistory(closed.batch, false)
+    if (closed.multiline) {
+      const { text, first } = closed.multiline
       this.emit(
         mapPrivmsg(this.ctx.view, {
           ...first,
-          text: joined,
-          params: [...first.params.slice(0, -1), joined]
+          text,
+          params: [...first.params.slice(0, -1), text]
         })
       )
     }
   }
 
   private finishHistory(batch: Batch | undefined, failed: boolean): void {
-    const pending = this.pendingHistory
-    if (!pending) return
-    this.pendingHistory = null
-    // draft/chathistory-end=true is authoritative. Without it a short
-    // page means the archive ran out
-    const complete =
-      failed || (batch?.end !== undefined ? batch.end : (batch?.count ?? 0) < pending.limit)
-    const result: MamPageResult = { complete }
-    if (!failed && batch?.firstMsgid) result.first = batch.firstMsgid
-    this.ctx.hooks.historyDone(result)
+    const result = this.batches.finishHistory(batch, failed)
+    if (result) this.ctx.hooks.historyDone(result)
   }
 
   private onMonitor(line: IrcLine, online: boolean): void {
