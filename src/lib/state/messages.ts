@@ -54,6 +54,9 @@ export function applyCorrection(
   body: string,
   spoilerHint?: string | undefined
 ): void {
+  // a correction arriving after retraction must not resurrect the
+  // scrubbed body: the tombstone stays authoritative
+  if (target.retracted) return
   target.body = body
   target.edited = true
   target.spoilerHint = spoilerHint
