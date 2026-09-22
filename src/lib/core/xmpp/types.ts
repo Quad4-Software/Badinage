@@ -36,12 +36,13 @@ import type {
   Vcard
 } from './stanzas'
 
-// XEP-0054 own vcard. fetch resolves null when the server has no card or
-// refuses the query. Set merges the managed fields over the stored card
-// and, when a photo is included, stamps the XEP-0153 hash so presence
-// broadcasts advertise it.
+// XEP-0054 vcard. fetch resolves null when the server has no card or
+// refuses the query. fetchPeer does the same for any jid (contact or
+// room/nick occupant). Set merges the managed fields over the stored
+// card and stamps the XEP-0153 photo hash onto presence broadcasts.
 export interface VcardApi {
   fetch(onDone: (vcard: Vcard | null) => void): void
+  fetchPeer(jid: string, onDone: (vcard: Vcard | null) => void): void
   set(vcard: Vcard, onDone: (ok: boolean) => void): void
 }
 

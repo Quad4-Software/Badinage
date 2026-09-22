@@ -22,6 +22,7 @@
   import ExploreRoomsDialog from '$lib/ui/components/dialogs/explore-rooms-dialog.svelte'
   import JoinRoomDialog from '$lib/ui/components/dialogs/join-room-dialog.svelte'
   import ProfileDialog from '$lib/ui/components/dialogs/profile-dialog.svelte'
+  import PeerProfileDialog from '$lib/ui/components/presence/peer-profile-dialog.svelte'
   import PromptHost from '$lib/ui/components/prompts/prompt-host.svelte'
   import ShareDialog from '$lib/ui/components/dialogs/share-dialog.svelte'
   import { deployment } from '$lib/state/status/status.svelte'
@@ -249,6 +250,7 @@
     <SettingsDialog />
     <JoinRoomDialog />
     <ProfileDialog />
+    <PeerProfileDialog />
     <AddContactDialog />
     <ExploreRoomsDialog />
     <PromptHost />

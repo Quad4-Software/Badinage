@@ -17,7 +17,6 @@
   import type { ChatMessage } from '$lib/state/chats.svelte'
   import { cancelUpload, sendFileMessage } from '$lib/state/upload'
   import { Button } from '$lib/ui/primitives/button'
-  import { Input } from '$lib/ui/primitives/input'
   import { Separator } from '$lib/ui/primitives/separator'
   import { toast } from '$lib/ui/primitives/sonner'
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
@@ -27,10 +26,6 @@
 
   import ConfirmDialog from '../dialogs/confirm-dialog.svelte'
   import CallButtons from '../call/call-buttons.svelte'
-  import ChangeNickDialog from '../dialogs/change-nick-dialog.svelte'
-  import InviteUserDialog from '../dialogs/invite-user-dialog.svelte'
-  import RoomConfigDialog from '../dialogs/room-config-dialog.svelte'
-  import SubjectDialog from '../dialogs/subject-dialog.svelte'
   import Composer from './composer.svelte'
   import PeerAvatar from './peer-avatar.svelte'
   import MessageList from './message-list.svelte'
@@ -41,6 +36,7 @@
   import { createChatActions } from './chat-view/actions'
   import { ephemeralLabel } from './chat-view/ephemeral'
   import OptionsMenu from './chat-view/options-menu.svelte'
+  import RoomDialogs from './chat-view/room-dialogs.svelte'
   import { contextArea } from '../context-menu/area'
   import { conversationMenu } from './sidebar/row-menu.svelte'
 
@@ -285,11 +281,22 @@
               <ArrowLeft class="size-5" />
             </Button>
           {/if}
-          <PeerAvatar
-            jid={conv.peerJid}
-            fallback={(isRoom ? '#' : '') + (contact?.name || conv.peerJid).slice(0, 2)}
-            force
-          />
+          {#if isRoom}
+            <PeerAvatar jid={conv.peerJid} fallback={'#' + conv.peerJid.slice(0, 2)} force />
+          {:else}
+            <button
+              type="button"
+              class="focus-visible:ring-ring shrink-0 cursor-pointer rounded-full transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:outline-none"
+              aria-label={$LL.viewProfileOf({ name: displayName(conv.peerJid) })}
+              onclick={() => (app.peerProfile = conv.peerJid)}
+            >
+              <PeerAvatar
+                jid={conv.peerJid}
+                fallback={(contact?.name || conv.peerJid).slice(0, 2)}
+                force
+              />
+            </button>
+          {/if}
           <div class="min-w-0 flex-1">
             <h1 class="flex items-center gap-1.5 truncate font-medium">
               <span class="truncate">
@@ -483,6 +490,7 @@
             sheetMessage = message
             sheetOpen = true
           }}
+          onAvatarClick={(jid) => (app.peerProfile = jid)}
         />
         <Composer
           peerJid={conv.peerJid}
@@ -558,34 +566,18 @@
 />
 
 {#if isRoom && conversation}
-  {@const conv = conversation}
-  <ChangeNickDialog bind:open={nickOpen} currentNick={conv.ourNick ?? ''} onSubmit={changeNick} />
-  <SubjectDialog
-    bind:open={subjectOpen}
-    subject={conv.subject ?? ''}
-    onSubmit={(subject) => account?.connection.setRoomSubject(conv.peerJid, subject)}
+  <RoomDialogs
+    {conversation}
+    bind:nickOpen
+    bind:subjectOpen
+    bind:inviteOpen
+    bind:configOpen
+    bind:moderateTarget
+    bind:moderateReason
+    onNickChange={changeNick}
+    onInvite={sendInvite}
+    onModerate={doModerate}
   />
-  <InviteUserDialog bind:open={inviteOpen} onSubmit={sendInvite} />
-  <RoomConfigDialog bind:open={configOpen} room={conv.peerJid} />
-
-  <ConfirmDialog
-    open={moderateTarget !== null}
-    onOpenChange={(o) => {
-      if (!o) moderateTarget = null
-    }}
-    title={$LL.removeMessageTitle()}
-    confirmLabel={$LL.removeMessage()}
-    destructive
-    onConfirm={doModerate}
-  >
-    <span class="block">{$LL.removeMessageDescription()}</span>
-    <Input
-      bind:value={moderateReason}
-      placeholder={$LL.reasonOptional()}
-      aria-label={$LL.reasonOptional()}
-      class="mt-2"
-    />
-  </ConfirmDialog>
 {/if}
 
 <ConfirmDialog

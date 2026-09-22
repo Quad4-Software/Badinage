@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { Eye, File, Lock, MapPin, SmilePlus, Undo2, X } from '@lucide/svelte'
+  import { Eye, File, Lock, SmilePlus, Undo2, X } from '@lucide/svelte'
 
-  import { GEOLOC_TILE_TEMPLATE, GEOLOC_TILE_ZOOM, REACTION_TOOLTIP_CAP } from '$lib/constants'
+  import { REACTION_TOOLTIP_CAP } from '$lib/constants'
   import LL from '$lib/i18n/i18n-svelte'
   import type { ChatMessage } from '$lib/state/chats.svelte'
-  import { settings } from '$lib/state/settings.svelte'
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/ui/primitives/tooltip'
   import { cn } from '$lib/utils/cn'
   import { consistentInk } from '$lib/utils/protocol/color'
   import { isEmojiOnly } from '$lib/utils/emoji'
-  import { isGeoUri, osmUrl, tileFor, tileUrl } from '$lib/utils/protocol/geo'
+  import { isGeoUri } from '$lib/utils/protocol/geo'
   import { meAction } from '$lib/utils/message-commands'
   import { reactionSenderNames } from '$lib/utils/reactions'
 
-  import PeerAvatar from './peer-avatar.svelte'
+  import GeolocCard from './message-item/geoloc-card.svelte'
+  import SenderAvatar from './message-item/sender-avatar.svelte'
   import MessageAttachments from './message-attachments.svelte'
   import MessageBody from './message-body.svelte'
   import MessageMeta from './message-meta.svelte'
@@ -26,14 +26,19 @@
 
   interface Props {
     message: ChatMessage
-    // grouping hints from message-list: true on the first bubble of a run
+    // grouping hints from message-list: showNick/showAvatar mark the
+    // first bubble of a run, last the final one
     showNick?: boolean
     showAvatar?: boolean
+    last?: boolean
     avatarName?: string
     // address the sender avatar is resolved under. Force fetches even
     // without a presence photo hash hint (dm peers)
     avatarJid?: string
     avatarForce?: boolean
+    // avatar and nick click target: opens the sender profile, called
+    // with the same avatarJid the avatar resolves under
+    onAvatarClick?: ((jid: string) => void) | undefined
     // bare jid (dm) or nick (muc) used to mark our own reaction pills
     selfJid?: string
     // maps a reaction sender key (bare jid or muc nick) to a display name
@@ -57,9 +62,11 @@
     message,
     showNick = false,
     showAvatar = false,
+    last = true,
     avatarName = '',
     avatarJid = '',
     avatarForce = false,
+    onAvatarClick,
     selfJid = '',
     senderLabel,
     onQuoteClick,
@@ -82,14 +89,6 @@
   const bodyIsAttachmentUrl = $derived(
     (message.attachments ?? []).some((a) => a.url === message.body.trim()) ||
       (message.geoloc !== undefined && isGeoUri(message.body))
-  )
-  const geoTile = $derived(
-    message.geoloc ? tileFor(message.geoloc.lat, message.geoloc.lon, GEOLOC_TILE_ZOOM) : undefined
-  )
-  const geoTileUrl = $derived(
-    message.geoloc && settings.current.mapPreviews
-      ? tileUrl(GEOLOC_TILE_TEMPLATE, message.geoloc.lat, message.geoloc.lon, GEOLOC_TILE_ZOOM)
-      : ''
   )
   const reactionEntries = $derived(Object.entries(message.reactions))
   const jumbo = $derived(isEmojiOnly(message.body))
@@ -140,6 +139,17 @@
     )
     return extra > 0 ? [...names, $LL.moreSenders({ count: extra })].join(', ') : names.join(', ')
   }
+
+  // run members keep the pill radius on the outer corners and flatten the
+  // corner that points at the next bubble, so a run reads as one thread.
+  // A lone bubble keeps the small tail corner it always had
+  function tailClass(outgoing: boolean): string {
+    const side = outgoing ? 'r' : 'l'
+    if (showAvatar && last) return `rounded-b${side}-sm`
+    if (showAvatar) return `rounded-b${side}-md`
+    if (last) return `rounded-t${side}-md`
+    return `rounded-${side}-md`
+  }
 </script>
 
 {#snippet bodyContent()}
@@ -159,12 +169,14 @@
   {@attach messageMenu(message, canModerate, () => bubbleEl, openPicker, menuHandlers)}
 >
   {#if !message.outgoing}
-    {#if showAvatar}
-      <PeerAvatar jid={avatarJid} fallback={initials} force={avatarForce} class="size-7" />
-    {:else}
-      <!-- keeps continuation bubbles aligned under the avatar column -->
-      <span class="size-7 shrink-0" aria-hidden="true"></span>
-    {/if}
+    <SenderAvatar
+      show={showAvatar}
+      jid={avatarJid}
+      fallback={initials}
+      force={avatarForce}
+      name={avatarName}
+      onClick={onAvatarClick ? () => onAvatarClick(avatarJid) : undefined}
+    />
   {/if}
 
   <div
@@ -173,12 +185,23 @@
     {#if showNick && !message.outgoing && message.nick}
       {@const ink = consistentInk(message.nick)}
       <!-- XEP-0392: stable per-nick color so senders stay scannable -->
-      <span
-        class="peer-ink mb-0.5 ml-1 text-xs"
-        style="--peer-ink-light: {ink.light}; --peer-ink-dark: {ink.dark}"
-      >
-        {message.nick}
-      </span>
+      {#if onAvatarClick}
+        <button
+          type="button"
+          onclick={() => onAvatarClick?.(avatarJid)}
+          class="peer-ink mb-0.5 ml-1 cursor-pointer text-xs hover:underline"
+          style="--peer-ink-light: {ink.light}; --peer-ink-dark: {ink.dark}"
+        >
+          {message.nick}
+        </button>
+      {:else}
+        <span
+          class="peer-ink mb-0.5 ml-1 text-xs"
+          style="--peer-ink-light: {ink.light}; --peer-ink-dark: {ink.dark}"
+        >
+          {message.nick}
+        </span>
+      {/if}
     {/if}
 
     <div
@@ -191,9 +214,8 @@
       <div
         class={cn(
           'msg-bubble density-text-sm rounded-2xl px-3 py-[var(--density-row-pad)]',
-          message.outgoing
-            ? 'bg-primary text-primary-foreground rounded-br-sm'
-            : 'bg-muted rounded-bl-sm',
+          message.outgoing ? 'bg-primary text-primary-foreground' : 'bg-muted',
+          tailClass(message.outgoing),
           message.mentionsMe && 'ring-primary/60 ring-2'
         )}
       >
@@ -285,41 +307,8 @@
                 </span>
               </div>
             {:else if message.geoloc}
-              <!-- XEP-0080: a location card. The tile preview is
-                   opt-in because it fetches from a tile server -->
-              <a
-                href={osmUrl(message.geoloc.lat, message.geoloc.lon)}
-                target="_blank"
-                rel="noopener noreferrer"
-                class={cn(
-                  'mb-1 block w-52 overflow-hidden rounded-md border text-left',
-                  message.outgoing ? 'border-primary-foreground/30' : 'border-border'
-                )}
-              >
-                {#if geoTileUrl && geoTile}
-                  <span class="relative block h-28 w-52 overflow-hidden">
-                    <!-- tile is 256px. Offset it so the pin lands at the
-                         center of the 208x112 window -->
-                    <img
-                      src={geoTileUrl}
-                      alt=""
-                      class="absolute h-64 w-64 max-w-none"
-                      style:left="{104 - geoTile.pinX}px"
-                      style:top="{56 - geoTile.pinY}px"
-                    />
-                    <MapPin
-                      class="text-destructive absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-full"
-                    />
-                  </span>
-                {/if}
-                <span class="flex items-center gap-1.5 px-2 py-1.5 text-xs">
-                  <MapPin class="size-3.5 shrink-0" />
-                  <span class="min-w-0 flex-1 truncate">{$LL.sharedLocation()}</span>
-                  <span class="tabular-nums opacity-70">
-                    {message.geoloc.lat.toFixed(5)}, {message.geoloc.lon.toFixed(5)}
-                  </span>
-                </span>
-              </a>
+              <!-- XEP-0080: a location card -->
+              <GeolocCard {message} />
               {@render bodyContent()}
             {:else if message.spoilerHint !== undefined}
               <!-- XEP-0382: the body stays hidden until the reveal control -->
@@ -405,7 +394,12 @@
         {#if !message.retracted && !message.pending}
           <button
             type="button"
-            class="msg-hover-only text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            class={cn(
+              'msg-hover-only text-muted-foreground hover:bg-accent hover:text-accent-foreground flex size-6 items-center justify-center rounded-full border border-dashed opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
+              // outgoing rows anchor right: the ghost button must grow
+              // into the free space on the left, not push the chips over
+              message.outgoing && '-order-1'
+            )}
             aria-label={$LL.react()}
             onclick={(event) => openPicker('bottom', event.currentTarget)}
           >

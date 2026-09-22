@@ -11,7 +11,7 @@
 import type { ChatMessage } from '$lib/state/chats.svelte'
 import { isSameDay } from '$lib/utils/time'
 
-// a new visual group starts on a different sender, a day separator, or
+// a new visual run starts on a different sender, a day separator, or
 // a gap of more than five minutes
 const GROUP_GAP_MS = 5 * 60 * 1000
 
@@ -23,7 +23,10 @@ export type ListRow =
       message: ChatMessage
       // index inside conversation.messages (day rows are not messages)
       index: number
-      grouped: boolean
+      // first and last bubble of a same-sender run. Both flags drive the
+      // merged corners and the tighter run gap between continuation rows
+      first: boolean
+      last: boolean
     }
   | { kind: 'typing'; key: string }
   | { kind: 'seen'; key: string; read: boolean; delivered: boolean }
@@ -34,7 +37,8 @@ export interface RowContext {
   seen: { read: boolean; delivered: boolean } | undefined
 }
 
-function grouped(prev: ChatMessage | undefined, message: ChatMessage): boolean {
+// true when `message` opens a new run after `prev`
+function startsRun(prev: ChatMessage | undefined, message: ChatMessage): boolean {
   if (prev === undefined) return true
   if (!isSameDay(prev.timestamp, message.timestamp)) return true
   if (message.timestamp - prev.timestamp > GROUP_GAP_MS) return true
@@ -48,12 +52,14 @@ export function buildRows(messages: readonly ChatMessage[], ctx: RowContext): Li
     if (prev === undefined || !isSameDay(prev.timestamp, message.timestamp)) {
       rows.push({ kind: 'day', key: `day:${message.timestamp}`, timestamp: message.timestamp })
     }
+    const next = messages[index + 1]
     rows.push({
       kind: 'message',
       key: `m:${message.id}`,
       message,
       index,
-      grouped: grouped(prev, message)
+      first: startsRun(prev, message),
+      last: next === undefined || startsRun(message, next)
     })
     prev = message
   }
@@ -67,4 +73,34 @@ export function buildRows(messages: readonly ChatMessage[], ctx: RowContext): Li
 // the id a quote jump targets: matches the dom id rendered on the row
 export function messageRowId(id: string): string {
   return `m-${id}`
+}
+
+// row attributes for the virtualizer. Spacing must be padding not
+// margin: the virtualizer measures the element box and row offsets
+// ignore margins between rows
+export function itemProps({ item }: { item: ListRow }): Record<string, string> | undefined {
+  if (item.kind === 'message') {
+    return {
+      id: messageRowId(item.message.id),
+      class:
+        item.index > 0
+          ? item.first
+            ? 'pt-[var(--density-msg-gap)]'
+            : 'pt-[var(--density-msg-run-gap)]'
+          : ''
+    }
+  }
+  if (item.kind === 'day') {
+    return { class: 'text-muted-foreground py-3 text-center text-xs', 'aria-hidden': 'true' }
+  }
+  if (item.kind === 'typing') {
+    return { class: 'flex items-center gap-2 pt-3', 'aria-live': 'polite' }
+  }
+  if (item.kind === 'seen') {
+    return {
+      class: 'text-muted-foreground flex items-center justify-end gap-1 pt-1 text-[0.65rem]',
+      'aria-live': 'polite'
+    }
+  }
+  return undefined
 }

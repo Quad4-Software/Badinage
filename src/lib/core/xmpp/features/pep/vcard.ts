@@ -55,22 +55,28 @@ function mergeVcard(existing: Element | null, doc: Document, vcard: Vcard): Elem
 }
 
 export function createVcardApi(getConn: () => XmppTransport): VcardApi {
-  const get = (onDone: (stanza: Element | null) => void): void => {
+  // to undefined reads our own card, a jid reads the peer's
+  const get = (to: string | undefined, onDone: (stanza: Element | null) => void): void => {
     const conn = getConn()
+    const attrs: Record<string, string> = { type: 'get', id: conn.uniqueId('vcard') }
+    if (to !== undefined) attrs.to = to
     conn.sendIq(
-      $iq({ type: 'get', id: conn.uniqueId('vcard') }).c('vCard', { xmlns: NS.VCARD_TEMP }),
+      $iq(attrs).c('vCard', { xmlns: NS.VCARD_TEMP }),
       (stanza) => onDone(stanza),
       () => onDone(null)
     )
   }
   return {
     fetch(onDone) {
-      get((stanza) => onDone(stanza ? parseVcard(stanza) : null))
+      get(undefined, (stanza) => onDone(stanza ? parseVcard(stanza) : null))
+    },
+    fetchPeer(jid, onDone) {
+      get(jid, (stanza) => onDone(stanza ? parseVcard(stanza) : null))
     },
     set(vcard, onDone) {
       const conn = getConn()
       // fetch the stored card first so unmanaged fields survive the set
-      get((stanza) => {
+      get(undefined, (stanza) => {
         const doc = stanza?.ownerDocument ?? document.implementation.createDocument('', 'empty')
         const card = mergeVcard(
           stanza ? firstNsTag(stanza, NS.VCARD_TEMP, 'vCard') : null,

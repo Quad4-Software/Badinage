@@ -22,6 +22,25 @@ const CONTACT_AVATARS: Record<string, string> = {
   'dmitri@badinage.local': svgAvatar('Dm', 25)
 }
 
+// read-only cards behind the peer profile view
+const CONTACT_CARDS: Record<string, Vcard> = {
+  'aria@badinage.local': {
+    fn: 'Aria Wave',
+    nickname: 'aria',
+    desc: 'Keeps the deploy pipeline honest. Charts enthusiast.'
+  },
+  'cleo@badinage.local': {
+    fn: 'Cleo Stone',
+    nickname: 'cleo',
+    desc: 'Design systems and strong coffee.'
+  },
+  'dmitri@badinage.local': {
+    fn: 'Dmitri Frost',
+    nickname: 'dmitri',
+    desc: 'Backend. Grumpy before standup.'
+  }
+}
+
 export class DemoProfiles {
   private card: Vcard = {
     fn: 'Demo User',
@@ -44,6 +63,15 @@ export class DemoProfiles {
 
   readonly vcard: VcardApi = {
     fetch: (onDone) => onDone({ ...this.card }),
+    // occupant keys arrive as room/nick and resolve to the matching
+    // contact card, same rule as avatar()
+    fetchPeer: (jid, onDone) => {
+      const contactJid = jid.startsWith(`${ROOM}/`)
+        ? `${jid.slice(ROOM.length + 1)}@badinage.local`
+        : jid
+      const card = CONTACT_CARDS[contactJid]
+      onDone(card ? { ...card } : null)
+    },
     set: (vcard, onDone) => {
       this.card = { ...vcard }
       this.ownAvatar = vcard.photoUri ?? ''

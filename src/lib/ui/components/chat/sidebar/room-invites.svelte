@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Mail } from '@lucide/svelte'
+
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts, type PendingInvite } from '$lib/state/accounts.svelte'
   import { app } from '$lib/state/app.svelte'
@@ -14,12 +16,14 @@
   import { Input } from '$lib/ui/primitives/input'
   import { Label } from '$lib/ui/primitives/label'
 
+  import PeerAvatar from '../peer-avatar.svelte'
+
   let { invites }: { invites: PendingInvite[] } = $props()
 
   const account = $derived(accounts.active)
 
-  // the invite open in the dialog. Null closes it
-  let current = $state<PendingInvite | null>(null)
+  // the invite open in the decline dialog. Null closes it
+  let declining = $state<PendingInvite | null>(null)
   let declineReason = $state('')
 
   function accept(invite: PendingInvite) {
@@ -29,7 +33,7 @@
     // joinable from the invite alone
     app.joinRoom(invite.room, nick, invite.password)
     account.dismissRoomInvite(invite)
-    current = null
+    declining = null
     app.selectPeer(invite.room)
   }
 
@@ -38,7 +42,7 @@
     // XEP-0249 invites
     account?.declineRoomInvite(invite, declineReason || undefined)
     declineReason = ''
-    current = null
+    declining = null
   }
 </script>
 
@@ -47,48 +51,60 @@
     {$LL.roomInvites()}
   </h2>
   {#each invites as invite (`${invite.room}:${invite.from}`)}
-    <button
-      type="button"
-      class="bg-muted/50 hover:bg-accent flex min-w-0 flex-col gap-1 rounded-md px-3 py-2 text-left"
-      onclick={() => (current = invite)}
-    >
-      <p class="text-sm break-all">
-        {$LL.invitedToRoom({ from: invite.from, room: invite.room })}
-      </p>
+    <div class="bg-card mb-2 flex min-w-0 flex-col gap-2 rounded-lg border p-3 shadow-xs">
+      <div class="flex items-center gap-2.5">
+        <PeerAvatar jid={invite.room} fallback={invite.room.slice(0, 2)} class="size-9 shrink-0" />
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium">{invite.room.split('@')[0]}</p>
+          <p class="text-muted-foreground truncate text-xs">
+            {$LL.invitedBy({ from: invite.from })}
+          </p>
+        </div>
+        <Mail class="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+      </div>
+      <p class="text-muted-foreground truncate text-xs">{invite.room}</p>
       {#if invite.reason}
-        <p class="text-muted-foreground text-xs break-words italic">{invite.reason}</p>
+        <p class="text-muted-foreground border-border border-l-2 pl-2 text-xs break-words italic">
+          {invite.reason}
+        </p>
       {/if}
-    </button>
+      <div class="flex gap-2">
+        <Button size="sm" class="flex-1" onclick={() => accept(invite)}>
+          {$LL.join()}
+        </Button>
+        <Button size="sm" variant="outline" class="flex-1" onclick={() => (declining = invite)}>
+          {$LL.decline()}
+        </Button>
+      </div>
+    </div>
   {/each}
 {/if}
 
 <Dialog
-  open={current !== null}
+  open={declining !== null}
   onOpenChange={(o) => {
-    if (!o) current = null
+    if (!o) declining = null
   }}
 >
   <DialogContent>
     <DialogHeader>
-      <DialogTitle>{$LL.roomInvites()}</DialogTitle>
-      {#if current}
+      <DialogTitle>{$LL.declineInviteTitle()}</DialogTitle>
+      {#if declining}
         <DialogDescription>
-          {$LL.invitedToRoom({ from: current.from, room: current.room })}
+          {$LL.invitedToRoom({ from: declining.from, room: declining.room })}
         </DialogDescription>
       {/if}
     </DialogHeader>
-    {#if current}
-      {@const invite = current}
-      {#if invite.reason}
-        <p class="text-muted-foreground text-sm break-words italic">{invite.reason}</p>
-      {/if}
+    {#if declining}
       <div class="grid gap-2">
         <Label for="decline-reason">{$LL.reasonOptional()}</Label>
         <Input id="decline-reason" bind:value={declineReason} />
       </div>
       <DialogFooter>
-        <Button variant="ghost" onclick={() => decline(invite)}>{$LL.decline()}</Button>
-        <Button onclick={() => accept(invite)}>{$LL.join()}</Button>
+        <Button variant="ghost" onclick={() => (declining = null)}>{$LL.cancel()}</Button>
+        <Button variant="destructive" onclick={() => declining && decline(declining)}>
+          {$LL.decline()}
+        </Button>
       </DialogFooter>
     {/if}
   </DialogContent>

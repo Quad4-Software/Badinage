@@ -13,7 +13,7 @@
   import { formatDay } from '$lib/utils/time'
 
   import LoadOlder from './load-older.svelte'
-  import { buildRows, messageRowId, type ListRow } from './message-list/rows'
+  import { buildRows, itemProps, type ListRow } from './message-list/rows'
   import MessageItem from './message-item.svelte'
   import TypingRow from './message-list/typing-row.svelte'
 
@@ -37,6 +37,9 @@
     onDismiss?: ((message: ChatMessage) => void) | undefined
     // press-and-hold or right click on a bubble, for the touch sheet
     onLongPress?: ((message: ChatMessage) => void) | undefined
+    // sender avatar or nick click: the key the avatar resolves under
+    // (bare jid for dms, room/nick for occupants)
+    onAvatarClick?: ((jid: string) => void) | undefined
   }
 
   let {
@@ -52,7 +55,8 @@
     canModerate = false,
     onModerate,
     onDismiss,
-    onLongPress
+    onLongPress,
+    onAvatarClick
   }: Props = $props()
 
   // scrollTop under this counts as near the top and shows the pager button
@@ -152,10 +156,18 @@
     requestAnimationFrame(() => handle()?.scrollToIndex(index, { align: 'center' }))
   }
 
+  // the offset of the last scroll event. Scroll events dispatch after
+  // the DOM grows, so a tail append can make a bottom-anchored scroll
+  // read as off-bottom: only an upward move may break the pin
+  let lastScrollOffset = 0
+
   function onScroll(offset: number) {
     const v = handle()
     if (!v) return
-    pinned = offset + v.getViewportSize() >= v.getScrollSize() - BOTTOM_THRESHOLD_PX
+    const nearBottom = offset + v.getViewportSize() >= v.getScrollSize() - BOTTOM_THRESHOLD_PX
+    if (nearBottom) pinned = true
+    else if (offset < lastScrollOffset) pinned = false
+    lastScrollOffset = offset
     nearTop = offset < TOP_THRESHOLD_PX
   }
 
@@ -166,6 +178,7 @@
     void conversation.peerJid
     pinned = true
     nearTop = true
+    lastScrollOffset = 0
     requestAnimationFrame(() => scrollToLatest())
   })
 
@@ -188,35 +201,6 @@
     if (content) observer.observe(content)
     return () => observer.disconnect()
   })
-
-  // spacing must be padding not margin: the virtualizer measures the
-  // element box and row offsets ignore margins between rows
-  function itemProps({ item }: { item: ListRow }): Record<string, string> | undefined {
-    if (item.kind === 'message') {
-      return {
-        id: messageRowId(item.message.id),
-        class:
-          item.index > 0
-            ? item.grouped
-              ? 'pt-[var(--density-msg-gap)]'
-              : 'pt-[var(--density-msg-run-gap)]'
-            : ''
-      }
-    }
-    if (item.kind === 'day') {
-      return { class: 'text-muted-foreground py-3 text-center text-xs', 'aria-hidden': 'true' }
-    }
-    if (item.kind === 'typing') {
-      return { class: 'flex items-center gap-2 pt-3', 'aria-live': 'polite' }
-    }
-    if (item.kind === 'seen') {
-      return {
-        class: 'text-muted-foreground flex items-center justify-end gap-1 pt-1 text-[0.65rem]',
-        'aria-live': 'polite'
-      }
-    }
-    return undefined
-  }
 </script>
 
 <div class="relative flex min-h-0 flex-1 flex-col">
@@ -248,9 +232,11 @@
             {:else if row.kind === 'message'}
               <MessageItem
                 message={row.message}
-                showNick={row.grouped}
-                showAvatar={row.grouped}
+                showNick={row.first}
+                showAvatar={row.first}
+                last={row.last}
                 avatarName={avatarName(row.message)}
+                {onAvatarClick}
                 avatarJid={avatarJid(row.message)}
                 avatarForce={conversation.kind === 'dm'}
                 selfJid={self}

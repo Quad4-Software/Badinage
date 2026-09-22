@@ -4,6 +4,7 @@
 
   import LL from '$lib/i18n/i18n-svelte'
   import { accounts } from '$lib/state/accounts.svelte'
+  import { app } from '$lib/state/app.svelte'
   import type { Conversation, RoomOccupant } from '$lib/state/chats.svelte'
   import { contextArea } from '$lib/ui/components/context-menu/area'
   import { Input } from '$lib/ui/primitives/input'
@@ -110,11 +111,18 @@
               items: () => occupantMenu(occupant, conversation, account)
             })}
           >
-            <PeerAvatar
-              jid={`${conversation.peerJid}/${occupant.nick}`}
-              fallback={occupant.nick.slice(0, 2)}
-              class="size-7 shrink-0 text-[0.65rem]"
-            />
+            <button
+              type="button"
+              class="focus-visible:ring-ring shrink-0 cursor-pointer rounded-full transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:outline-none"
+              aria-label={$LL.viewProfileOf({ name: occupant.nick })}
+              onclick={() => (app.peerProfile = `${conversation.peerJid}/${occupant.nick}`)}
+            >
+              <PeerAvatar
+                jid={`${conversation.peerJid}/${occupant.nick}`}
+                fallback={occupant.nick.slice(0, 2)}
+                class="size-7 text-[0.65rem]"
+              />
+            </button>
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-1.5">
                 <span

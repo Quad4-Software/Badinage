@@ -38,19 +38,19 @@ describe('buildRows', () => {
     const rows = buildRows([msg('a', T0)], ctx)
     expect(rows.map((r) => r.kind)).toEqual(['day', 'message'])
     const row = rowAt(rows, 1)
-    expect(row.kind === 'message' && row.grouped).toBe(true)
+    expect(row.kind === 'message' && row.first).toBe(true)
     expect(row.key).toBe('m:a')
   })
 
   it('groups same-sender messages inside five minutes', () => {
     const rows = buildRows([msg('a', T0), msg('b', T0 + 60_000), msg('c', T0 + 120_000)], ctx)
-    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.grouped)
+    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.first)
     expect(groups).toEqual([true, false, false])
   })
 
   it('starts a group on sender change', () => {
     const rows = buildRows([msg('a', T0), msg('b', T0 + 60_000, { outgoing: true })], ctx)
-    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.grouped)
+    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.first)
     expect(groups).toEqual([true, true])
   })
 
@@ -59,13 +59,13 @@ describe('buildRows', () => {
       [msg('a', T0, { nick: 'n1' }), msg('b', T0 + 60_000, { nick: 'n2' })],
       ctx
     )
-    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.grouped)
+    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.first)
     expect(groups).toEqual([true, true])
   })
 
   it('starts a group after a gap over five minutes', () => {
     const rows = buildRows([msg('a', T0), msg('b', T0 + 400_000)], ctx)
-    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.grouped)
+    const groups = rows.filter((r) => r.kind === 'message').map((r) => r.first)
     expect(groups).toEqual([true, true])
   })
 
@@ -74,7 +74,26 @@ describe('buildRows', () => {
     expect(rows.map((r) => r.kind)).toEqual(['day', 'message', 'day', 'message'])
     expect(rowAt(rows, 0).key).not.toBe(rowAt(rows, 2).key)
     const second = rowAt(rows, 3)
-    expect(second.kind === 'message' && second.grouped).toBe(true)
+    expect(second.kind === 'message' && second.first).toBe(true)
+  })
+
+  it('marks the last bubble of a run for merged corners', () => {
+    const rows = buildRows(
+      [
+        msg('a', T0, { nick: 'n1' }),
+        msg('b', T0 + 60_000, { nick: 'n1' }),
+        msg('c', T0 + 120_000, { nick: 'n2' })
+      ],
+      ctx
+    )
+    const runs = rows
+      .filter((r) => r.kind === 'message')
+      .map((r) => (r.kind === 'message' ? [r.first, r.last] : []))
+    expect(runs).toEqual([
+      [true, false],
+      [false, true],
+      [true, true]
+    ])
   })
 
   it('appends typing and seen rows at the tail in order', () => {

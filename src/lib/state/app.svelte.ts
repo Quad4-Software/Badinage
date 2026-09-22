@@ -28,6 +28,9 @@ class AppStore {
   settingsOpen = $state(false)
   loginOpen = $state(false)
   profileOpen = $state(false)
+  // avatar or nick click target for the read-only peer profile card:
+  // a bare jid for contacts, a room/nick occupant key for room members
+  peerProfile = $state<string | null>(null)
   joinRoomOpen = $state(false)
   addContactOpen = $state(false)
   paletteOpen = $state(false)

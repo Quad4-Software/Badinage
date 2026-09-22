@@ -220,6 +220,7 @@ export abstract class IrcStubs {
   }
   readonly vcard: VcardApi = {
     fetch: (onDone) => onDone(null),
+    fetchPeer: (_jid, onDone) => onDone(null),
     set: (_vcard: Vcard, onDone) => onDone(true)
   }
   private idCounter = 0
