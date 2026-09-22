@@ -38,6 +38,7 @@ import {
   applyMeta,
   canBuzz,
   hydrateConversation,
+  insertSorted,
   isDuplicate,
   markDisplayedBefore,
   markDisplayedRemote,
@@ -142,10 +143,7 @@ export class ChatStore {
     message.dedupIds = ids
     // keep messages ordered by timestamp so archive pages and delayed
     // stanzas land in the right place instead of at the tail
-    let at = conversation.messages.length
-    while (at > 0 && (conversation.messages[at - 1]?.timestamp ?? 0) > message.timestamp) at--
-    const appended = at === conversation.messages.length
-    conversation.messages.splice(at, 0, message)
+    const appended = insertSorted(conversation.messages, message)
     if (appended) trimLive(conversation, this.seen.get(bare))
     // locally pushed messages (outgoing sends) pick up the negotiated
     // ephemeral timer too so they self-destruct like their wire copies

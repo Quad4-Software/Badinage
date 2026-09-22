@@ -19,6 +19,20 @@ parses or serializes untrusted input: stanzas, JIDs, message styling.
 A unit test asserts an example. A property test asserts the shape of
 every input.
 
+`state/chats/chaos.test.ts` applies the same idea to store behavior:
+random stanza storms (messages, reactions, retractions, carbons, occupant
+flaps) with invariants asserted after every op. Extend the op union when
+a new signal type lands.
+
+### Load tests
+
+`state/chats/load.test.ts` floods the ChatStore through the same event
+seam a real connection uses: thousands of messages across hundreds of
+conversations, a capped hot conversation, reversed (out-of-order)
+delivery, reaction storms, heap growth. The time budgets are generous on
+purpose - they exist to catch quadratic regressions and unbounded
+growth, not to micro-benchmark.
+
 ### Source-scan audits
 
 `core/storage/namespace.test.ts` and `ui/conventions.test.ts` read the
@@ -47,6 +61,9 @@ chromium and mobile (Pixel 7, touch) projects. Layers by file:
   labelled, axe-clean and Escape-dismissable. New dialogs get a row
 - `a11y.test.ts` - axe sweep per view and per state
 - `demo.test.ts`, `mobile.test.ts`, `prompt.test.ts` - feature flows
+- `perf/perf.test.ts` - runtime perf gates: FCP/LCP/CLS on the login
+  page, JS heap ceilings via CDP, DOM bounds and scroll pinning under
+  the stress flood, heap flatness across conversation switches
 - `server.test.ts` - live interop against the dev prosody container,
   skipped when it is not running
 
@@ -64,6 +81,25 @@ The e2e build compiles with two env flags:
   App.svelte installs only under this flag.
 - `VITE_SENTRY_DSN=off` keeps the build hermetic: opting in through the
   prompt never initializes the SDK or contacts a real endpoint.
+
+## Perf monitoring and stress mode
+
+`core/perf.ts` runs a small monitor in every build: FCP, LCP, CLS and
+longtasks via PerformanceObserver plus a 5s JS heap sample where
+Chromium exposes one. Budget breaches console.warn in dev. Under
+`import.meta.env.DEV || VITE_E2E` the snapshot is reachable at
+`window.__badinagePerf.snapshot()` / `.reset()` - the perf spec asserts
+against exactly this data.
+
+Demo mode accepts `?stress` or `?stress=contacts,rooms,messages`
+(defaults 200/60/4000, clamped). `core/xmpp/demo/stress.ts` emits
+deterministic roster, room-occupant and history floods in scheduled
+chunks and reports progress on `window.__badinageStress.emitted/total`.
+Use it for manual profiling (`pnpm dev`, open `/?stress`) and for the
+e2e perf spec.
+
+`pnpm perf` runs Lighthouse CI against `dist/`; `lighthouserc.json`
+holds the build-time gates (FCP, LCP, TBT, CLS, per-type byte budgets).
 
 ## Writing specs
 

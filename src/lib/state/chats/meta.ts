@@ -163,6 +163,27 @@ export async function hydrateConversation(
   conversation.messages.splice(0, 0, ...batch)
 }
 
+// Insert a message in timestamp order, after any equal timestamps so
+// same-second stanzas keep arrival order. Tail appends stay O(1), and a
+// delayed or archived stanza bisects instead of scanning back over the
+// whole live list, which matters when a MAM page lands in a capped
+// conversation.
+export function insertSorted(messages: ChatMessage[], message: ChatMessage): boolean {
+  if (messages.length === 0 || (messages.at(-1)?.timestamp ?? 0) <= message.timestamp) {
+    messages.push(message)
+    return true
+  }
+  let lo = 0
+  let hi = messages.length
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if ((messages[mid]?.timestamp ?? 0) <= message.timestamp) lo = mid + 1
+    else hi = mid
+  }
+  messages.splice(lo, 0, message)
+  return false
+}
+
 // Bound the live list. Called only on tail appends: archive pages land
 // at the front and must not evict themselves. Dropped ids leave the
 // dedup set too, so scroll-back refetches of trimmed history are not

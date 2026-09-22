@@ -3,8 +3,8 @@ import { expect, type Page } from '@playwright/test'
 // Signs into the bundled demo account and waits for the shell. The
 // connect toast is dismissed when it appears so axe sweeps and clicks
 // see the steady state, not a fading overlay.
-export async function enterDemo(page: Page): Promise<void> {
-  await page.goto('/')
+export async function enterDemo(page: Page, path = '/'): Promise<void> {
+  await page.goto(path)
   await page.getByRole('button', { name: 'Try the demo' }).click()
   await expect(page.getByRole('button', { name: 'demo@badinage.local' })).toBeVisible({
     timeout: 10_000

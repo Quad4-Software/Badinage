@@ -44,6 +44,7 @@ import {
   demoSetRoomSubject
 } from './demo-muc'
 import { DemoProfiles } from './demo/profile'
+import { emitStress, stressPlan, stressRoster } from './demo/stress'
 import { DISCO_FEATURES, DISCO_IDENTITY } from './features/caps'
 import type { ChannelSearchItem, ChatState, DataForm, MarkerType, TrustOwner } from './stanzas'
 
@@ -77,6 +78,9 @@ export class DemoConnection implements ChatConnection {
   private readonly omemoPeers = new DemoOmemoPeers()
   private readonly profiles = new DemoProfiles()
   readonly vcard = this.profiles.vcard
+  // ?stress=contacts,rooms,messages floods the demo with generated load
+  private readonly stress = stressPlan(globalThis.location?.search ?? '')
+  private readonly schedule = (fn: () => void, ms: number) => this.timers.push(setTimeout(fn, ms))
 
   connect(jid: string, _password: string): void {
     this.jid = jid
@@ -326,7 +330,8 @@ export class DemoConnection implements ChatConnection {
   }
 
   fetchRoster(): void {
-    this.events.emit('roster', demoRosterItems())
+    const base = demoRosterItems()
+    this.events.emit('roster', this.stress ? [...base, ...stressRoster(this.stress)] : base)
   }
 
   rosterSet(jid: string, name: string): void {
@@ -498,19 +503,13 @@ export class DemoConnection implements ChatConnection {
   }
 
   private seed(): void {
+    emitStress(this.events, this.jid, this.stress, this.bookmarks, this.schedule)
     this.fetchRoster()
     emitContactPresence(this.events)
     emitDmHistory(this.events, this.jid)
     this.joinRoom(ROOM, 'you')
     emitRoomHistory(this.events, this.jid)
-    scheduleLiveEvents(
-      this.events,
-      this.jid,
-      (prefix) => this.uniqueId(prefix),
-      (fn, ms) => {
-        this.timers.push(setTimeout(fn, ms))
-      }
-    )
+    scheduleLiveEvents(this.events, this.jid, (prefix) => this.uniqueId(prefix), this.schedule)
   }
 
   private simulateReply(to: string, type: 'chat' | 'groupchat' = 'chat'): void {
