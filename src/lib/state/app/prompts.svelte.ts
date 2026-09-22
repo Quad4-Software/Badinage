@@ -27,14 +27,25 @@ export interface PromptDef {
 // session. A persisted blob means the install ran a build before
 const returningUser = hasPersisted(globalKey('settings'))
 
+// the crash-reporting ask. Exported so the privacy toggle can mark it
+// answered: an explicit switch flip is the same consent as the dialog
+export const CRASH_REPORTING_PROMPT: PromptDef = {
+  id: 'crash-reporting',
+  audience: 'all',
+  version: 1
+}
+
 // legacy installs persisted crashReporting under the old default-on
 // build, before the consent ask existed. That value is not consent so
 // it folds back to off and the one-time prompt decides
-if (settings.current.crashReporting && (settings.current.seenPrompts['crash-reporting'] ?? 0) < 1) {
+if (
+  settings.current.crashReporting &&
+  (settings.current.seenPrompts[CRASH_REPORTING_PROMPT.id] ?? 0) < CRASH_REPORTING_PROMPT.version
+) {
   settings.set('crashReporting', false)
 }
 
-const PROMPTS: PromptDef[] = [{ id: 'crash-reporting', audience: 'all', version: 1 }]
+const PROMPTS: PromptDef[] = [CRASH_REPORTING_PROMPT]
 
 let pending = $state<PromptDef | null>(null)
 

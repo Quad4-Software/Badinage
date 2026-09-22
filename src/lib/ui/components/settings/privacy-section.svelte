@@ -1,5 +1,6 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
+  import { CRASH_REPORTING_PROMPT } from '$lib/state/app/prompts.svelte'
   import { settings } from '$lib/state/settings.svelte'
   import SampleReport from '$lib/ui/components/prompts/sample-report.svelte'
   import { Switch } from '$lib/ui/primitives/switch'
@@ -79,7 +80,12 @@
         {$LL.crashReporting()}
         <Switch
           checked={settings.current.crashReporting}
-          onCheckedChange={(v) => settings.set('crashReporting', v)}
+          onCheckedChange={(v) => {
+            settings.set('crashReporting', v)
+            // an explicit toggle counts as answering the opt-in prompt:
+            // without the marker the next launch folds the value to off
+            settings.markPromptSeen(CRASH_REPORTING_PROMPT.id, CRASH_REPORTING_PROMPT.version)
+          }}
         />
       </label>
       <p class="text-muted-foreground text-xs">{$LL.crashReportingHint()}</p>
