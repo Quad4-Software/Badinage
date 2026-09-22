@@ -5,7 +5,7 @@ import { LIVE_MESSAGE_CAP } from '$lib/constants'
 import type { ChatConnection, ConnectionEvents } from '$lib/core/xmpp/connection'
 import type { IncomingMessage } from '$lib/core/xmpp/stanzas'
 
-import { ChatStore } from '../chats.svelte'
+import { ChatStore } from '../../chats.svelte'
 
 // Load tests: drive the store the way a real connection does, through
 // emitted message events, at volumes a busy account actually sees. The

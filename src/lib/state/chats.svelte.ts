@@ -8,7 +8,6 @@ import { SvelteMap, SvelteSet } from 'svelte/reactivity'
 
 import { EPHEMERAL_SWEEP_MS } from '$lib/constants'
 import type { ChatConnection } from '$lib/core/xmpp/connection'
-import { SELF_BANNED_CODE, SELF_KICKED_CODE, SELF_RENAMED_CODE } from '$lib/core/xmpp/features/muc'
 import type { Attachment, IncomingMessage, NotifySetting } from '$lib/core/xmpp/stanzas'
 import { bareJid } from '$lib/utils/jid'
 import { isLiveIncoming } from '$lib/utils/notify'
@@ -57,6 +56,7 @@ import {
   reactStored,
   retractStored
 } from './chats/mutations'
+import { noteJoin, setOccupant } from './chats/occupants'
 import { ConversationPersistence } from './persistence.svelte'
 import { TypingTracker } from './typing'
 
@@ -490,59 +490,11 @@ export class ChatStore {
   // remember join parameters so the rejoin watchdog can replay them and
   // retry banners can re-send them without asking again
   noteJoin(room: string, nick: string, password?: string): void {
-    const conversation = this.open(room, 'muc')
-    conversation.ourNick = nick
-    conversation.ourNicks.add(nick)
-    conversation.password = password
-    conversation.joinError = undefined
-    conversation.kicked = false
-    conversation.kickReason = undefined
-    conversation.banned = false
+    noteJoin(this, room, nick, password)
   }
 
   setOccupant(room: string, occupant: RoomOccupant): void {
-    const conversation = this.open(room, 'muc')
-    const renamed = occupant.codes.includes(SELF_RENAMED_CODE)
-    // offline stanzas without a 110 still leave our nick in the from
-    // resource. Online presence gets no such fallback, or a stranger
-    // taking our nick after a kick would mark us joined
-    const self =
-      occupant.self || (occupant.presence === 'offline' && occupant.nick === conversation.ourNick)
-    if (occupant.presence === 'offline') {
-      conversation.occupants.delete(occupant.nick)
-      conversation.typers.delete(occupant.nick)
-    } else {
-      conversation.occupants.set(occupant.nick, occupant)
-    }
-    if (!self) return
-    if (occupant.presence === 'offline') {
-      if (renamed && occupant.newNick) {
-        // the departing half of a nick change already names the new
-        // nick. Adopt it so pending sends use it immediately
-        conversation.ourNick = occupant.newNick
-        conversation.ourNicks.add(occupant.newNick)
-        return
-      }
-      conversation.joined = false
-      // re-probe room properties on rejoin, they may have changed
-      conversation.roomInfo = undefined
-      if (occupant.codes.includes(SELF_BANNED_CODE)) {
-        conversation.banned = true
-        conversation.kicked = false
-      } else if (occupant.codes.includes(SELF_KICKED_CODE)) {
-        conversation.kicked = true
-        conversation.kickReason = occupant.reason
-      }
-      return
-    }
-    conversation.joined = true
-    conversation.joinError = undefined
-    conversation.kicked = false
-    conversation.kickReason = undefined
-    conversation.banned = false
-    conversation.ourNick = occupant.nick
-    conversation.ourNicks.add(occupant.nick)
-    if (occupant.occupantId) conversation.ourOccupantId = occupant.occupantId
+    setOccupant(this, room, occupant)
   }
 
   private async hydrate(conversation: Conversation): Promise<void> {

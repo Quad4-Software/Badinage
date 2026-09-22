@@ -46,7 +46,7 @@ export function setBookmarkNotify(
   addBookmark(account, autoJoined, { ...existing, notify })
 }
 
-export function applyBookmarks(
+function applyBookmarks(
   account: Account,
   autoJoined: Set<string>,
   bookmarks: Bookmark[] | null

@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LIVE_MESSAGE_CAP } from '$lib/constants'
 
-import { ChatStore } from '../chats.svelte'
-import { emptyMessage } from '../conversation.svelte'
-import type { ChatMessage } from '../conversation.svelte'
+import { ChatStore } from '../../chats.svelte'
+import { emptyMessage } from '../../conversation.svelte'
+import type { ChatMessage } from '../../conversation.svelte'
 
 // persistence goes through core/storage/idb, which needs indexedDB. The
 // store only schedules debounced writes and a hydrate read, so an

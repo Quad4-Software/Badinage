@@ -4,7 +4,7 @@ import { Emitter } from '$lib/core/events'
 import type { ChatConnection, ConnectionEvents } from '$lib/core/xmpp/connection'
 import type { IncomingMessage } from '$lib/core/xmpp/stanzas'
 
-import { ChatStore } from '../chats.svelte'
+import { ChatStore } from '../../chats.svelte'
 
 // persistence goes through core/storage/idb, which needs indexedDB. The
 // store only schedules debounced writes and a hydrate read, so an
