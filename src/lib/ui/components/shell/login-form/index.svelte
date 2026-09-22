@@ -10,9 +10,9 @@
   import { Checkbox } from '$lib/ui/primitives/checkbox'
   import { LoaderCircle } from '@lucide/svelte'
 
-  import { demoLogin, ircJid, registerError, ssoLogin } from './login-form/actions'
-  import LoginFields from './login-form/fields.svelte'
-  import ThemeToggle from './theme-toggle.svelte'
+  import { demoLogin, ircJid, registerError, ssoLogin } from './actions'
+  import LoginFields from './fields.svelte'
+  import ThemeToggle from '../theme-toggle.svelte'
 
   let { embedded = false }: { embedded?: boolean } = $props()
 

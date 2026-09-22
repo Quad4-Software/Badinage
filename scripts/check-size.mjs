@@ -24,12 +24,9 @@ const EXCLUDE_FILE = /^src\/lib\/i18n\//
 
 // Grandfathered god files: repo-relative path -> line ceiling.
 const FILE_ALLOWLIST = new Map([
-  ['src/lib/state/accounts.svelte.ts', 728],
-  ['src/lib/core/xmpp/demo-data.ts', 714],
-  ['src/lib/ui/components/chat/chat-view.svelte', 638],
-  ['src/lib/state/chats.svelte.ts', 553],
-  ['src/lib/core/omemo/service.ts', 552],
-  ['src/lib/core/xmpp/connection.ts', 535],
+  ['src/lib/ui/components/chat/chat-view.svelte', 596],
+  ['src/lib/state/chats.svelte.ts', 503],
+  ['src/lib/core/omemo/service.ts', 503],
   ['src/lib/core/xmpp/demo.ts', 525],
   ['src/lib/state/chats.test.ts', 511],
   ['src/lib/ui/components/chat/message-item.svelte', 420],

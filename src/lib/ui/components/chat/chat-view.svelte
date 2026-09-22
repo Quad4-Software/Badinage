@@ -7,8 +7,7 @@
     Lock,
     LogOut,
     Timer,
-    Users,
-    X
+    Users
   } from '@lucide/svelte'
 
   import LL from '$lib/i18n/i18n-svelte'
@@ -37,6 +36,7 @@
   import { ephemeralLabel } from './chat-view/ephemeral'
   import OptionsMenu from './chat-view/options-menu.svelte'
   import RoomDialogs from './chat-view/room-dialogs.svelte'
+  import SplitPicker from './chat-view/split-picker.svelte'
   import { contextArea } from '../context-menu/area'
   import { conversationMenu } from './sidebar/row-menu.svelte'
 
@@ -513,41 +513,7 @@
 
 {#if split}
   <div class="flex h-full min-w-0 flex-col">
-    <div class="flex items-center gap-2 border-b p-2">
-      <select
-        class="bg-background min-w-0 flex-1 rounded-md border px-2 py-1.5 text-sm"
-        value={peer ?? ''}
-        onchange={(e) => {
-          const v = (e.target as HTMLSelectElement).value
-          app.splitPeer = v || null
-        }}
-        aria-label={$LL.openInSplit()}
-      >
-        <option value="">{$LL.pickConversation()}</option>
-        {#if splitDms.length > 0}
-          <optgroup label={$LL.conversations()}>
-            {#each splitDms as choice (choice.jid)}
-              <option value={choice.jid}>{choice.name}</option>
-            {/each}
-          </optgroup>
-        {/if}
-        {#if splitRooms.length > 0}
-          <optgroup label={$LL.rooms()}>
-            {#each splitRooms as choice (choice.jid)}
-              <option value={choice.jid}>{choice.name}</option>
-            {/each}
-          </optgroup>
-        {/if}
-      </select>
-      <Button
-        variant="ghost"
-        size="icon"
-        onclick={() => (app.splitPeer = null)}
-        aria-label={$LL.closePane()}
-      >
-        <X class="size-4" />
-      </Button>
-    </div>
+    <SplitPicker {peer} dms={splitDms} rooms={splitRooms} />
     <div class="min-h-0 flex-1">
       {@render paneContent()}
     </div>

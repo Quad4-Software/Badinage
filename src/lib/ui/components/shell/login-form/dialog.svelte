@@ -1,7 +1,7 @@
 <script lang="ts">
   import LL from '$lib/i18n/i18n-svelte'
   import { app } from '$lib/state/app.svelte'
-  import LoginForm from '../login-form.svelte'
+  import LoginForm from './index.svelte'
   import {
     Dialog,
     DialogContent,
