@@ -145,8 +145,15 @@ jobs:
 
       - name: wait for ergo
         run: |
+          # docker-proxy accepts tcp on the published port before the
+          # service is listening, so probe for a real websocket upgrade
           for i in $(seq 1 30); do
-            (exec 3<>/dev/tcp/localhost/8097) 2>/dev/null && exit 0
+            code=$(curl -s -o /dev/null -m 2 -w '%{http_code}' \
+              -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
+              -H 'Sec-WebSocket-Version: 13' \
+              -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+              http://localhost:8097/ 2>/dev/null)
+            [ "$code" = 101 ] && exit 0
             sleep 1
           done
           echo "ergo did not come up in 30s" >&2
@@ -206,15 +213,27 @@ jobs:
       - name: start dev ${{ matrix.server.name }}
         run: docker compose -f docker/dev/compose.yaml up -d ${{ matrix.server.name }}
 
-      # openfire boots a jvm, give it more room than the others
+      # openfire boots a jvm, give it more room than the others. A plain
+      # tcp check is racy: docker-proxy accepts on the published port
+      # before the server is listening, so probe the websocket endpoint
+      # for a real 101 upgrade instead
       - name: wait for ${{ matrix.server.name }}
         run: |
+          url="http://${XMPP_INTEROP_WS#ws://}"
           for i in $(seq 1 90); do
-            (exec 3<>/dev/tcp/localhost/${{ matrix.server.port }}) 2>/dev/null && exit 0
+            code=$(curl -s -o /dev/null -m 2 -w '%{http_code}' \
+              -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
+              -H 'Sec-WebSocket-Version: 13' \
+              -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+              -H 'Sec-WebSocket-Protocol: xmpp' \
+              "$url" 2>/dev/null)
+            [ "$code" = 101 ] && exit 0
             sleep 1
           done
           echo "${{ matrix.server.name }} did not come up in 90s" >&2
           exit 1
+        env:
+          XMPP_INTEROP_WS: ${{ matrix.server.ws }}
 
       - name: run xmpp interop tests
         run: pnpm vitest run src/lib/core/xmpp/tests/interop.live.test.ts
