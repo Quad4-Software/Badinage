@@ -29,7 +29,7 @@ XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 
 ## Install
 
-Requires Node 22+ and pnpm 11+.
+Requires Node 22+ and pnpm 12+.
 
 ```sh
 pnpm install

@@ -42,7 +42,7 @@ pnpm-workspace.yaml enforces:
   scripts fail the install
 - blockExoticSubdeps against injected transitive deps
 - no hoisting, verifyDepsBeforeRun install
-- packageManager pins pnpm 11.24.0 for Corepack
+- packageManager pins pnpm 12.6.0 for Corepack
 
 Keep it that way. Do not add configDependencies.
 

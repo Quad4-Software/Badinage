@@ -19,7 +19,7 @@ License: 0BSD. Copyright Quad4 Software.
 - Tailwind CSS 4 via @tailwindcss/vite, shadcn-svelte primitives on Bits UI
 - strophe.js for the XMPP transport (WebSocket + BOSH, SCRAM-SHA-256)
 - typesafe-i18n for localization, run `pnpm i18n` after editing locales
-- pnpm 11, pinned by the packageManager field. Install is hardened in
+- pnpm 12, pinned by the packageManager field. Install is hardened in
   pnpm-workspace.yaml: minimumReleaseAge 7 days, strictDepBuilds,
   allowBuilds allowlist, blockExoticSubdeps, no hoisting
 - Vitest for unit tests, Playwright + axe-core for e2e and a11y
