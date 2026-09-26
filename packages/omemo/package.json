@@ -54,10 +54,10 @@
     "@noble/hashes": "2.4.0"
   },
   "devDependencies": {
-    "@types/node": "26.5.1",
-    "fast-check": "4.10.0",
+    "@types/node": "26.6.2",
+    "fast-check": "4.10.2",
     "typedoc": "0.28.20",
     "typescript": "6.0.3",
-    "vitest": "5.0.0"
+    "vitest": "5.0.1"
   }
 }

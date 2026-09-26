@@ -6,9 +6,9 @@ ARG NGINX_IMAGE=docker.io/nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56
 
 # pnpm is pinned by sha256 against the upstream release tarball. Bump the
 # version and both sums together.
-ARG PNPM_VERSION=11.24.0
-ARG PNPM_SHA256_X64=2fce00e10729d0c1f3836d499b908697fd3cd0832332651fbcee79c0a7442dcb
-ARG PNPM_SHA256_ARM64=950160e3d1d039e0bd1f234da5a307fdc9c1d6b9c030683adfcb85f607c7d500
+ARG PNPM_VERSION=11.27.1
+ARG PNPM_SHA256_X64=cc66c1558a1a03b320ff5b4022f755386fa1de54db3f97ff624112015be1ccf1
+ARG PNPM_SHA256_ARM64=7a7854e90bdb7d339430d9943ea482b34d7bde817cfc1c749d3c04ddd464142d
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
