@@ -147,7 +147,7 @@ in settings. The model is stricter than typical editor plugins:
   docker ecosystems weekly.
 - Base images in docker/Dockerfile are pinned by digest. Bump them
   deliberately and record the new digest.
-- packages/omemo is our own 0BSD implementation, interop-checked against
+- packages/omemo is our own QSL-1.0-0BSD implementation, interop-checked against
   python-omemo vectors. Never import GPL code (libomemo.js, libsignal) into
   the dependency tree.
 - Known residual: pnpm audit flags extract-zip twice under

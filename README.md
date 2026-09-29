@@ -22,7 +22,7 @@ XMPP server over WebSocket or BOSH, supports multiple accounts at once.
 - All your accounts in one place
 - Works offline and feels fast: messages cached locally, resizable and
   split panes, dark mode, keyboard-first
-- Private by design: OMEMO encryption is our own permissively licensed
+- Private by design: OMEMO encryption is our own
   implementation, validated against the reference stack
 - Self-host anywhere: static files behind any web server, or the included
   Docker image
@@ -77,4 +77,4 @@ pnpm test:omemo # OMEMO library tests incl. interop vectors
 
 ## License
 
-0BSD, see [LICENSE](LICENSE).
+QSL-1.0-0BSD, see [LICENSE](LICENSE).

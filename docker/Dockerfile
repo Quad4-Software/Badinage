@@ -53,7 +53,7 @@ LABEL org.opencontainers.image.title="Badinage" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.licenses="0BSD" \
+      org.opencontainers.image.licenses="QSL-1.0-0BSD" \
       org.opencontainers.image.vendor="Quad4 Software"
 
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf

@@ -2,7 +2,7 @@
   "name": "badinage",
   "version": "0.0.0",
   "description": "Self-hostable web XMPP client",
-  "license": "0BSD",
+  "license": "QSL-1.0-0BSD",
   "type": "module",
   "private": true,
   "packageManager": "pnpm@12.6.0",

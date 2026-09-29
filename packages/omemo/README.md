@@ -68,4 +68,4 @@ pnpm run docs      # TypeDoc API docs into docs/api
 
 ## License
 
-0BSD. See LICENSE.
+QSL-1.0-0BSD. See LICENSE.
